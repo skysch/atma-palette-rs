@@ -40,6 +40,7 @@
 
 // Public modules.
 mod palette;
+pub mod error;
 
 // Exports.
 pub use palette::*;
