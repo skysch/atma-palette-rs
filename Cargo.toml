@@ -14,11 +14,9 @@ default = []
 
 # Required dependencies
 [dependencies]
-log = { version = "*", features = ["serde"] }
+log = { version = "*" }
 ron = "*"
 color = { git = "https://github.com/skysch/color-rs", features = ["serde"] }
-
-# Optional dependencies
 serde = { version = "*", features = ["derive"] }
 
 
