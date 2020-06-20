@@ -9,13 +9,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug)]
+/// Atma palette error type.
 pub enum Error {
+    /// A RON error.
     RonError {
+        /// The error message.
         msg: Option<String>,
+        /// The error source.
         source: ron::error::Error
     },
+    /// An I/O error.
     IoError {
+        /// The error message.
         msg: Option<String>,
+        /// The error source.
         source: std::io::Error,
     },
 }
@@ -42,7 +49,7 @@ impl std::error::Error for Error {
         match self {
             RonError { source, .. } => Some(source),
             IoError { source, .. } => Some(source),
-            _ => None,
+            // _ => None,
         }
     }
 }

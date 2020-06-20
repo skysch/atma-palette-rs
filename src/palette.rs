@@ -9,11 +9,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
+use crate::cell::Cell;
+use crate::cell::CellRef;
+use crate::cell::CellPackage;
+use crate::cell::Position;
 use crate::error::Error;
-
+// use crate::expr::Expr;
+use crate::operation::Operation;
 
 // External library imports.
-use color::Color;
+// use color::Color;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -31,20 +36,36 @@ use std::path::Path;
 
 
 
-
+/// The Atma palette object.
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct Palette {
-    cell_names: BTreeMap<String, usize>,
-    cells: Vec<ColorCell>,
+    /// Palette cells storage. Holds cells containing color expressions.
+    cells: BTreeMap<u32, Cell>,
+    /// The next free cell index.
+    next_index: u32,
+    /// A map of names assigned to cells.
+    names: BTreeMap<String, u32>,
+    /// A map of (page, line) positions assigned to cells.
+    positions: BTreeMap<Position, u32>,
+    /// A map of names assigned to groups of cells.
+    groups: BTreeMap<String, Vec<u32>>,
 }
 
 
 impl Palette {
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Command-level interface
+    ////////////////////////////////////////////////////////////////////////////
+    /// Constructs a new `Palette`.
     pub fn new() -> Self {
         Palette {
-            cell_names: BTreeMap::new(),
-            cells: Vec::new(),
+            cells: BTreeMap::new(),
+            next_index: 0,
+            names: BTreeMap::new(),
+            positions: BTreeMap::new(),
+            groups: BTreeMap::new(),
         }
     }
 
@@ -116,7 +137,6 @@ impl Palette {
                 msg: Some("Failed parsing RON file".to_owned()),
                 source: e,
             })?;
-
         Ok(palette)
     }
 
@@ -131,6 +151,179 @@ impl Palette {
         file.write_all(s.as_bytes())?;
         Ok(())
     }
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Operation-level interface
+    ////////////////////////////////////////////////////////////////////////////
+    /// Applies an `Operation` to the palette. Returns an `Operation` that will
+    /// undo the applied changes.
+    pub fn apply_operation(&mut self, op: &Operation) -> Operation {
+        use Operation::*;
+        match op {
+            Null => Null,
+            InsertCell(cell) => self.insert_cell(cell),
+            InsertCellPackage(cell_pack) => self.insert_cell_package(cell_pack),
+            RemoveCell(cell_ref) => self.remove_cell(cell_ref),
+
+            // _ => unimplemented!(),
+        }
+    }
+
+    /// Inserts a `Cell` into the palette.
+    pub fn insert_cell(&mut self, cell: &Cell) -> Operation {
+        let idx = self.allocate_index();
+        match self.cells.insert(idx, *cell) {
+            None => Operation::RemoveCell(CellRef::Index(idx)),
+            Some(old) => {
+                let cell_pack = self.extract_cell_package(idx, Some(old));
+                Operation::InsertCellPackage(cell_pack)
+            },
+        }   
+    }
+
+    /// Inserts a `CellPackage` into the palette.
+    pub fn insert_cell_package(&mut self, cell_pack: &CellPackage) -> Operation
+    {
+        //
+        unimplemented!()
+
+    }
+
+    /// Removes a `Cell` from the palette.
+    pub fn remove_cell(&mut self, cell_ref: &CellRef) -> Operation {
+        match Palette::resolve_ref_to_idx(
+            &self.names,
+            &self.positions,
+            &self.groups,
+            cell_ref)
+        {
+            None => Operation::Null,
+            Some(idx) => {
+                let removed = self.cells
+                    .remove(&idx);
+                let cell_pack = self.extract_cell_package(idx, removed);
+                Operation::InsertCellPackage(cell_pack)
+            },
+        }
+    }
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Direct interface
+    ////////////////////////////////////////////////////////////////////////////
+
+    /// Retreives a reference to the `Cell` associated with the given `CellRef`.
+    pub fn cell(&self, cell_ref: &CellRef) -> Option<&Cell> {
+        Palette::resolve_ref_to_idx(
+                &self.names,
+                &self.positions,
+                &self.groups,
+                cell_ref)
+            .and_then(|idx| self.cells.get(&idx))
+    }
+
+    /// Retreives a mutable reference to the `Cell` associated with the given
+    /// `CellRef`.
+    pub fn cell_mut(&mut self, cell_ref: &CellRef) -> Option<&mut Cell> {
+        Palette::resolve_ref_to_idx(
+                &self.names,
+                &self.positions,
+                &self.groups,
+                cell_ref)
+            .and_then(move |idx| self.cells.get_mut(&idx))
+    }
+
+    fn resolve_ref_to_idx(
+        names: &BTreeMap<String, u32>,
+        positions: &BTreeMap<Position, u32>,
+        groups: &BTreeMap<String, Vec<u32>>,
+        cell_ref: &CellRef)
+        -> Option<u32>
+    {
+        use CellRef::*;
+        match cell_ref {
+            Index(idx) => Some(*idx),
+            Name(name) => names
+                .get(name)
+                .cloned(),
+            Position(position) => positions
+                .get(position)
+                .cloned(),
+            Group { name, idx } => groups
+                .get(name)
+                .and_then(|cells| cells.get(*idx as usize))
+                .cloned(),
+        }
+    }
+
+    fn allocate_index(&mut self) -> u32 {
+        let idx = self.next_index;
+        // TODO: On wrap, do index compression.
+        self.next_index += 1;
+        idx
+    }
+
+    fn extract_cell_package(&mut self, idx: u32, cell: Option<Cell>)
+        -> CellPackage
+    {
+
+        let mut refs = Vec::with_capacity(3);
+        
+        // Gather and remove cell names.
+        let mut names = Vec::with_capacity(2);
+        for (name, i) in self.names.iter() {
+            if *i == idx { names.push(name.clone()) }
+        }
+        for name in names.into_iter() {
+            let _ = self.names.remove(&name);
+            refs.push(CellRef::Name(name));
+        }
+
+        // Gather and remove cell positions.
+        let mut positions = Vec::with_capacity(2);
+        for (position, i) in self.positions.iter() {
+            if *i == idx { positions.push(*position) }
+        }
+        for position in positions.into_iter() {
+            let _ = self.positions.remove(&position);
+            refs.push(CellRef::Position(position));
+        }
+
+        // Gather and remove cell groups.
+        let mut groups = Vec::with_capacity(2);
+        for (name, cells) in self.groups.iter() {
+            if cells.contains(&idx) { groups.push(name.clone()) }
+        }
+        for name in groups.into_iter() {
+            if self.groups
+                .get(&name)
+                .expect("find index in owning group")
+                .len() > 1 
+            {
+                // TODO: Simplify this if Vec::remove_item becomes stable.
+                // let _ = self.groups
+                //     .get_mut(&name)
+                //     .expect("remove index from owning group")
+                //     .remove_item(&idx);
+                let _ = self.groups
+                    .get_mut(&name)
+                    .map(|cells| {
+                        let pos = cells
+                            .iter()
+                            .position(|x| *x == idx)
+                            .expect("find index in owning group");
+                        let _ = cells.remove(pos);
+                    });
+            } else {
+                let _ = self.groups.remove(&name);
+            }
+
+            refs.push(CellRef::Group { name, idx });
+        }
+
+        CellPackage { cell, idx: Some(idx), refs }
+    }
 }
 
 impl Default for Palette {
@@ -140,21 +333,3 @@ impl Default for Palette {
 }
 
 
-
-
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
-pub struct ColorCell {
-    expr: Expr,
-}
-
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Serialize, Deserialize)]
-pub enum Expr {
-    /// An color expression with no color.
-    Empty,
-    /// A color.
-    Color(Color),
-    
-}

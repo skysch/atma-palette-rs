@@ -38,9 +38,14 @@
 #![warn(variant_size_differences)]
 #![warn(while_true)]
 
-// Public modules.
+// Internal modules.
 mod palette;
+
+// Public modules.
+pub mod cell;
 pub mod error;
+pub mod expr;
+pub mod operation;
 
 // Exports.
 pub use palette::*;
