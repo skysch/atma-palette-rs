@@ -41,6 +41,9 @@
 // Internal modules.
 mod palette;
 
+#[cfg(test)]
+mod tests;
+
 // Public modules.
 pub mod cell;
 pub mod error;

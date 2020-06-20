@@ -11,7 +11,6 @@
 // Local imports.
 use crate::cell::Cell;
 use crate::cell::CellRef;
-use crate::cell::CellPackage;
 use crate::cell::Position;
 use crate::error::Error;
 // use crate::expr::Expr;
@@ -152,59 +151,56 @@ impl Palette {
         Ok(())
     }
 
-
     ////////////////////////////////////////////////////////////////////////////
     // Operation-level interface
     ////////////////////////////////////////////////////////////////////////////
     /// Applies an `Operation` to the palette. Returns an `Operation` that will
     /// undo the applied changes.
-    pub fn apply_operation(&mut self, op: &Operation) -> Operation {
+    pub fn apply_operation(&mut self, op: &Operation) -> Vec<Operation> {
         use Operation::*;
         match op {
-            Null => Null,
-            InsertCell(cell) => self.insert_cell(cell),
-            InsertCellPackage(cell_pack) => self.insert_cell_package(cell_pack),
-            RemoveCell(cell_ref) => self.remove_cell(cell_ref),
+            Null => vec![Null],
+            InsertCell { idx, cell } => self.insert_cell(*idx, cell),
+            RemoveCell { cell_ref } => self.remove_cell(cell_ref),
 
             // _ => unimplemented!(),
         }
     }
 
-    /// Inserts a `Cell` into the palette.
-    pub fn insert_cell(&mut self, cell: &Cell) -> Operation {
-        let idx = self.allocate_index();
-        match self.cells.insert(idx, *cell) {
-            None => Operation::RemoveCell(CellRef::Index(idx)),
-            Some(old) => {
-                let cell_pack = self.extract_cell_package(idx, Some(old));
-                Operation::InsertCellPackage(cell_pack)
-            },
-        }   
-    }
-
-    /// Inserts a `CellPackage` into the palette.
-    pub fn insert_cell_package(&mut self, cell_pack: &CellPackage) -> Operation
+    /// Inserts a `Cell` into the palette at the given index.
+    pub fn insert_cell(&mut self, idx: Option<u32>, cell: &Cell)
+        -> Vec<Operation>
     {
-        //
-        unimplemented!()
-
+        let idx = idx.unwrap_or_else(|| self.allocate_index());
+        match self.cells.insert(idx, *cell) {
+            // No cell was replaced.
+            None => vec![
+                Operation::RemoveCell {
+                    cell_ref: CellRef::Index(idx)
+                },
+            ],
+            // A cell was replaced.
+            Some(old) => vec![
+                Operation::InsertCell { 
+                    idx: Some(idx),
+                    cell: old,
+                }
+            ],
+        }
     }
 
     /// Removes a `Cell` from the palette.
-    pub fn remove_cell(&mut self, cell_ref: &CellRef) -> Operation {
-        match Palette::resolve_ref_to_idx(
+    pub fn remove_cell(&mut self, cell_ref: &CellRef) -> Vec<Operation> {
+        if let Some(idx) = Palette::resolve_ref_to_idx(
             &self.names,
             &self.positions,
             &self.groups,
             cell_ref)
         {
-            None => Operation::Null,
-            Some(idx) => {
-                let removed = self.cells
-                    .remove(&idx);
-                let cell_pack = self.extract_cell_package(idx, removed);
-                Operation::InsertCellPackage(cell_pack)
-            },
+            let cell = self.cells.remove(&idx).expect("remove resolved cell");
+            vec![Operation::InsertCell { idx: Some(idx), cell }]
+        } else {
+            Vec::new()
         }
     }
 
@@ -262,67 +258,6 @@ impl Palette {
         // TODO: On wrap, do index compression.
         self.next_index += 1;
         idx
-    }
-
-    fn extract_cell_package(&mut self, idx: u32, cell: Option<Cell>)
-        -> CellPackage
-    {
-
-        let mut refs = Vec::with_capacity(3);
-        
-        // Gather and remove cell names.
-        let mut names = Vec::with_capacity(2);
-        for (name, i) in self.names.iter() {
-            if *i == idx { names.push(name.clone()) }
-        }
-        for name in names.into_iter() {
-            let _ = self.names.remove(&name);
-            refs.push(CellRef::Name(name));
-        }
-
-        // Gather and remove cell positions.
-        let mut positions = Vec::with_capacity(2);
-        for (position, i) in self.positions.iter() {
-            if *i == idx { positions.push(*position) }
-        }
-        for position in positions.into_iter() {
-            let _ = self.positions.remove(&position);
-            refs.push(CellRef::Position(position));
-        }
-
-        // Gather and remove cell groups.
-        let mut groups = Vec::with_capacity(2);
-        for (name, cells) in self.groups.iter() {
-            if cells.contains(&idx) { groups.push(name.clone()) }
-        }
-        for name in groups.into_iter() {
-            if self.groups
-                .get(&name)
-                .expect("find index in owning group")
-                .len() > 1 
-            {
-                // TODO: Simplify this if Vec::remove_item becomes stable.
-                // let _ = self.groups
-                //     .get_mut(&name)
-                //     .expect("remove index from owning group")
-                //     .remove_item(&idx);
-                let _ = self.groups
-                    .get_mut(&name)
-                    .map(|cells| {
-                        let pos = cells
-                            .iter()
-                            .position(|x| *x == idx)
-                            .expect("find index in owning group");
-                        let _ = cells.remove(pos);
-                    });
-            } else {
-                let _ = self.groups.remove(&name);
-            }
-
-            refs.push(CellRef::Group { name, idx });
-        }
-
-        CellPackage { cell, idx: Some(idx), refs }
     }
 }
 

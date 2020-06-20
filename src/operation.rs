@@ -11,12 +11,15 @@
 // Local imports.
 use crate::cell::Cell;
 use crate::cell::CellRef;
-use crate::cell::CellPackage;
 
 // External library imports.
 use serde::Serialize;
 use serde::Deserialize;
 
+
+////////////////////////////////////////////////////////////////////////////////
+// Operation
+////////////////////////////////////////////////////////////////////////////////
 /// A palette modifying operation.
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
@@ -24,10 +27,18 @@ pub enum Operation {
     /// An operation which does nothing.
     Null,
     /// Inserts a `Cell` into the palette.
-    InsertCell(Cell),
-    /// Inserts a `CellPackage` into the palette.
-    InsertCellPackage(CellPackage),
-    /// Removes a `Cell` from the palette.
-    RemoveCell(CellRef),
-
+    InsertCell {
+        /// The index to insert the cell into, or None if a new one is to be
+        /// allocated.
+        idx: Option<u32>,
+        /// The `Cell` to insert.
+        cell: Cell,
+    },
+    /// Removes the referenced `Cell` from the palette.
+    RemoveCell {
+        /// A reference to the `Cell` to remove.
+        cell_ref: CellRef
+    },
 }
+
+

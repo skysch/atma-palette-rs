@@ -37,32 +37,6 @@ impl Default for Cell {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// CellPackage
-////////////////////////////////////////////////////////////////////////////////
-/// A `Cell` with a collection of associated data.
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
-pub struct CellPackage {
-    /// The `Cell`.
-    pub cell: Option<Cell>,
-    /// The index of the `Cell` in the palette.
-    pub idx: Option<u32>,
-    /// The `Cell`'s reference data.
-    pub refs: Vec<CellRef>,
-}
-
-impl From<Cell> for CellPackage {
-    fn from(cell: Cell) -> Self {
-        CellPackage {
-            cell: Some(cell),
-            idx: None,
-            refs: Vec::new(),
-        }
-    }
-} 
-
-
-////////////////////////////////////////////////////////////////////////////////
 // CellRef
 ////////////////////////////////////////////////////////////////////////////////
 /// A reference to a `Cell` in a palette.
@@ -87,8 +61,6 @@ pub enum CellRef {
         idx: u32,
     },
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // CellRef

@@ -17,3 +17,4 @@ Implemented changes not yet published.
 ----------------------------------------------------
 
 ### Added
++ Implemented InsertCell and RemoveCell operations.
