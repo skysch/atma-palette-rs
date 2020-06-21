@@ -32,6 +32,7 @@ use std::fs::OpenOptions;
 use std::io::Read;
 use std::io::Write;
 use std::path::Path;
+use std::convert::TryInto;
 
 
 
@@ -152,6 +153,80 @@ impl Palette {
     }
 
     ////////////////////////////////////////////////////////////////////////////
+    // Accessors
+    ////////////////////////////////////////////////////////////////////////////
+
+    /// Retreives a reference to the `Cell` associated with the given `CellRef`.
+    pub fn cell(&self, cell_ref: &CellRef) -> Result<&Cell, Error> {
+        let idx = Palette::resolve_ref_to_index(
+            &self.names,
+            &self.positions,
+            &self.groups,
+            cell_ref)?;
+
+        self.cells
+            .get(&idx)
+            .ok_or(Error::UnrecognizedCellReference { 
+                cell_ref: cell_ref.clone(),
+            })
+    }
+
+    /// Retreives a mutable reference to the `Cell` associated with the given
+    /// `CellRef`.
+    pub fn cell_mut(&mut self, cell_ref: &CellRef) -> Result<&mut Cell, Error> {
+        let idx = Palette::resolve_ref_to_index(
+            &self.names,
+            &self.positions,
+            &self.groups,
+            cell_ref)?;
+
+        self.cells
+            .get_mut(&idx)
+            .ok_or(Error::UnrecognizedCellReference { 
+                cell_ref: cell_ref.clone(),
+            })
+    }
+    
+    fn resolve_ref_to_index(
+        names: &BTreeMap<String, u32>,
+        positions: &BTreeMap<Position, u32>,
+        groups: &BTreeMap<String, Vec<u32>>,
+        cell_ref: &CellRef)
+        -> Result<u32, Error>
+    {
+        use CellRef::*;
+        match cell_ref {
+            Index(idx) => Ok(*idx),
+            Name(name) => names
+                .get(name)
+                .cloned()
+                .ok_or(Error::UnrecognizedCellReference { 
+                    cell_ref: cell_ref.clone(),
+                }),
+            Position(position) => positions
+                .get(position)
+                .cloned()
+                .ok_or(Error::UnrecognizedCellReference { 
+                    cell_ref: cell_ref.clone(),
+                }),
+            Group { group, idx } => groups
+                .get(group)
+                .and_then(|cells| cells.get(*idx as usize))
+                .cloned()
+                .ok_or(Error::UnrecognizedCellReference { 
+                    cell_ref: cell_ref.clone(),
+                }),
+        }
+    }
+
+    fn allocate_index(&mut self) -> u32 {
+        let idx = self.next_index;
+        // TODO: On wrap, do index compression.
+        self.next_index += 1;
+        idx
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
     // Operation-level interface
     ////////////////////////////////////////////////////////////////////////////
     /// Applies an `Operation` to the palette. Returns an `Operation` that will
@@ -186,7 +261,7 @@ impl Palette {
                 Operation::InsertCell { 
                     idx: Some(idx),
                     cell: old,
-                }
+                },
             ]),
         }
     }
@@ -227,13 +302,13 @@ impl Palette {
                 Operation::AssignName {
                     cell_ref: CellRef::Index(old_idx),
                     name: name,
-                }
+                },
             ]),
             None => Ok(vec![
                 Operation::UnassignName {
                     cell_ref: CellRef::Index(idx),
                     name: name,
-                }
+                },
             ]),
         }
     }
@@ -255,7 +330,7 @@ impl Palette {
                     Operation::AssignName {
                         cell_ref: CellRef::Index(idx),
                         name,
-                    }
+                    },
                 ])
             },
             _ => Ok(Vec::new()),
@@ -306,13 +381,13 @@ impl Palette {
                 Operation::AssignPosition {
                     cell_ref: CellRef::Index(old_idx),
                     position: position,
-                }
+                },
             ]),
             None => Ok(vec![
                 Operation::UnassignPosition {
                     cell_ref: CellRef::Index(idx),
                     position: position,
-                }
+                },
             ]),
         }
     }
@@ -334,7 +409,7 @@ impl Palette {
                     Operation::AssignPosition {
                         cell_ref: CellRef::Index(idx),
                         position,
-                    }
+                    },
                 ])
             },
             _ => Ok(Vec::new()),
@@ -370,79 +445,127 @@ impl Palette {
         Ok(ops)
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Direct interface
-    ////////////////////////////////////////////////////////////////////////////
-
-    /// Retreives a reference to the `Cell` associated with the given `CellRef`.
-    pub fn cell(&self, cell_ref: &CellRef) -> Result<&Cell, Error> {
-        let idx = Palette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            cell_ref)?;
-
-        self.cells
-            .get(&idx)
-            .ok_or(Error::UnrecognizedCellReference { 
-                cell_ref: cell_ref.clone(),
-            })
-    }
-
-    /// Retreives a mutable reference to the `Cell` associated with the given
-    /// `CellRef`.
-    pub fn cell_mut(&mut self, cell_ref: &CellRef) -> Result<&mut Cell, Error> {
-        let idx = Palette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            cell_ref)?;
-
-        self.cells
-            .get_mut(&idx)
-            .ok_or(Error::UnrecognizedCellReference { 
-                cell_ref: cell_ref.clone(),
-            })
-    }
-
-    fn resolve_ref_to_index(
-        names: &BTreeMap<String, u32>,
-        positions: &BTreeMap<Position, u32>,
-        groups: &BTreeMap<String, Vec<u32>>,
-        cell_ref: &CellRef)
-        -> Result<u32, Error>
+    /// Assigns a group to a cell.
+    pub fn assign_group(
+        &mut self,
+        cell_ref: &CellRef,
+        group: String,
+        group_idx: Option<u32>)
+        -> Result<Vec<Operation>, Error>
     {
-        use CellRef::*;
-        match cell_ref {
-            Index(idx) => Ok(*idx),
-            Name(name) => names
-                .get(name)
-                .cloned()
-                .ok_or(Error::UnrecognizedCellReference { 
+        let idx = Palette::resolve_ref_to_index(
+            &self.names,
+            &self.positions,
+            &self.groups,
+            cell_ref)?;
+
+        let members = self.groups.entry(group.clone()).or_default();
+        let members_len: u32 = members.len()
+            .try_into()
+            .expect("convert usize to u32");
+        let group_idx = group_idx.unwrap_or(members_len);
+        
+        if group_idx <= members_len {    
+            let group_idx_usize: usize = group_idx.try_into()
+                .expect("convert u32 to usize");
+            
+            members.insert(group_idx_usize, idx);
+            Ok(vec![
+                Operation::UnassignGroup { 
                     cell_ref: cell_ref.clone(),
-                }),
-            Position(position) => positions
-                .get(position)
-                .cloned()
-                .ok_or(Error::UnrecognizedCellReference { 
-                    cell_ref: cell_ref.clone(),
-                }),
-            Group { name, idx } => groups
-                .get(name)
-                .and_then(|cells| cells.get(*idx as usize))
-                .cloned()
-                .ok_or(Error::UnrecognizedCellReference { 
-                    cell_ref: cell_ref.clone(),
-                }),
+                    group,
+                },
+            ])
+        } else {
+            if members_len == 0 {
+            // Remove the empty group that we probably just added.
+            let _ = self.groups.remove(&group);
+            }
+            Err(Error::GroupIndexOutOfBounds {
+                group,
+                index: group_idx,
+                max: members_len,
+            })
         }
     }
 
-    fn allocate_index(&mut self) -> u32 {
-        let idx = self.next_index;
-        // TODO: On wrap, do index compression.
-        self.next_index += 1;
-        idx
+    /// Unassigns a group for a cell.
+    pub fn unassign_group(
+        &mut self,
+        cell_ref: &CellRef,
+        group: String)
+        -> Result<Vec<Operation>, Error>
+    {
+        let idx = Palette::resolve_ref_to_index(
+            &self.names,
+            &self.positions,
+            &self.groups,
+            cell_ref)?;
+        
+        let res = match self.groups.get_mut(&group) {
+            Some(members) => match members.iter().position(|x| *x == idx) {
+                Some(group_idx) => {
+                    let _ = members.remove(group_idx);
+                    Ok(vec![
+                        Operation::AssignGroup {
+                            cell_ref: CellRef::Index(idx),
+                            group: group.clone(),
+                            idx: Some(group_idx
+                                .try_into()
+                                .expect("convert usize to u32")),
+                        },
+                    ])
+
+                }
+                None => Ok(Vec::new()),
+            },
+            None => Ok(Vec::new()),
+        };
+
+        if self.groups.get(&group).map(Vec::is_empty).unwrap_or(false) {
+            let _ = self.groups.remove(&group);
+        }
+
+        res
     }
+
+    /// Removes the cell from all groups.
+    pub fn clear_groups(&mut self, cell_ref: &CellRef)
+        -> Result<Vec<Operation>, Error>
+    {
+        let idx = Palette::resolve_ref_to_index(
+            &self.names,
+            &self.positions,
+            &self.groups,
+            cell_ref)?;
+
+        // TODO: Consider using BTreeMap::drain_filter when it becomes stable.
+        let mut empty_groups = Vec::new();
+        let mut ops = Vec::new();
+        for (group, members) in self.groups.iter_mut() {
+            if let Some(group_idx) = members.iter().position(|x| *x == idx) {
+                let _ = members.remove(group_idx);
+                ops.push(Operation::AssignGroup {
+                    cell_ref: CellRef::Index(idx),
+                    group: group.clone(),
+                    idx: Some(group_idx
+                        .try_into()
+                        .expect("convert usize to u32")),
+                });
+            }
+
+            if members.is_empty() {
+                empty_groups.push(group.clone())
+            }
+        }
+
+        for group in empty_groups.into_iter() {
+            let _ = self.groups.remove(&group);
+        }
+
+        Ok(ops)
+    }
+
 }
 
 impl Default for Palette {

@@ -94,3 +94,44 @@ fn cell_assign_clear_position_method_inverse() {
     assert!(pal.cell(&CellRef::Position(position1.clone())).is_err());
     assert!(pal.cell(&CellRef::Position(position2.clone())).is_err());
 }
+
+/// Tests `Palette::assign_group` followed by `Palette::unassign_group`.
+#[test]
+fn cell_assign_unassign_group_method_inverse() {
+    let mut pal = Palette::new();
+    let _ = pal.insert_cell(None, &Cell::default());
+
+    let group = "TestGroup".to_string();
+
+    let _ = pal.assign_group(&CellRef::Index(0), group.clone(), None);
+    assert!(pal.cell(&CellRef::Group { group: group.clone(), idx: 0 })
+        .is_ok());
+
+    let _ = pal.unassign_group(&CellRef::Index(0), group.clone());
+    assert!(pal.cell(&CellRef::Group { group: group.clone(), idx: 0 })
+        .is_err());
+}
+
+
+/// Tests `Palette::assign_group` followed by `Palette::clear_groups`.
+#[test]
+fn cell_assign_clear_group_method_inverse() {
+    let mut pal = Palette::new();
+    let _ = pal.insert_cell(None, &Cell::default());
+
+    let group1 = "TestGroup1".to_string();
+    let group2 = "TestGroup2".to_string();
+
+    let _ = pal.assign_group(&CellRef::Index(0), group1.clone(), None);
+    let _ = pal.assign_group(&CellRef::Index(0), group2.clone(), None);
+    assert!(pal.cell(&CellRef::Group { group: group1.clone(), idx: 0 })
+        .is_ok());
+    assert!(pal.cell(&CellRef::Group { group: group2.clone(), idx: 0 })
+        .is_ok());
+
+    let _ = pal.clear_groups(&CellRef::Index(0));
+    assert!(pal.cell(&CellRef::Group { group: group1.clone(), idx: 0 })
+        .is_err());
+    assert!(pal.cell(&CellRef::Group { group: group2.clone(), idx: 0 })
+        .is_err());
+}

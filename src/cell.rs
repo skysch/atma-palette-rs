@@ -56,7 +56,7 @@ pub enum CellRef {
     /// group.
     Group {
         /// The name of the group.
-        name: String,
+        group: String,
         /// The index of the cell within the group.
         idx: u32,
     },
@@ -69,7 +69,7 @@ impl std::fmt::Display for CellRef {
             Index(idx) => write!(f, "index {}", idx),
             Name(name) => write!(f, "{}", name),
             Position(position) => write!(f, "{}", position),
-            Group { name, idx } => write!(f, "{}:{}", name, idx),
+            Group { group, idx } => write!(f, "{}:{}", group, idx),
         }
     }
 }

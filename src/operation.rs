@@ -68,7 +68,7 @@ pub enum Operation {
         name: String,
     },
 
-    /// Unassigns all name for a cell.
+    /// Unassigns all names for a cell.
     ClearNames {
         /// A reference to the `Cell` to clear the names for.
         cell_ref: CellRef,
@@ -94,9 +94,38 @@ pub enum Operation {
         position: Position,
     },
 
-    /// Unassigns all position for a cell.
+    /// Unassigns all positions for a cell.
     ClearPositions {
-        /// A reference to the `Cell` to clear the names for.
+        /// A reference to the `Cell` to clear the positions for.
+        cell_ref: CellRef,
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Group operations
+    ////////////////////////////////////////////////////////////////////////////
+    
+
+    /// Assigns a group to a cell.
+    AssignGroup {
+        /// A reference to the `Cell` to assign the group to.
+        cell_ref: CellRef,
+        /// The group to assign.
+        group: String,
+        /// The group index to assign.
+        idx: Option<u32>,
+    },
+
+    /// Unassigns a group for a cell.
+    UnassignGroup {
+        /// A reference to the `Cell` to unassign the group for.
+        cell_ref: CellRef,
+        /// The group to unassign.
+        group: String,
+    },
+
+    /// Unassigns all groups for a cell.
+    ClearGroups {
+        /// A reference to the `Cell` to clear the groups for.
         cell_ref: CellRef,
     },
 }

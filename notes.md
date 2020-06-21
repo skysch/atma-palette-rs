@@ -22,8 +22,10 @@ The cell at the given index will be removed. Expression-references to the remove
 ## UnassignPosition
 ## ClearPosition
 
-## SetCellGroup
-## SetCellPosition
+## AssignGroup
+## UnassignGroup
+## ClearGroup
+
 ## RemoveCellMetaData
 ## SetCellExpr
 ## ReassignCellExprReferences

@@ -36,7 +36,17 @@ pub enum Error {
     UnrecognizedCellReference {
         /// The failing reference.
         cell_ref: CellRef,
-    }
+    },
+
+    /// An group index was out of bounds.
+    GroupIndexOutOfBounds {
+        /// The group.
+        group: String,
+        /// The given index.
+        index: u32,
+        /// The maximum index.
+        max: u32,
+    },
 }
 
 impl std::fmt::Display for Error {
@@ -52,8 +62,10 @@ impl std::fmt::Display for Error {
                 None => write!(f, "{}", source),
             },
             UnrecognizedCellReference { cell_ref } => write!(f, 
-                "Invalid cell reference: {}", cell_ref),
+                "invalid cell reference: {}", cell_ref),
             
+            GroupIndexOutOfBounds { group, index, max } => write!(f, 
+                "group index out of bounds: {}:{} > {}", group, index, max),
         }
     }
 }
