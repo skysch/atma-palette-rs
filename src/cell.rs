@@ -27,11 +27,19 @@ pub struct Cell {
     expr: Expr,
 }
 
-impl Default for Cell {
-    fn default() -> Self {
+impl Cell {
+    /// Constructs a new `Cell`.
+    pub fn new() -> Self {
         Cell {
             expr: Default::default(),
         }
+
+    }
+}
+
+impl Default for Cell {
+    fn default() -> Self {
+        Cell::new()
     }
 }
 

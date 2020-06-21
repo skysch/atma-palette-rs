@@ -19,3 +19,4 @@ Implemented changes not yet published.
 ### Added
 + Implemented palette serialization and deserialization.
 + Implemented basic palette operations.
++ Implemented undo/redo history.

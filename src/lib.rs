@@ -49,6 +49,7 @@ pub mod cell;
 pub mod error;
 pub mod expr;
 pub mod operation;
+pub mod history;
 
 // Exports.
 pub use palette::*;

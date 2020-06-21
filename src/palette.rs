@@ -12,6 +12,7 @@
 use crate::cell::Cell;
 use crate::cell::CellRef;
 use crate::cell::Position;
+use crate::history::History;
 use crate::error::Error;
 // use crate::expr::Expr;
 use crate::operation::Operation;
@@ -229,18 +230,85 @@ impl Palette {
     ////////////////////////////////////////////////////////////////////////////
     // Operation-level interface
     ////////////////////////////////////////////////////////////////////////////
+    
+    /// Applies a sequence of `Operation`s to the palette.
+    ///
+    /// The applied operations' undo ops will be grouped together and inserted
+    /// into the provided `History`.
+    ///
+    /// ### Parameters
+    /// + `op`: The operation to apply.
+    /// + `history`: The operation history.
+    pub fn apply_operations(
+        &mut self,
+        ops: &[Operation],
+        history: Option<&mut History>)
+        -> Result<(), Error>
+    {
+        if let Some(history) = history {
+            let mut undo_ops = Vec::with_capacity(ops.len());
+            for op in ops {
+                undo_ops.extend(self.apply_operation(op, Some(history))?);
+            }
+            history.push_undo_ops(undo_ops);
+        } else {
+            for op in ops {
+                let _ = self.apply_operation(op, None)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Applies an `Operation` to the palette. Returns an `Operation` that will
     /// undo the applied changes.
-    pub fn apply_operation(&mut self, op: &Operation) 
+    ///
+    /// Note that this method will not insert applied operations into the undo
+    /// `History`. The undo operations are instead returned, and must be
+    /// manually inserted. (This is to allow multiple operations to be grouped
+    /// together into a single undo action. Use the `apply_operations` method
+    /// to append operations to the history.)
+    ///
+    /// ### Parameters
+    /// + `op`: The operation to apply.
+    /// + `history`: The operation `History`. Used to apply the `Undo` and
+    /// `Redo` operations.
+    pub fn apply_operation(
+        &mut self,
+        op: &Operation,
+        _history: Option<&mut History>) 
         -> Result<Vec<Operation>, Error>
     {
         use Operation::*;
         match op {
             Null => Ok(Vec::new()),
-            InsertCell { idx, cell } => self.insert_cell(*idx, cell),
-            RemoveCell { cell_ref } => self.remove_cell(cell_ref),
 
-            _ => unimplemented!(),
+            InsertCell { idx, cell }
+                => self.insert_cell(*idx, cell),
+            RemoveCell { cell_ref }
+                => self.remove_cell(cell_ref),
+
+            AssignName { cell_ref, name } 
+                => self.assign_name(cell_ref, name.clone()),
+            UnassignName { cell_ref, name } 
+                => self.unassign_name(cell_ref, name.clone()),
+            ClearNames { cell_ref } 
+                => self.clear_names(cell_ref),
+
+            AssignPosition { cell_ref, position } 
+                => self.assign_position(cell_ref, position.clone()),
+            UnassignPosition { cell_ref, position } 
+                => self.unassign_position(cell_ref, position.clone()),
+            ClearPositions { cell_ref } 
+                => self.clear_positions(cell_ref),
+
+            AssignGroup { cell_ref, group, idx } 
+                => self.assign_group(cell_ref, group.clone(), *idx),
+            UnassignGroup { cell_ref, group } 
+                => self.unassign_group(cell_ref, group.clone()),
+            ClearGroups { cell_ref } 
+                => self.clear_groups(cell_ref),
+
+            // _ => unimplemented!(),
         }
     }
 
