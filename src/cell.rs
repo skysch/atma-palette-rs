@@ -62,6 +62,18 @@ pub enum CellRef {
     },
 }
 
+impl std::fmt::Display for CellRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use CellRef::*;
+        match self {
+            Index(idx) => write!(f, "index {}", idx),
+            Name(name) => write!(f, "{}", name),
+            Position(position) => write!(f, "{}", position),
+            Group { name, idx } => write!(f, "{}:{}", name, idx),
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // CellRef
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,8 +81,14 @@ pub enum CellRef {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Serialize, Deserialize)]
 pub struct Position {
-        /// The page number of the cell.
-        page: u16,
-        /// The line number of the cell.
-        line: u16,
+    /// The page number of the cell.
+    page: u16,
+    /// The line number of the cell.
+    line: u16,
+}
+
+impl std::fmt::Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "$P{}L{}", self.page, self.line)
+    }
 }

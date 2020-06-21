@@ -156,10 +156,12 @@ impl Palette {
     ////////////////////////////////////////////////////////////////////////////
     /// Applies an `Operation` to the palette. Returns an `Operation` that will
     /// undo the applied changes.
-    pub fn apply_operation(&mut self, op: &Operation) -> Vec<Operation> {
+    pub fn apply_operation(&mut self, op: &Operation) 
+        -> Result<Vec<Operation>, Error>
+    {
         use Operation::*;
         match op {
-            Null => Vec::new(),
+            Null => Ok(Vec::new()),
             InsertCell { idx, cell } => self.insert_cell(*idx, cell),
             RemoveCell { cell_ref } => self.remove_cell(cell_ref),
 
@@ -169,108 +171,106 @@ impl Palette {
 
     /// Inserts a `Cell` into the palette at the given index.
     pub fn insert_cell(&mut self, idx: Option<u32>, cell: &Cell)
-        -> Vec<Operation>
+        -> Result<Vec<Operation>, Error>
     {
         let idx = idx.unwrap_or_else(|| self.allocate_index());
         match self.cells.insert(idx, *cell) {
             // No cell was replaced.
-            None => vec![
+            None => Ok(vec![
                 Operation::RemoveCell {
                     cell_ref: CellRef::Index(idx)
                 },
-            ],
+            ]),
             // A cell was replaced.
-            Some(old) => vec![
+            Some(old) => Ok(vec![
                 Operation::InsertCell { 
                     idx: Some(idx),
                     cell: old,
                 }
-            ],
+            ]),
         }
     }
 
     /// Removes a `Cell` from the palette.
-    pub fn remove_cell(&mut self, cell_ref: &CellRef) -> Vec<Operation> {
+    pub fn remove_cell(&mut self, cell_ref: &CellRef)
+        -> Result<Vec<Operation>, Error> 
+    {
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)
-            .expect("unrecognized cell reference");
+            cell_ref)?;
         
         match self.cells.remove(&idx) {
             // Cell was removed.
-            Some(cell) => vec![
+            Some(cell) => Ok(vec![
                 Operation::InsertCell { idx: Some(idx), cell }
-            ],
+            ]),
 
             // Cell is already missing.
-            None => Vec::new(),
+            None => Ok(Vec::new()),
         }
     }
 
     /// Assigns a name to a cell.
     pub fn assign_name(&mut self, cell_ref: &CellRef, name: String)
-        -> Vec<Operation>
+        -> Result<Vec<Operation>, Error>
     {
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)
-            .expect("unrecognized cell reference");
+            cell_ref)?;
 
         match self.names.insert(name.clone(), idx) {
-            Some(old_idx) => vec![
+            Some(old_idx) => Ok(vec![
                 Operation::AssignName {
                     cell_ref: CellRef::Index(old_idx),
                     name: name,
                 }
-            ],
-            None => vec![
+            ]),
+            None => Ok(vec![
                 Operation::UnassignName {
                     cell_ref: CellRef::Index(idx),
                     name: name,
                 }
-            ],
+            ]),
         }
     }
 
     /// Unassigns a name for a cell.
     pub fn unassign_name(&mut self, cell_ref: &CellRef, name: String)
-        -> Vec<Operation>
+        -> Result<Vec<Operation>, Error>
     {
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)
-            .expect("unrecognized cell reference");
+            cell_ref)?;
         
         match self.names.get(&name) {
             Some(cur_idx) if *cur_idx == idx => {
                 let _ = self.names.remove(&name);
-                vec![
+                Ok(vec![
                     Operation::AssignName {
                         cell_ref: CellRef::Index(idx),
                         name,
                     }
-                ]
+                ])
             },
-            _ => Vec::new(),
+            _ => Ok(Vec::new()),
         }
     }
 
     /// Unassigns a name for a cell.
     pub fn clear_names(&mut self, cell_ref: &CellRef)
-        -> Vec<Operation>
+        -> Result<Vec<Operation>, Error>
     {
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)
-            .expect("unrecognized cell reference");
+            cell_ref)?;
 
         // TODO: Use BTreeMap::drain_filter when it becomes stable.
         let mut to_remove = Vec::with_capacity(1);
@@ -288,7 +288,7 @@ impl Palette {
             });
         }      
 
-        ops  
+        Ok(ops)
     }
 
 
@@ -297,24 +297,34 @@ impl Palette {
     ////////////////////////////////////////////////////////////////////////////
 
     /// Retreives a reference to the `Cell` associated with the given `CellRef`.
-    pub fn cell(&self, cell_ref: &CellRef) -> Option<&Cell> {
-        Palette::resolve_ref_to_index(
-                &self.names,
-                &self.positions,
-                &self.groups,
-                cell_ref)
-            .and_then(|idx| self.cells.get(&idx))
+    pub fn cell(&self, cell_ref: &CellRef) -> Result<&Cell, Error> {
+        let idx = Palette::resolve_ref_to_index(
+            &self.names,
+            &self.positions,
+            &self.groups,
+            cell_ref)?;
+
+        self.cells
+            .get(&idx)
+            .ok_or(Error::UnrecognizedCellReference { 
+                cell_ref: cell_ref.clone(),
+            })
     }
 
     /// Retreives a mutable reference to the `Cell` associated with the given
     /// `CellRef`.
-    pub fn cell_mut(&mut self, cell_ref: &CellRef) -> Option<&mut Cell> {
-        Palette::resolve_ref_to_index(
-                &self.names,
-                &self.positions,
-                &self.groups,
-                cell_ref)
-            .and_then(move |idx| self.cells.get_mut(&idx))
+    pub fn cell_mut(&mut self, cell_ref: &CellRef) -> Result<&mut Cell, Error> {
+        let idx = Palette::resolve_ref_to_index(
+            &self.names,
+            &self.positions,
+            &self.groups,
+            cell_ref)?;
+
+        self.cells
+            .get_mut(&idx)
+            .ok_or(Error::UnrecognizedCellReference { 
+                cell_ref: cell_ref.clone(),
+            })
     }
 
     fn resolve_ref_to_index(
@@ -322,21 +332,30 @@ impl Palette {
         positions: &BTreeMap<Position, u32>,
         groups: &BTreeMap<String, Vec<u32>>,
         cell_ref: &CellRef)
-        -> Option<u32>
+        -> Result<u32, Error>
     {
         use CellRef::*;
         match cell_ref {
-            Index(idx) => Some(*idx),
+            Index(idx) => Ok(*idx),
             Name(name) => names
                 .get(name)
-                .cloned(),
+                .cloned()
+                .ok_or(Error::UnrecognizedCellReference { 
+                    cell_ref: cell_ref.clone(),
+                }),
             Position(position) => positions
                 .get(position)
-                .cloned(),
+                .cloned()
+                .ok_or(Error::UnrecognizedCellReference { 
+                    cell_ref: cell_ref.clone(),
+                }),
             Group { name, idx } => groups
                 .get(name)
                 .and_then(|cells| cells.get(*idx as usize))
-                .cloned(),
+                .cloned()
+                .ok_or(Error::UnrecognizedCellReference { 
+                    cell_ref: cell_ref.clone(),
+                }),
         }
     }
 

@@ -8,6 +8,12 @@
 //! Error definitions.
 ////////////////////////////////////////////////////////////////////////////////
 
+// Local imports.
+use crate::cell::CellRef;
+
+////////////////////////////////////////////////////////////////////////////////
+// Error
+////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
 /// Atma palette error type.
 pub enum Error {
@@ -25,6 +31,12 @@ pub enum Error {
         /// The error source.
         source: std::io::Error,
     },
+
+    /// An attempt to resolve a CellRef failed.
+    UnrecognizedCellReference {
+        /// The failing reference.
+        cell_ref: CellRef,
+    }
 }
 
 impl std::fmt::Display for Error {
@@ -39,6 +51,9 @@ impl std::fmt::Display for Error {
                 Some(msg) => write!(f, "{}", msg),
                 None => write!(f, "{}", source),
             },
+            UnrecognizedCellReference { cell_ref } => write!(f, 
+                "Invalid cell reference: {}", cell_ref),
+            
         }
     }
 }
@@ -49,7 +64,7 @@ impl std::error::Error for Error {
         match self {
             RonError { source, .. } => Some(source),
             IoError { source, .. } => Some(source),
-            // _ => None,
+            _ => None,
         }
     }
 }
