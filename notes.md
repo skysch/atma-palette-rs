@@ -14,7 +14,10 @@ A cell will be inserted at a free position in the array. This operation will nev
 The cell at the given index will be removed. Expression-references to the removed cell will not be corrected, and cell meta-data will not be removed.
 
 
-## SetCellName
+## AssignName
+## UnassignName
+## ClearNames
+
 ## SetCellGroup
 ## SetCellPosition
 ## RemoveCellMetaData

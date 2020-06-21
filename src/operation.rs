@@ -26,6 +26,7 @@ use serde::Deserialize;
 pub enum Operation {
     /// An operation which does nothing.
     Null,
+
     /// Inserts a `Cell` into the palette.
     InsertCell {
         /// The index to insert the cell into, or None if a new one is to be
@@ -34,10 +35,33 @@ pub enum Operation {
         /// The `Cell` to insert.
         cell: Cell,
     },
+
     /// Removes the referenced `Cell` from the palette.
     RemoveCell {
         /// A reference to the `Cell` to remove.
         cell_ref: CellRef
+    },
+
+    /// Assigns a name to a cell.
+    AssignName {
+        /// A reference to the `Cell` to assign the name to.
+        cell_ref: CellRef,
+        /// The name to assign.
+        name: String,
+    },
+
+    /// Unassigns a name for a cell.
+    UnassignName {
+        /// A reference to the `Cell` to unassign the name for.
+        cell_ref: CellRef,
+        /// The name to unassign.
+        name: String,
+    },
+
+    /// Unassigns all name for a cell.
+    ClearNames {
+        /// A reference to the `Cell` to clear the names for.
+        cell_ref: CellRef,
     },
 }
 
