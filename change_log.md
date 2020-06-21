@@ -17,4 +17,5 @@ Implemented changes not yet published.
 ----------------------------------------------------
 
 ### Added
-+ Implemented InsertCell and RemoveCell operations.
++ Implemented palette serialization and deserialization.
++ Implemented basic palette operations.
