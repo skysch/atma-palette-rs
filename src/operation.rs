@@ -11,6 +11,7 @@
 // Local imports.
 use crate::cell::Cell;
 use crate::cell::CellRef;
+use crate::cell::Position;
 
 // External library imports.
 use serde::Serialize;
@@ -27,6 +28,11 @@ pub enum Operation {
     /// An operation which does nothing.
     Null,
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Cell create operations
+    ////////////////////////////////////////////////////////////////////////////
+    
+
     /// Inserts a `Cell` into the palette.
     InsertCell {
         /// The index to insert the cell into, or None if a new one is to be
@@ -41,6 +47,10 @@ pub enum Operation {
         /// A reference to the `Cell` to remove.
         cell_ref: CellRef
     },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Name operations
+    ////////////////////////////////////////////////////////////////////////////
 
     /// Assigns a name to a cell.
     AssignName {
@@ -60,6 +70,32 @@ pub enum Operation {
 
     /// Unassigns all name for a cell.
     ClearNames {
+        /// A reference to the `Cell` to clear the names for.
+        cell_ref: CellRef,
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Position operations
+    ////////////////////////////////////////////////////////////////////////////
+    
+    /// Assigns a position to a cell.
+    AssignPosition {
+        /// A reference to the `Cell` to assign the position to.
+        cell_ref: CellRef,
+        /// The position to assign.
+        position: Position,
+    },
+
+    /// Unassigns a position for a cell.
+    UnassignPosition {
+        /// A reference to the `Cell` to unassign the position for.
+        cell_ref: CellRef,
+        /// The position to unassign.
+        position: Position,
+    },
+
+    /// Unassigns all position for a cell.
+    ClearPositions {
         /// A reference to the `Cell` to clear the names for.
         cell_ref: CellRef,
     },

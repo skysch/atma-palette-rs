@@ -18,6 +18,10 @@ The cell at the given index will be removed. Expression-references to the remove
 ## UnassignName
 ## ClearNames
 
+## AssignPosition
+## UnassignPosition
+## ClearPosition
+
 ## SetCellGroup
 ## SetCellPosition
 ## RemoveCellMetaData

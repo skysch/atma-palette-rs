@@ -291,6 +291,84 @@ impl Palette {
         Ok(ops)
     }
 
+    /// Assigns a position to a cell.
+    pub fn assign_position(&mut self, cell_ref: &CellRef, position: Position)
+        -> Result<Vec<Operation>, Error>
+    {
+        let idx = Palette::resolve_ref_to_index(
+            &self.names,
+            &self.positions,
+            &self.groups,
+            cell_ref)?;
+
+        match self.positions.insert(position.clone(), idx) {
+            Some(old_idx) => Ok(vec![
+                Operation::AssignPosition {
+                    cell_ref: CellRef::Index(old_idx),
+                    position: position,
+                }
+            ]),
+            None => Ok(vec![
+                Operation::UnassignPosition {
+                    cell_ref: CellRef::Index(idx),
+                    position: position,
+                }
+            ]),
+        }
+    }
+
+    /// Unassigns a position for a cell.
+    pub fn unassign_position(&mut self, cell_ref: &CellRef, position: Position)
+        -> Result<Vec<Operation>, Error>
+    {
+        let idx = Palette::resolve_ref_to_index(
+            &self.names,
+            &self.positions,
+            &self.groups,
+            cell_ref)?;
+        
+        match self.positions.get(&position) {
+            Some(cur_idx) if *cur_idx == idx => {
+                let _ = self.positions.remove(&position);
+                Ok(vec![
+                    Operation::AssignPosition {
+                        cell_ref: CellRef::Index(idx),
+                        position,
+                    }
+                ])
+            },
+            _ => Ok(Vec::new()),
+        }
+    }
+
+    /// Unassigns a position for a cell.
+    pub fn clear_positions(&mut self, cell_ref: &CellRef)
+        -> Result<Vec<Operation>, Error>
+    {
+        let idx = Palette::resolve_ref_to_index(
+            &self.names,
+            &self.positions,
+            &self.groups,
+            cell_ref)?;
+
+        // TODO: Use BTreeMap::drain_filter when it becomes stable.
+        let mut to_remove = Vec::with_capacity(1);
+
+        for (position, cur_idx) in self.positions.iter() {
+            if *cur_idx == idx { to_remove.push(position.clone()); }
+        }
+
+        let mut ops = Vec::with_capacity(to_remove.len());
+        for position in to_remove.into_iter() {
+            let _ = self.positions.remove(&position);
+            ops.push(Operation::AssignPosition {
+                cell_ref: CellRef::Index(idx),
+                position,
+            });
+        }      
+
+        Ok(ops)
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Direct interface

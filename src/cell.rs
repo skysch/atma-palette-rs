@@ -82,9 +82,9 @@ impl std::fmt::Display for CellRef {
 #[derive(Serialize, Deserialize)]
 pub struct Position {
     /// The page number of the cell.
-    page: u16,
+    pub page: u16,
     /// The line number of the cell.
-    line: u16,
+    pub line: u16,
 }
 
 impl std::fmt::Display for Position {
