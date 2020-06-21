@@ -230,7 +230,65 @@ impl Palette {
     ////////////////////////////////////////////////////////////////////////////
     // Operation-level interface
     ////////////////////////////////////////////////////////////////////////////
-    
+    /// Unapplies the latest set of operations recorded in the given `History`.
+    ///
+    /// Returns the number of undo operations successfully performed. This may
+    /// be fewer than the number provided if there are fewer undo operations
+    /// recorded than requested.
+    ///
+    /// ### Panics
+    /// 
+    /// This method assumes that history and palette are synchronized. If they
+    /// are not, (e.g., because the palette was modified without providing the
+    /// exact history being used,) then the undo operation may panic if a
+    /// previously recorded undo action cannot be applied to the palette in its
+    /// current state.
+    pub fn undo(&mut self, history: &mut History, count: usize) -> usize {
+        let mut real_count = 0;
+        for _ in 0..count {
+            history.undo_with(|undo_ops| {
+                let mut redo_ops = Vec::with_capacity(undo_ops.len());
+                for op in undo_ops {
+                    redo_ops.extend(self.apply_operation(op)
+                        .expect("undo from valid state"));
+                }
+                real_count += 1;
+                redo_ops
+            });
+        }
+        real_count
+    }
+
+    /// Reapplies the latest set of undone operations, as recorded in the given
+    /// `History`.
+    ///
+    /// Returns the number of redo operations successfully performed. This may
+    /// be fewer than the number provided if there are fewer redo operations
+    /// recorded than requested.
+    ///
+    /// ### Panics
+    /// 
+    /// This method assumes that history and palette are synchronized. If they
+    /// are not, (e.g., because the palette was modified without providing the
+    /// exact history being used,) then the redo operation may panic if a
+    /// previously recorded redo action cannot be applied to the palette in its
+    /// current state.
+    pub fn redo(&mut self, history: &mut History, count: usize) -> usize {
+        let mut real_count = 0;
+        for _ in 0..count {
+            history.redo_with(|redo_ops| {
+                let mut undo_ops = Vec::with_capacity(redo_ops.len());
+                for op in redo_ops {
+                    undo_ops.extend(self.apply_operation(op)
+                        .expect("redo from valid state"));
+                }
+                real_count += 1;
+                undo_ops
+            });
+        }
+        real_count
+    }
+
     /// Applies a sequence of `Operation`s to the palette.
     ///
     /// The applied operations' undo ops will be grouped together and inserted
@@ -248,12 +306,12 @@ impl Palette {
         if let Some(history) = history {
             let mut undo_ops = Vec::with_capacity(ops.len());
             for op in ops {
-                undo_ops.extend(self.apply_operation(op, Some(history))?);
+                undo_ops.extend(self.apply_operation(op)?);
             }
             history.push_undo_ops(undo_ops);
         } else {
             for op in ops {
-                let _ = self.apply_operation(op, None)?;
+                let _ = self.apply_operation(op)?;
             }
         }
         Ok(())
@@ -262,20 +320,9 @@ impl Palette {
     /// Applies an `Operation` to the palette. Returns an `Operation` that will
     /// undo the applied changes.
     ///
-    /// Note that this method will not insert applied operations into the undo
-    /// `History`. The undo operations are instead returned, and must be
-    /// manually inserted. (This is to allow multiple operations to be grouped
-    /// together into a single undo action. Use the `apply_operations` method
-    /// to append operations to the history.)
-    ///
     /// ### Parameters
     /// + `op`: The operation to apply.
-    /// + `history`: The operation `History`. Used to apply the `Undo` and
-    /// `Redo` operations.
-    pub fn apply_operation(
-        &mut self,
-        op: &Operation,
-        _history: Option<&mut History>) 
+    pub fn apply_operation(&mut self, op: &Operation) 
         -> Result<Vec<Operation>, Error>
     {
         use Operation::*;
