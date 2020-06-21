@@ -21,6 +21,7 @@ use serde::Deserialize;
 ////////////////////////////////////////////////////////////////////////////////
 /// A cell holding a color expression.
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(test, derive(PartialEq))]
 #[derive(Serialize, Deserialize)]
 pub struct Cell {
     /// The cell's expression.
@@ -33,7 +34,16 @@ impl Cell {
         Cell {
             expr: Default::default(),
         }
+    }
 
+    /// Returns a reference to the cell's color expression.
+    pub fn expr(&self) -> &Expr {
+        &self.expr
+    }
+
+    /// Returns a mut reference to the cell's color expression.
+    pub fn expr_mut(&mut self) -> &mut Expr {
+        &mut self.expr
     }
 }
 

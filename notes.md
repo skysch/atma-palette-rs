@@ -24,8 +24,7 @@ The Palette consists of an array of Cells, together with information needed to m
 ## SetRange
 ## FixRange
 ## SetParameters
-## Undo
-## Redo
+
 
 # Primitive Operations
 ## InsertCell

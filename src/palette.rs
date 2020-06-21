@@ -12,17 +12,14 @@
 use crate::cell::Cell;
 use crate::cell::CellRef;
 use crate::cell::Position;
-use crate::history::History;
 use crate::error::Error;
-// use crate::expr::Expr;
+use crate::expr::Expr;
+use crate::history::History;
 use crate::operation::Operation;
 
 // External library imports.
-// use color::Color;
-
 use serde::Deserialize;
 use serde::Serialize;
-
 use ron::ser::PrettyConfig;
 use ron::ser::to_string_pretty;
 
@@ -39,6 +36,7 @@ use std::convert::TryInto;
 
 /// The Atma palette object.
 #[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 #[derive(Serialize, Deserialize)]
 pub struct Palette {
     /// Palette cells storage. Holds cells containing color expressions.
@@ -355,7 +353,8 @@ impl Palette {
             ClearGroups { cell_ref } 
                 => self.clear_groups(cell_ref),
 
-            // _ => unimplemented!(),
+            SetExpr { cell_ref, expr }
+                => self.set_expr(cell_ref, expr.clone()),
         }
     }
 
@@ -681,6 +680,28 @@ impl Palette {
         Ok(ops)
     }
 
+    /// Sets the color expression for a `Cell`.
+    pub fn set_expr(&mut self, cell_ref: &CellRef, expr: Expr)
+        -> Result<Vec<Operation>, Error>
+    {
+        let idx = Palette::resolve_ref_to_index(
+            &self.names,
+            &self.positions,
+            &self.groups,
+            cell_ref)?;
+
+        let cell = self.cells.get_mut(&idx)
+            .expect("retreive resolved cell");
+
+        let old = std::mem::replace(cell.expr_mut(), expr);
+
+        Ok(vec![
+            Operation::SetExpr {
+                cell_ref: cell_ref.clone(),
+                expr: old,
+            }
+        ])
+    }
 }
 
 impl Default for Palette {

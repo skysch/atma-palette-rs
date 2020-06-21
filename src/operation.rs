@@ -12,6 +12,7 @@
 use crate::cell::Cell;
 use crate::cell::CellRef;
 use crate::cell::Position;
+use crate::expr::Expr;
 
 // External library imports.
 use serde::Serialize;
@@ -102,7 +103,6 @@ pub enum Operation {
     ////////////////////////////////////////////////////////////////////////////
     // Group operations
     ////////////////////////////////////////////////////////////////////////////
-    
 
     /// Assigns a group to a cell.
     AssignGroup {
@@ -127,6 +127,18 @@ pub enum Operation {
         /// A reference to the `Cell` to clear the groups for.
         cell_ref: CellRef,
     },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Expr operations
+    ////////////////////////////////////////////////////////////////////////////
+    /// Sets the color expression for a cell.
+    SetExpr {
+        /// A reference to the `Cell` to set the `Expr` for.
+        cell_ref: CellRef,
+        /// The expression to set.
+        expr: Expr,
+    },
+
 }
 
 
