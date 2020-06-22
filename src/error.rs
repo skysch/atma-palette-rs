@@ -52,8 +52,8 @@ pub enum Error {
         max: u32,
     },
 
-    /// A cell ref parse error occurred.
-    CellRefParseError,
+    /// A parse error occurred.
+    ParseError,
 }
 
 impl std::fmt::Display for Error {
@@ -74,7 +74,7 @@ impl std::fmt::Display for Error {
             GroupIndexOutOfBounds { group, index, max } => write!(f, 
                 "group index out of bounds: {}:{} > {}", group, index, max),
 
-            CellRefParseError => write!(f, "cell reference parse error"),
+            ParseError => write!(f, "parse error"),
         }
     }
 }

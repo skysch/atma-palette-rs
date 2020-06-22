@@ -13,6 +13,7 @@ use crate::cell::Position;
 use crate::cell::CellRef;
 use crate::error::Error;
 use crate::parse::entire;
+use crate::parse::parse_cell_selector;
 use crate::parse::REF_ALL_TOKEN;
 use crate::parse::REF_POS_SEP_TOKEN;
 use crate::parse::REF_PREFIX_TOKEN;
@@ -89,11 +90,11 @@ pub enum CellSelector<'name> {
 }
 
 impl<'name> CellSelector<'name> {
-    // /// Parses a `CellSelector` from the given string.
-    // pub fn parse(text: &'name str) -> Result<Self, Error> {
-    //     entire(&mut &*text, parse_cell_ref)
-    //         .ok_or(Error::CellRefParseError)
-    // }
+    /// Parses a `CellSelector` from the given string.
+    pub fn parse(text: &'name str) -> Result<Self, Error> {
+        entire(&mut &*text, parse_cell_selector)
+            .ok_or(Error::ParseError)
+    }
 
     /// Converts a `CellSelector` to a static lifetime.
     pub fn into_static(self) -> CellSelector<'static> {
@@ -167,7 +168,7 @@ impl<'name> TryFrom<(CellRef<'name>, CellRef<'name>)> for CellSelector<'name> {
                     Err(InvalidCellSelectorRange)
                 }
             },
-            
+
             (CellRef::Position(low), CellRef::Position(high)) => {
                 if low <= high {
                     Ok(CellSelector::PositionRange { low, high })

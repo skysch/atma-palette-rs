@@ -110,7 +110,7 @@ impl<'name> CellRef<'name> {
     /// Parses a `CellRef` from the given string.
     pub fn parse(text: &'name str) -> Result<Self, Error> {
         entire(&mut &*text, parse_cell_ref)
-            .ok_or(Error::CellRefParseError)
+            .ok_or(Error::ParseError)
     }
 
     /// Converts a `CellRef` to a static lifetime.

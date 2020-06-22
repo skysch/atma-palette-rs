@@ -11,6 +11,8 @@
 use crate::Palette;
 use crate::cell::Cell;
 use crate::cell::Position;
+use crate::selection::CellSelector;
+use crate::selection::PositionSelector;
 use crate::cell::CellRef;
 
 use std::borrow::Cow;
@@ -146,6 +148,15 @@ fn cell_ref_parse_index() {
         CellRef::Index(123));
 }
 
+/// Tests `CellRef::parse` for a `CellRef::Position`.
+#[test]
+fn cell_ref_parse_position() {
+    assert_eq!(
+        CellRef::parse(":123.15.0").unwrap(),
+        CellRef::Position(Position { page: 123, line: 15, column: 0 }));
+}
+
+
 /// Tests `CellRef::parse` for a `CellRef::Name`.
 #[test]
 fn cell_ref_parse_name() {
@@ -159,19 +170,107 @@ fn cell_ref_parse_name() {
         CellRef::Name("blah blah".into()));
 }
 
-/// Tests `CellRef::parse` for a `CellRef::Position`.
-#[test]
-fn cell_ref_parse_position() {
-    assert_eq!(
-        CellRef::parse(":123.15.0").unwrap(),
-        CellRef::Position(Position { page: 123, line: 15, column: 0 }));
-}
-
-
 /// Tests `CellRef::parse` for a `CellRef::Group`.
 #[test]
 fn cell_ref_parse_group() {
     assert_eq!(
         CellRef::parse("blahblah:0").unwrap(),
         CellRef::Group { group: "blahblah".into(), idx: 0 });
+}
+
+
+
+/// Tests `CellSelector::parse` for a `CellSelector::All`.
+#[test]
+fn cell_selector_parse_all() {
+    assert_eq!(
+        CellSelector::parse("*").unwrap(),
+        CellSelector::All);
+}
+
+/// Tests `CellSelector::parse` for a `CellSelector::Index`.
+#[test]
+fn cell_selector_parse_index() {
+    assert_eq!(
+        CellSelector::parse(":321").unwrap(),
+        CellSelector::Index(321));
+}
+
+
+/// Tests `CellSelector::parse` for a `CellSelector::IndexRange`.
+#[test]
+fn cell_selector_parse_index_range() {
+    assert_eq!(
+        CellSelector::parse(":321-:432").unwrap(),
+        CellSelector::IndexRange { low: 321, high: 432 });
+}
+
+/// Tests `CellSelector::parse` for a `CellSelector::PositionSelector`.
+#[test]
+fn cell_selector_parse_position_selector() {
+    assert_eq!(
+        CellSelector::parse(":1.2.3").unwrap(),
+        CellSelector::PositionSelector( PositionSelector {
+            page: Some(1),
+            line: Some(2),
+            column: Some(3),
+        }));
+}
+
+/// Tests `CellSelector::parse` for a `CellSelector::PositionRange`.
+#[test]
+fn cell_selector_parse_position_range() {
+    assert_eq!(
+        CellSelector::parse(":1.2.3-:2.3.4").unwrap(),
+        CellSelector::PositionRange {
+            low: Position {
+                page: 1,
+                line: 2,
+                column: 3, 
+            },
+            high: Position {
+                page: 2,
+                line: 3,
+                column: 4,    
+            },
+        });
+}
+
+/// Tests `CellSelector::parse` for a `CellSelector::Name`.
+#[test]
+fn cell_selector_parse_name() {
+    assert_eq!(
+        CellSelector::parse(" test name ").unwrap(),
+        CellSelector::Name("test name".into()));
+}
+
+/// Tests `CellSelector::parse` for a `CellSelector::Group`.
+#[test]
+fn cell_selector_parse_group() {
+    assert_eq!(
+        CellSelector::parse(" test group :0").unwrap(),
+        CellSelector::Group {
+            group: "test group".into(),
+            idx: 0,
+        });
+}
+
+/// Tests `CellSelector::parse` for a `CellSelector::GroupRange`.
+#[test]
+fn cell_selector_parse_group_range() {
+    assert_eq!(
+        CellSelector::parse(" test group :0 - test group: 1").unwrap(),
+        CellSelector::GroupRange {
+            group: "test group".into(),
+            low: 0,
+            high: 1,
+        });
+}
+
+/// Tests `CellSelector::parse` for a `CellSelector::GroupAll`.
+#[test]
+fn cell_selector_parse_group_all() {
+    assert_eq!(
+        CellSelector::parse(" test group :*").unwrap(),
+        CellSelector::GroupAll("test group".into()));
 }
