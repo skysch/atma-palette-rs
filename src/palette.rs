@@ -340,8 +340,6 @@ impl Palette {
     {
         use Operation::*;
         match op {
-            Null => Ok(Vec::new()),
-
             InsertCell { idx, cell }
                 => self.insert_cell(*idx, cell),
             RemoveCell { cell_ref }
