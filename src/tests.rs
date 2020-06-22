@@ -159,7 +159,6 @@ fn cell_ref_parse_name() {
         CellRef::Name("blah blah".into()));
 }
 
-
 /// Tests `CellRef::parse` for a `CellRef::Position`.
 #[test]
 fn cell_ref_parse_position() {

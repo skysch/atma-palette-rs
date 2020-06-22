@@ -15,14 +15,17 @@
 // Local imports.
 use crate::cell::CellRef;
 use crate::cell::Position;
+use crate::selection::CellSelector;
+use crate::selection::PositionSelector;
 
 // Standard library imports.
 use std::convert::TryInto;
 use std::convert::TryFrom;
 
-pub(crate) const REF_PREFIX_TOKEN: char = ':';
-pub(crate) const REF_POS_SEP_TOKEN: char = '.';
 pub(crate) const REF_ALL_TOKEN: char = '*';
+pub(crate) const REF_POS_SEP_TOKEN: char = '.';
+pub(crate) const REF_PREFIX_TOKEN: char = ':';
+pub(crate) const REF_RANGE_TOKEN: char = '-';
 pub(crate) const REF_SEP_TOKEN: char = ',';
 
 
@@ -44,7 +47,110 @@ pub(crate) fn entire<'t, F, T>(text: &mut &'t str, parser: F) -> Option<T>
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Parse primitives.
+// Parse cell selection.
+////////////////////////////////////////////////////////////////////////////////
+pub(crate) fn parse_cell_selection<'t>(text: &mut &'t str)
+    -> Option<Vec<CellSelector<'t>>>
+{
+    // delimitted sequence of cell selectors
+    unimplemented!()
+}
+
+pub(crate) fn parse_cell_selector<'t>(text: &mut &'t str)
+    -> Option<CellSelector<'t>>
+{
+    let input_text = *text;
+
+    // Try parsing All first to avoid parsing it is a name.
+    if let Some(_) = parse_char(text, REF_ALL_TOKEN) {
+        return Some(CellSelector::All);
+    }
+
+    // Try parsing a CellRef.
+    if let Some(cell_ref) = parse_cell_ref(text) {
+        if !cell_ref.ranged_selector() {
+            // This should only return CellSelector::Name.
+            return Some(cell_ref.into());
+        }
+
+        // if it succeeds and is a non-name, try a range.
+        let _ = parse_whitespace(text);
+        if let Some(_) = parse_char(text, REF_RANGE_TOKEN) {
+            let _ = parse_whitespace(text);
+
+            if let Some(cell_ref_high) = parse_cell_ref(text) {
+                if cell_ref_high.ranged_selector() {
+                    let range: Result<CellSelector<'_>, _>
+                        = (cell_ref, cell_ref_high).try_into();
+                    
+                    if let Ok(sel) = range { return Some(sel); }
+                    // TODO: Return an error if this is not a valid range.
+                }
+            }
+            *text = input_text;
+            return None;
+        }   
+    }
+    
+    // Try a PositionSelector.
+    if let Some(pos_sel) = parse_position_selector(text) {
+        return Some(CellSelector::PositionSelector(pos_sel));
+    }
+
+    // Try a GroupAll.
+    if let Some(group) = parse_cell_ref_name(text) {
+        if let Some(_) = parse_char(text, REF_PREFIX_TOKEN) {
+            if let Some(_) = parse_char(text, REF_ALL_TOKEN) {
+                return Some(CellSelector::GroupAll(group.trim().into()))
+            }
+        }
+    }
+
+    // Failure.
+    *text = input_text;
+    None
+}
+
+
+pub(crate) fn parse_position_selector<'t>(text: &mut &'t str)
+    -> Option<PositionSelector> 
+{
+    let input_text = *text;
+
+    if let Some(_) = parse_char(text, REF_PREFIX_TOKEN) {
+        if let Some(page) = parse_uint_or_all::<u16>(text) {
+
+            if let Some(_) = parse_char(text, REF_POS_SEP_TOKEN) {
+                if let Some(line) = parse_uint_or_all::<u16>(text) {
+            
+                    if let Some(_) = parse_char(text, REF_POS_SEP_TOKEN) {
+                        if let Some(column) = parse_uint_or_all::<u16>(text) {
+                            
+                            return Some(PositionSelector { page, line, column });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    *text = input_text;
+    None
+}
+
+pub(crate) fn parse_uint_or_all<'t, T>(text: &mut &'t str) -> Option<Option<T>>
+    where T: TryFrom<u32>
+{
+    // try parsing All first to avoid parsing it is a name.
+    if let Some(_) = parse_char(text, REF_ALL_TOKEN) {
+        Some(None)
+    } else {
+        parse_uint::<T>(text).map(Some)
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Parse CellRef.
 ////////////////////////////////////////////////////////////////////////////////
 
 pub(crate) fn parse_cell_ref<'t>(text: &mut &'t str) -> Option<CellRef<'t>> {
@@ -52,19 +158,17 @@ pub(crate) fn parse_cell_ref<'t>(text: &mut &'t str) -> Option<CellRef<'t>> {
     let res = match parse_cell_ref_position(text)
         .or_else(|| parse_cell_ref_index(text))
     {
-        None => match parse_name(text) {
-            Some(name) => match parse_char(text, REF_PREFIX_TOKEN) {
-                Some(_) => match parse_uint::<u32>(text) {
-                    Some(idx) => Some(CellRef::Group {
+        None => parse_cell_ref_name(text).and_then(
+            |name| match parse_char(text, REF_PREFIX_TOKEN) {
+                Some(_) => parse_uint::<u32>(text).and_then(
+                    |idx| Some(CellRef::Group {
                         group: name.trim().into(),
                         idx,
                     }),
-                    None => None,
-                },
-                None => Some(CellRef::Name(name.trim().into()))
-            },
-            None => None,
-        },
+                ),
+                None => Some(CellRef::Name(name.trim().into())),
+            }
+        ),
         some_result => some_result,
     };
 
@@ -79,25 +183,22 @@ pub(crate) fn parse_cell_ref_position<'t>(text: &mut &'t str)
 {
     let input_text = *text;
 
-    match parse_char(text, REF_PREFIX_TOKEN) {
-        Some(_) => match parse_uint::<u16>(text) {
-            Some(page) => match parse_char(text, REF_POS_SEP_TOKEN) {
-                Some(_) => match parse_uint::<u16>(text) {
-                    Some(line) => match parse_char(text, REF_POS_SEP_TOKEN) {
-                        Some(_) => match parse_uint::<u16>(text) {
-                            Some(column) => return Some(CellRef::Position(
-                                Position { page, line, column } )),
-                            None => (),
-                        },
-                        None => (),
-                    },
-                    None => (),
-                },
-                None => (),
-            },
-            None => (),
-        },
-        None => (),
+    if let Some(_) = parse_char(text, REF_PREFIX_TOKEN) {
+        if let Some(page) = parse_uint::<u16>(text) {
+
+            if let Some(_) = parse_char(text, REF_POS_SEP_TOKEN) {
+                if let Some(line) = parse_uint::<u16>(text) {
+            
+                    if let Some(_) = parse_char(text, REF_POS_SEP_TOKEN) {
+                        if let Some(column) = parse_uint::<u16>(text) {
+
+                            return Some(CellRef::Position(
+                                Position { page, line, column } ));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     *text = input_text;
@@ -109,18 +210,37 @@ pub(crate) fn parse_cell_ref_index<'t>(text: &mut &'t str)
 {
     let input_text = *text;
 
-    match parse_char(text, REF_PREFIX_TOKEN) {
-        Some(_) => match parse_uint::<u32>(text) {
-            Some(idx) => return Some(CellRef::Index(idx)),
-            None => (),
-        },
-        None => (),
+    if let Some(_) = parse_char(text, REF_PREFIX_TOKEN) {
+        if let Some(idx) = parse_uint::<u32>(text) {
+            return Some(CellRef::Index(idx));
+        }
     }
 
     *text = input_text;
     None
 }
 
+pub(crate) fn parse_cell_ref_name<'t>(text: &mut &'t str) -> Option<&'t str> {
+    let mut pre_len = 0;
+    let mut chars = text.chars();
+    while let Some(c) = chars.next() {
+        if c == REF_PREFIX_TOKEN { break; }
+        pre_len += c.len_utf8();
+    }
+
+    if pre_len > 0 {
+        let res = &text[0..pre_len];
+        *text = &text[pre_len..];
+        Some(res)
+    } else {
+        None
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Parse srimitives.
+////////////////////////////////////////////////////////////////////////////////
 
 pub(crate) fn parse_char<'t>(text: &mut &'t str, c: char) -> Option<char> {
     if text.starts_with(c) {
@@ -143,11 +263,11 @@ pub(crate) fn parse_char_in<'t>(text: &mut &'t str, opts: &str) -> Option<char> 
     None
 }
 
-pub(crate) fn parse_name<'t>(text: &mut &'t str) -> Option<&'t str> {
+pub(crate) fn parse_whitespace<'t>(text: &mut &'t str) -> Option<&'t str> {
     let mut pre_len = 0;
     let mut chars = text.chars();
     while let Some(c) = chars.next() {
-        if c == REF_PREFIX_TOKEN { break; }
+        if !c.is_whitespace() { break; }
         pre_len += c.len_utf8();
     }
 
@@ -160,22 +280,22 @@ pub(crate) fn parse_name<'t>(text: &mut &'t str) -> Option<&'t str> {
     }
 }
 
-pub(crate) fn parse_uint_prefix<'t>(text: &mut &'t str) -> Option<&'t str> {
-    if  text.starts_with("0b") || 
-        text.starts_with("0o") ||
-        text.starts_with("0x") 
-    {
-        let res = &text[0..2];
-        *text = &text[2..];
-        Some(res)
-    } else {
-        None
-    }
-}
-
 pub(crate) fn parse_uint<'t, T>(text: &mut &'t str) -> Option<T>
     where T: TryFrom<u32>
 {
+    fn parse_uint_prefix<'t>(text: &mut &'t str) -> Option<&'t str> {
+        if  text.starts_with("0b") || 
+            text.starts_with("0o") ||
+            text.starts_with("0x") 
+        {
+            let res = &text[0..2];
+            *text = &text[2..];
+            Some(res)
+        } else {
+            None
+        }
+    }
+
     let input_text = *text;
 
     let radix: u32 = match parse_uint_prefix(text) {
@@ -225,3 +345,4 @@ pub(crate) fn parse_uint<'t, T>(text: &mut &'t str) -> Option<T>
         Err(_) => { *text = input_text; None }
     }
 }
+

@@ -9,13 +9,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::expr::Expr;
 use crate::color::Color;
 use crate::error::Error;
-use crate::parse::REF_PREFIX_TOKEN;
-use crate::parse::REF_POS_SEP_TOKEN;
+use crate::expr::Expr;
 use crate::parse::entire;
 use crate::parse::parse_cell_ref;
+use crate::parse::REF_POS_SEP_TOKEN;
+use crate::parse::REF_PREFIX_TOKEN;
 
 // External library imports.
 use serde::Serialize;
@@ -73,18 +73,19 @@ impl Default for Cell {
 ////////////////////////////////////////////////////////////////////////////////
 /// A reference to a `Cell` in a palette.
 ///
-/// The lifetime of the CellRef is the lifetime of any names Most palette interfaces accept a `CellRef` with an arbitrary lifetime
+/// The lifetime of the CellRef is the lifetime of any names. Most palette
+/// interfaces accept a `CellRef` with an arbitrary lifetime
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
 pub enum CellRef<'name> {
     /// A reference to a cell based on an internal index.
     Index(u32),
 
-    /// A reference to a cell based on an assigned name.
-    Name(Cow<'name, str>),
-
     /// A reference to a cell based on an assigned position.
     Position(Position),
+
+    /// A reference to a cell based on an assigned name.
+    Name(Cow<'name, str>),
 
     /// A reference to a cell based on an assigned group and index within that
     /// group.
@@ -97,6 +98,15 @@ pub enum CellRef<'name> {
 }
 
 impl<'name> CellRef<'name> {
+    /// Returns true if the CellRef is compatable with ranged cell selectors.
+    #[inline]
+    pub(crate) fn ranged_selector(&self) -> bool {
+        match self {
+            CellRef::Name(_) => false,
+            _ => true,
+        }
+    }
+
     /// Parses a `CellRef` from the given string.
     pub fn parse(text: &'name str) -> Result<Self, Error> {
         entire(&mut &*text, parse_cell_ref)

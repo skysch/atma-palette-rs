@@ -13,12 +13,13 @@ Cell in the palette are typically identified by resolving a `CellRef`. There are
 
 + `Group`, parsed as `[name]:[uint]`. Refers to the cell by its index in an assigned group.
 
-+ `Position`, parsed as `:X.Y.Z`. Refers to the cell by its assigned page and line numbers.
++ `Position`, parsed as `:X.Y.Z`. Refers to the cell by its assigned page, line, and column numbers.
 
 In the above notation, `[name]` consists of any sequence of characters excluding `:`,`,`, and `*`, while `X`,`Y`, and `Z` refer to a sequence of digits or `_` characters, with an optional base prefix (`0b`, `0o`, or `0x`.) Parsed names will have any whitespace stripped from the ends.
 
 
-# Cell selection
+# Cell selection & Cell selector
+
 ## All
 *
 

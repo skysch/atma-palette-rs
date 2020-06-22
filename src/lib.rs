@@ -47,6 +47,7 @@ mod tests;
 
 // Public modules.
 pub mod cell;
+pub mod selection;
 pub mod error;
 pub mod expr;
 pub mod operation;
