@@ -11,6 +11,10 @@
 // Local imports.
 use crate::cell::CellRef;
 
+// Standard library imports.
+use std::borrow::Cow;
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Error
 ////////////////////////////////////////////////////////////////////////////////
@@ -35,13 +39,13 @@ pub enum Error {
     /// An attempt to resolve a CellRef failed.
     UnrecognizedCellReference {
         /// The failing reference.
-        cell_ref: CellRef,
+        cell_ref: CellRef<'static>,
     },
 
     /// An group index was out of bounds.
     GroupIndexOutOfBounds {
         /// The group.
-        group: String,
+        group: Cow<'static, str>,
         /// The given index.
         index: u32,
         /// The maximum index.

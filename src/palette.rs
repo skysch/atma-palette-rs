@@ -24,13 +24,14 @@ use ron::ser::PrettyConfig;
 use ron::ser::to_string_pretty;
 
 // Standard library imports.
+use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::convert::TryInto;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::io::Write;
 use std::path::Path;
-use std::convert::TryInto;
 
 
 
@@ -44,11 +45,11 @@ pub struct Palette {
     /// The next free cell index.
     next_index: u32,
     /// A map of names assigned to cells.
-    names: BTreeMap<String, u32>,
+    names: BTreeMap<Cow<'static, str>, u32>,
     /// A map of (page, line) positions assigned to cells.
     positions: BTreeMap<Position, u32>,
     /// A map of names assigned to groups of cells.
-    groups: BTreeMap<String, Vec<u32>>,
+    groups: BTreeMap<Cow<'static, str>, Vec<u32>>,
 }
 
 
@@ -156,64 +157,71 @@ impl Palette {
     ////////////////////////////////////////////////////////////////////////////
 
     /// Retreives a reference to the `Cell` associated with the given `CellRef`.
-    pub fn cell(&self, cell_ref: &CellRef) -> Result<&Cell, Error> {
+    pub fn cell<'name>(&self, cell_ref: CellRef<'name>)
+        -> Result<&Cell, Error>
+    {
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)?;
+            &cell_ref)?;
 
         self.cells
             .get(&idx)
             .ok_or(Error::UnrecognizedCellReference { 
-                cell_ref: cell_ref.clone(),
+                cell_ref: cell_ref.into_static(),
             })
     }
 
     /// Retreives a mutable reference to the `Cell` associated with the given
     /// `CellRef`.
-    pub fn cell_mut(&mut self, cell_ref: &CellRef) -> Result<&mut Cell, Error> {
+    pub fn cell_mut<'name>(&mut self, cell_ref: CellRef<'name>)
+        -> Result<&mut Cell, Error>
+    {
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)?;
+            &cell_ref)?;
 
         self.cells
             .get_mut(&idx)
             .ok_or(Error::UnrecognizedCellReference { 
-                cell_ref: cell_ref.clone(),
+                cell_ref: cell_ref.into_static(),
             })
     }
     
-    fn resolve_ref_to_index(
-        names: &BTreeMap<String, u32>,
+    fn resolve_ref_to_index<'name>(
+        names: &BTreeMap<Cow<'static, str>, u32>,
         positions: &BTreeMap<Position, u32>,
-        groups: &BTreeMap<String, Vec<u32>>,
-        cell_ref: &CellRef)
+        groups: &BTreeMap<Cow<'static, str>, Vec<u32>>,
+        cell_ref: &CellRef<'name>)
         -> Result<u32, Error>
     {
         use CellRef::*;
         match cell_ref {
             Index(idx) => Ok(*idx),
+
             Name(name) => names
-                .get(name)
+                .get(&*name)
                 .cloned()
                 .ok_or(Error::UnrecognizedCellReference { 
-                    cell_ref: cell_ref.clone(),
+                    cell_ref: cell_ref.clone().into_static(),
                 }),
+
             Position(position) => positions
                 .get(position)
                 .cloned()
                 .ok_or(Error::UnrecognizedCellReference { 
-                    cell_ref: cell_ref.clone(),
+                    cell_ref: cell_ref.clone().into_static(),
                 }),
+
             Group { group, idx } => groups
-                .get(group)
+                .get(&*group)
                 .and_then(|cells| cells.get(*idx as usize))
                 .cloned()
                 .ok_or(Error::UnrecognizedCellReference { 
-                    cell_ref: cell_ref.clone(),
+                    cell_ref: cell_ref.clone().into_static(),
                 }),
         }
     }
@@ -330,31 +338,31 @@ impl Palette {
             InsertCell { idx, cell }
                 => self.insert_cell(*idx, cell),
             RemoveCell { cell_ref }
-                => self.remove_cell(cell_ref),
+                => self.remove_cell(cell_ref.clone()),
 
             AssignName { cell_ref, name } 
-                => self.assign_name(cell_ref, name.clone()),
+                => self.assign_name(cell_ref.clone(), name.clone()),
             UnassignName { cell_ref, name } 
-                => self.unassign_name(cell_ref, name.clone()),
+                => self.unassign_name(cell_ref.clone(), name.clone()),
             ClearNames { cell_ref } 
-                => self.clear_names(cell_ref),
+                => self.clear_names(cell_ref.clone()),
 
             AssignPosition { cell_ref, position } 
-                => self.assign_position(cell_ref, position.clone()),
+                => self.assign_position(cell_ref.clone(), position.clone()),
             UnassignPosition { cell_ref, position } 
-                => self.unassign_position(cell_ref, position.clone()),
+                => self.unassign_position(cell_ref.clone(), position.clone()),
             ClearPositions { cell_ref } 
-                => self.clear_positions(cell_ref),
+                => self.clear_positions(cell_ref.clone()),
 
             AssignGroup { cell_ref, group, idx } 
-                => self.assign_group(cell_ref, group.clone(), *idx),
+                => self.assign_group(cell_ref.clone(), group.clone(), *idx),
             UnassignGroup { cell_ref, group } 
-                => self.unassign_group(cell_ref, group.clone()),
+                => self.unassign_group(cell_ref.clone(), group.clone()),
             ClearGroups { cell_ref } 
-                => self.clear_groups(cell_ref),
+                => self.clear_groups(cell_ref.clone()),
 
             SetExpr { cell_ref, expr }
-                => self.set_expr(cell_ref, expr.clone()),
+                => self.set_expr(cell_ref.clone(), expr.clone()),
         }
     }
 
@@ -381,19 +389,19 @@ impl Palette {
     }
 
     /// Removes a `Cell` from the palette.
-    pub fn remove_cell(&mut self, cell_ref: &CellRef)
+    pub fn remove_cell<'name>(&mut self, cell_ref: CellRef<'name>)
         -> Result<Vec<Operation>, Error> 
     {
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)?;
+            &cell_ref)?;
         
         match self.cells.remove(&idx) {
             // Cell was removed.
             Some(cell) => Ok(vec![
-                Operation::InsertCell { idx: Some(idx), cell }
+                Operation::InsertCell { idx: Some(idx), cell },
             ]),
 
             // Cell is already missing.
@@ -402,14 +410,19 @@ impl Palette {
     }
 
     /// Assigns a name to a cell.
-    pub fn assign_name(&mut self, cell_ref: &CellRef, name: String)
+    pub fn assign_name<'name, T>(
+        &mut self,
+        cell_ref: CellRef<'name>,
+        name: T)
         -> Result<Vec<Operation>, Error>
+        where T: Into<Cow<'static, str>>
     {
+        let name = name.into();
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)?;
+            &cell_ref)?;
 
         match self.names.insert(name.clone(), idx) {
             Some(old_idx) => Ok(vec![
@@ -428,14 +441,19 @@ impl Palette {
     }
 
     /// Unassigns a name for a cell.
-    pub fn unassign_name(&mut self, cell_ref: &CellRef, name: String)
+    pub fn unassign_name<'name, T>(
+        &mut self,
+        cell_ref: CellRef<'name>,
+        name: T)
         -> Result<Vec<Operation>, Error>
+        where T: Into<Cow<'static, str>>
     {
+        let name = name.into();
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)?;
+            &cell_ref)?;
         
         match self.names.get(&name) {
             Some(cur_idx) if *cur_idx == idx => {
@@ -452,14 +470,14 @@ impl Palette {
     }
 
     /// Unassigns a name for a cell.
-    pub fn clear_names(&mut self, cell_ref: &CellRef)
+    pub fn clear_names<'name>(&mut self, cell_ref: CellRef<'name>)
         -> Result<Vec<Operation>, Error>
     {
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)?;
+            &cell_ref)?;
 
         // TODO: Use BTreeMap::drain_filter when it becomes stable.
         let mut to_remove = Vec::with_capacity(1);
@@ -481,14 +499,17 @@ impl Palette {
     }
 
     /// Assigns a position to a cell.
-    pub fn assign_position(&mut self, cell_ref: &CellRef, position: Position)
+    pub fn assign_position<'name>(
+        &mut self,
+        cell_ref: CellRef<'name>,
+        position: Position)
         -> Result<Vec<Operation>, Error>
     {
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)?;
+            &cell_ref)?;
 
         match self.positions.insert(position.clone(), idx) {
             Some(old_idx) => Ok(vec![
@@ -507,14 +528,17 @@ impl Palette {
     }
 
     /// Unassigns a position for a cell.
-    pub fn unassign_position(&mut self, cell_ref: &CellRef, position: Position)
+    pub fn unassign_position<'name>(
+        &mut self,
+        cell_ref: CellRef<'name>,
+        position: Position)
         -> Result<Vec<Operation>, Error>
     {
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)?;
+            &cell_ref)?;
         
         match self.positions.get(&position) {
             Some(cur_idx) if *cur_idx == idx => {
@@ -531,14 +555,14 @@ impl Palette {
     }
 
     /// Unassigns a position for a cell.
-    pub fn clear_positions(&mut self, cell_ref: &CellRef)
+    pub fn clear_positions<'name>(&mut self, cell_ref: CellRef<'name>)
         -> Result<Vec<Operation>, Error>
     {
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)?;
+            &cell_ref)?;
 
         // TODO: Use BTreeMap::drain_filter when it becomes stable.
         let mut to_remove = Vec::with_capacity(1);
@@ -560,18 +584,20 @@ impl Palette {
     }
 
     /// Assigns a group to a cell.
-    pub fn assign_group(
+    pub fn assign_group<'name, T>(
         &mut self,
-        cell_ref: &CellRef,
-        group: String,
+        cell_ref: CellRef<'name>,
+        group: T,
         group_idx: Option<u32>)
         -> Result<Vec<Operation>, Error>
+        where T: Into<Cow<'static, str>>
     {
+        let group = group.into();
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)?;
+            &cell_ref)?;
 
         let members = self.groups.entry(group.clone()).or_default();
         let members_len: u32 = members.len()
@@ -586,7 +612,7 @@ impl Palette {
             members.insert(group_idx_usize, idx);
             Ok(vec![
                 Operation::UnassignGroup { 
-                    cell_ref: cell_ref.clone(),
+                    cell_ref: CellRef::Index(idx),
                     group,
                 },
             ])
@@ -604,17 +630,19 @@ impl Palette {
     }
 
     /// Unassigns a group for a cell.
-    pub fn unassign_group(
+    pub fn unassign_group<'name, T>(
         &mut self,
-        cell_ref: &CellRef,
-        group: String)
+        cell_ref: CellRef<'name>,
+        group: T)
         -> Result<Vec<Operation>, Error>
+        where T: Into<Cow<'static, str>>
     {
+        let group = group.into();
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)?;
+            &cell_ref)?;
         
         let res = match self.groups.get_mut(&group) {
             Some(members) => match members.iter().position(|x| *x == idx) {
@@ -629,7 +657,6 @@ impl Palette {
                                 .expect("convert usize to u32")),
                         },
                     ])
-
                 }
                 None => Ok(Vec::new()),
             },
@@ -644,14 +671,14 @@ impl Palette {
     }
 
     /// Removes the cell from all groups.
-    pub fn clear_groups(&mut self, cell_ref: &CellRef)
+    pub fn clear_groups<'name>(&mut self, cell_ref: CellRef<'name>)
         -> Result<Vec<Operation>, Error>
     {
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)?;
+            &cell_ref)?;
 
         // TODO: Consider using BTreeMap::drain_filter when it becomes stable.
         let mut empty_groups = Vec::new();
@@ -681,14 +708,14 @@ impl Palette {
     }
 
     /// Sets the color expression for a `Cell`.
-    pub fn set_expr(&mut self, cell_ref: &CellRef, expr: Expr)
+    pub fn set_expr<'name>(&mut self, cell_ref: CellRef<'name>, expr: Expr)
         -> Result<Vec<Operation>, Error>
     {
         let idx = Palette::resolve_ref_to_index(
             &self.names,
             &self.positions,
             &self.groups,
-            cell_ref)?;
+            &cell_ref)?;
 
         let cell = self.cells.get_mut(&idx)
             .expect("retreive resolved cell");
@@ -697,7 +724,7 @@ impl Palette {
 
         Ok(vec![
             Operation::SetExpr {
-                cell_ref: cell_ref.clone(),
+                cell_ref: CellRef::Index(idx),
                 expr: old,
             }
         ])
@@ -709,5 +736,3 @@ impl Default for Palette {
         Palette::new()
     }
 }
-
-

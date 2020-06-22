@@ -9,9 +9,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
+use crate::color::Color;
 
 // External library imports.
-use color::Color;
 use serde::Deserialize;
 use serde::Serialize;
 

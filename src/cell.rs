@@ -15,6 +15,8 @@ use crate::expr::Expr;
 use serde::Serialize;
 use serde::Deserialize;
 
+// Standard library imports.
+use std::borrow::Cow;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Cell
@@ -58,14 +60,16 @@ impl Default for Cell {
 // CellRef
 ////////////////////////////////////////////////////////////////////////////////
 /// A reference to a `Cell` in a palette.
+///
+/// The lifetime of the CellRef is the lifetime of any names Most palette interfaces accept a `CellRef` with an arbitrary lifetime
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
-pub enum CellRef {
+pub enum CellRef<'name> {
     /// A reference to a cell based on an internal index.
     Index(u32),
 
     /// A reference to a cell based on an assigned name.
-    Name(String),
+    Name(Cow<'name, str>),
 
     /// A reference to a cell based on an assigned position.
     Position(Position),
@@ -74,13 +78,29 @@ pub enum CellRef {
     /// group.
     Group {
         /// The name of the group.
-        group: String,
+        group: Cow<'name, str>,
         /// The index of the cell within the group.
         idx: u32,
     },
 }
 
-impl std::fmt::Display for CellRef {
+impl<'name> CellRef<'name> {
+    /// Converts a `CellRef` to a static lifetime.
+    pub fn into_static(self) -> CellRef<'static> {
+        use CellRef::*;
+        match self {
+            Index(idx) => Index(idx),
+            Position(position) => Position(position),
+            Name(name) => Name(Cow::from(name.into_owned())),
+            Group { group, idx } => Group {
+                group: Cow::from(group.into_owned()),
+                idx,
+            },
+        }
+    }
+}
+
+impl<'name> std::fmt::Display for CellRef<'name> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use CellRef::*;
         match self {
@@ -92,8 +112,9 @@ impl std::fmt::Display for CellRef {
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
-// CellRef
+// Position
 ////////////////////////////////////////////////////////////////////////////////
 /// A reference to a `Cell` in a palette.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

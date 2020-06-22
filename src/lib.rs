@@ -52,5 +52,9 @@ pub mod operation;
 pub mod history;
 
 // Exports.
+/// Color encodings.
+pub mod color {
+    pub use color::*;
+}
 pub use palette::*;
-pub use color::*;
+
