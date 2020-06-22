@@ -142,7 +142,7 @@ fn cell_assign_clear_group_method_inverse() {
 #[test]
 fn cell_ref_parse_index() {
     assert_eq!(
-        CellRef::parse("@123").unwrap(),
+        CellRef::parse(":123").unwrap(),
         CellRef::Index(123));
 }
 
@@ -164,7 +164,7 @@ fn cell_ref_parse_name() {
 #[test]
 fn cell_ref_parse_position() {
     assert_eq!(
-        CellRef::parse("@P123L15C0").unwrap(),
+        CellRef::parse(":123.15.0").unwrap(),
         CellRef::Position(Position { page: 123, line: 15, column: 0 }));
 }
 
@@ -173,6 +173,6 @@ fn cell_ref_parse_position() {
 #[test]
 fn cell_ref_parse_group() {
     assert_eq!(
-        CellRef::parse("blahblah@0").unwrap(),
+        CellRef::parse("blahblah:0").unwrap(),
         CellRef::Group { group: "blahblah".into(), idx: 0 });
 }

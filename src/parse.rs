@@ -20,14 +20,11 @@ use crate::cell::Position;
 use std::convert::TryInto;
 use std::convert::TryFrom;
 
-pub(crate) const CELL_REF_ID_TOKEN: char = '@';
-pub(crate) const CELL_REF_PAGE_PREFIX_TOKEN: char = 'P';
-pub(crate) const CELL_REF_LINE_PREFIX_TOKEN: char = 'L';
-pub(crate) const CELL_REF_COLUMN_PREFIX_TOKEN: char = 'C';
+pub(crate) const REF_PREFIX_TOKEN: char = ':';
+pub(crate) const REF_POS_SEP_TOKEN: char = '.';
+pub(crate) const REF_ALL_TOKEN: char = '*';
+pub(crate) const REF_SEP_TOKEN: char = ',';
 
-pub(crate) const CELL_REF_PAGE_PREFIX_OPTIONS: &'static str = "Pp";
-pub(crate) const CELL_REF_LINE_PREFIX_OPTIONS: &'static str = "Ll";
-pub(crate) const CELL_REF_COLUMN_PREFIX_OPTIONS: &'static str = "Cc";
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,47 +42,18 @@ pub(crate) fn entire<'t, F, T>(text: &mut &'t str, parser: F) -> Option<T>
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // Parse primitives.
 ////////////////////////////////////////////////////////////////////////////////
 
 pub(crate) fn parse_cell_ref<'t>(text: &mut &'t str) -> Option<CellRef<'t>> {
     let input_text = *text;
-    let res = match parse_char(text, CELL_REF_ID_TOKEN) {
-        Some(_) => match parse_char_in(text, CELL_REF_PAGE_PREFIX_OPTIONS) {
-            Some(_) => match parse_uint::<u16>(text) {
-                Some(page) => match parse_char_in(
-                        text,
-                        CELL_REF_LINE_PREFIX_OPTIONS)
-                {
-                    Some(_) => match parse_uint::<u16>(text) {
-                        Some(line) => match parse_char_in(
-                                text,
-                                CELL_REF_COLUMN_PREFIX_OPTIONS)
-                        {
-                            Some(_) => match parse_uint::<u16>(text) {
-                                Some(column) => Some(CellRef::Position(Position {
-                                    page,
-                                    line,
-                                    column,
-                                })),
-                                None => None,
-                            },
-                            None => None,
-                        },
-                        None => None,
-                    },
-                    None => None,
-                },
-                None => None,
-            },
-            None => match parse_uint::<u32>(text) {
-                Some(idx) => Some(CellRef::Index(idx)),
-                None => None,
-            },
-        },
+    let res = match parse_cell_ref_position(text)
+        .or_else(|| parse_cell_ref_index(text))
+    {
         None => match parse_name(text) {
-            Some(name) => match parse_char(text, CELL_REF_ID_TOKEN) {
+            Some(name) => match parse_char(text, REF_PREFIX_TOKEN) {
                 Some(_) => match parse_uint::<u32>(text) {
                     Some(idx) => Some(CellRef::Group {
                         group: name.trim().into(),
@@ -97,6 +65,7 @@ pub(crate) fn parse_cell_ref<'t>(text: &mut &'t str) -> Option<CellRef<'t>> {
             },
             None => None,
         },
+        some_result => some_result,
     };
 
     match res {
@@ -104,6 +73,54 @@ pub(crate) fn parse_cell_ref<'t>(text: &mut &'t str) -> Option<CellRef<'t>> {
         None => { *text = input_text; None },
     }
 }
+
+pub(crate) fn parse_cell_ref_position<'t>(text: &mut &'t str)
+    -> Option<CellRef<'t>> 
+{
+    let input_text = *text;
+
+    match parse_char(text, REF_PREFIX_TOKEN) {
+        Some(_) => match parse_uint::<u16>(text) {
+            Some(page) => match parse_char(text, REF_POS_SEP_TOKEN) {
+                Some(_) => match parse_uint::<u16>(text) {
+                    Some(line) => match parse_char(text, REF_POS_SEP_TOKEN) {
+                        Some(_) => match parse_uint::<u16>(text) {
+                            Some(column) => return Some(CellRef::Position(
+                                Position { page, line, column } )),
+                            None => (),
+                        },
+                        None => (),
+                    },
+                    None => (),
+                },
+                None => (),
+            },
+            None => (),
+        },
+        None => (),
+    }
+
+    *text = input_text;
+    None
+}
+
+pub(crate) fn parse_cell_ref_index<'t>(text: &mut &'t str)
+    -> Option<CellRef<'t>> 
+{
+    let input_text = *text;
+
+    match parse_char(text, REF_PREFIX_TOKEN) {
+        Some(_) => match parse_uint::<u32>(text) {
+            Some(idx) => return Some(CellRef::Index(idx)),
+            None => (),
+        },
+        None => (),
+    }
+
+    *text = input_text;
+    None
+}
+
 
 pub(crate) fn parse_char<'t>(text: &mut &'t str, c: char) -> Option<char> {
     if text.starts_with(c) {
@@ -130,7 +147,7 @@ pub(crate) fn parse_name<'t>(text: &mut &'t str) -> Option<&'t str> {
     let mut pre_len = 0;
     let mut chars = text.chars();
     while let Some(c) = chars.next() {
-        if c == CELL_REF_ID_TOKEN { break; }
+        if c == REF_PREFIX_TOKEN { break; }
         pre_len += c.len_utf8();
     }
 

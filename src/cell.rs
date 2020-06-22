@@ -12,10 +12,8 @@
 use crate::expr::Expr;
 use crate::color::Color;
 use crate::error::Error;
-use crate::parse::CELL_REF_ID_TOKEN;
-use crate::parse::CELL_REF_PAGE_PREFIX_TOKEN;
-use crate::parse::CELL_REF_LINE_PREFIX_TOKEN;
-use crate::parse::CELL_REF_COLUMN_PREFIX_TOKEN;
+use crate::parse::REF_PREFIX_TOKEN;
+use crate::parse::REF_POS_SEP_TOKEN;
 use crate::parse::entire;
 use crate::parse::parse_cell_ref;
 
@@ -124,11 +122,11 @@ impl<'name> std::fmt::Display for CellRef<'name> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use CellRef::*;
         match self {
-            Index(idx) => write!(f, "{}{}", CELL_REF_ID_TOKEN, idx),
+            Index(idx) => write!(f, "{}{}", REF_PREFIX_TOKEN, idx),
             Name(name) => write!(f, "{}", name),
             Position(position) => write!(f, "{}", position),
             Group { group, idx } => write!(f, 
-                "{}{}{}", group, CELL_REF_ID_TOKEN, idx),
+                "{}{}{}", group, REF_PREFIX_TOKEN, idx),
         }
     }
 }
@@ -151,13 +149,12 @@ pub struct Position {
 
 impl std::fmt::Display for Position {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}{}{}{}{}{}", 
-            CELL_REF_ID_TOKEN,
-            CELL_REF_PAGE_PREFIX_TOKEN,
+        write!(f, "{}{}{}{}{}{}", 
+            REF_PREFIX_TOKEN,
             self.page,
-            CELL_REF_LINE_PREFIX_TOKEN,
+            REF_POS_SEP_TOKEN,
             self.line,
-            CELL_REF_COLUMN_PREFIX_TOKEN,
+            REF_POS_SEP_TOKEN,
             self.column)
     }
 }
