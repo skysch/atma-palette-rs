@@ -137,3 +137,42 @@ fn cell_assign_clear_group_method_inverse() {
     assert!(pal.cell(CellRef::Group { group: group2.clone(), idx: 0 })
         .is_err());
 }
+
+/// Tests `CellRef::parse` for a `CellRef::Index`.
+#[test]
+fn cell_ref_parse_index() {
+    assert_eq!(
+        CellRef::parse("@123").unwrap(),
+        CellRef::Index(123));
+}
+
+/// Tests `CellRef::parse` for a `CellRef::Name`.
+#[test]
+fn cell_ref_parse_name() {
+    assert_eq!(
+        CellRef::parse("blah blah").unwrap(),
+        CellRef::Name("blah blah".into()));
+
+    // Check whitespace trimming after parse.
+    assert_eq!(
+        CellRef::parse("\n\t blah blah \t\n").unwrap(),
+        CellRef::Name("blah blah".into()));
+}
+
+
+/// Tests `CellRef::parse` for a `CellRef::Position`.
+#[test]
+fn cell_ref_parse_position() {
+    assert_eq!(
+        CellRef::parse("@P123L15").unwrap(),
+        CellRef::Position(Position { page: 123, line: 15 }));
+}
+
+
+/// Tests `CellRef::parse` for a `CellRef::Group`.
+#[test]
+fn cell_ref_parse_group() {
+    assert_eq!(
+        CellRef::parse("blahblah@0").unwrap(),
+        CellRef::Group { group: "blahblah".into(), idx: 0 });
+}

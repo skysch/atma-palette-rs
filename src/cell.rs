@@ -10,6 +10,13 @@
 
 // Local imports.
 use crate::expr::Expr;
+use crate::color::Color;
+use crate::error::Error;
+use crate::parse::CELL_REF_ID_TOKEN;
+use crate::parse::CELL_REF_PAGE_PREFIX_TOKEN;
+use crate::parse::CELL_REF_LINE_PREFIX_TOKEN;
+use crate::parse::entire;
+use crate::parse::parse_cell_ref;
 
 // External library imports.
 use serde::Serialize;
@@ -18,6 +25,8 @@ use serde::Deserialize;
 // Standard library imports.
 use std::borrow::Cow;
 
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Cell
 ////////////////////////////////////////////////////////////////////////////////
@@ -25,9 +34,12 @@ use std::borrow::Cow;
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(test, derive(PartialEq))]
 #[derive(Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct Cell {
     /// The cell's expression.
     expr: Expr,
+    #[serde(skip)]
+    cached: Option<Color>,
 }
 
 impl Cell {
@@ -35,6 +47,7 @@ impl Cell {
     pub fn new() -> Self {
         Cell {
             expr: Default::default(),
+            cached: None,
         }
     }
 
@@ -62,7 +75,7 @@ impl Default for Cell {
 /// A reference to a `Cell` in a palette.
 ///
 /// The lifetime of the CellRef is the lifetime of any names Most palette interfaces accept a `CellRef` with an arbitrary lifetime
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
 pub enum CellRef<'name> {
     /// A reference to a cell based on an internal index.
@@ -85,6 +98,12 @@ pub enum CellRef<'name> {
 }
 
 impl<'name> CellRef<'name> {
+    /// Parses a `CellRef` from the given string.
+    pub fn parse(text: &'name str) -> Result<Self, Error> {
+        entire(&mut &*text, parse_cell_ref)
+            .ok_or(Error::CellRefParseError)
+    }
+
     /// Converts a `CellRef` to a static lifetime.
     pub fn into_static(self) -> CellRef<'static> {
         use CellRef::*;
@@ -104,10 +123,11 @@ impl<'name> std::fmt::Display for CellRef<'name> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use CellRef::*;
         match self {
-            Index(idx) => write!(f, "index {}", idx),
+            Index(idx) => write!(f, "{}{}", CELL_REF_ID_TOKEN, idx),
             Name(name) => write!(f, "{}", name),
             Position(position) => write!(f, "{}", position),
-            Group { group, idx } => write!(f, "{}:{}", group, idx),
+            Group { group, idx } => write!(f, 
+                "{}{}{}", group, CELL_REF_ID_TOKEN, idx),
         }
     }
 }
@@ -128,6 +148,12 @@ pub struct Position {
 
 impl std::fmt::Display for Position {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "$P{}L{}", self.page, self.line)
+        write!(f, "{}{}{}{}{}", 
+            CELL_REF_ID_TOKEN,
+            CELL_REF_PAGE_PREFIX_TOKEN,
+            self.page,
+            CELL_REF_LINE_PREFIX_TOKEN,
+            self.line)
     }
 }
+

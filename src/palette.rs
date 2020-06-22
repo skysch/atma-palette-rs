@@ -56,8 +56,9 @@ pub struct Palette {
 impl Palette {
 
     ////////////////////////////////////////////////////////////////////////////
-    // Command-level interface
+    // Constructors
     ////////////////////////////////////////////////////////////////////////////
+    
     /// Constructs a new `Palette`.
     pub fn new() -> Self {
         Palette {
@@ -234,8 +235,37 @@ impl Palette {
     }
 
     ////////////////////////////////////////////////////////////////////////////
-    // Operation-level interface
+    // Composite operation interface
     ////////////////////////////////////////////////////////////////////////////
+    
+    /// Applies a sequence of `Operation`s to the palette.
+    ///
+    /// The applied operations' undo ops will be grouped together and inserted
+    /// into the provided `History`.
+    ///
+    /// ### Parameters
+    /// + `op`: The operation to apply.
+    /// + `history`: The operation history.
+    pub fn apply_operations(
+        &mut self,
+        ops: &[Operation],
+        history: Option<&mut History>)
+        -> Result<(), Error>
+    {
+        if let Some(history) = history {
+            let mut undo_ops = Vec::with_capacity(ops.len());
+            for op in ops {
+                undo_ops.extend(self.apply_operation(op)?);
+            }
+            history.push_undo_ops(undo_ops);
+        } else {
+            for op in ops {
+                let _ = self.apply_operation(op)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Unapplies the latest set of operations recorded in the given `History`.
     ///
     /// Returns the number of undo operations successfully performed. This may
@@ -295,33 +325,10 @@ impl Palette {
         real_count
     }
 
-    /// Applies a sequence of `Operation`s to the palette.
-    ///
-    /// The applied operations' undo ops will be grouped together and inserted
-    /// into the provided `History`.
-    ///
-    /// ### Parameters
-    /// + `op`: The operation to apply.
-    /// + `history`: The operation history.
-    pub fn apply_operations(
-        &mut self,
-        ops: &[Operation],
-        history: Option<&mut History>)
-        -> Result<(), Error>
-    {
-        if let Some(history) = history {
-            let mut undo_ops = Vec::with_capacity(ops.len());
-            for op in ops {
-                undo_ops.extend(self.apply_operation(op)?);
-            }
-            history.push_undo_ops(undo_ops);
-        } else {
-            for op in ops {
-                let _ = self.apply_operation(op)?;
-            }
-        }
-        Ok(())
-    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Primitive operation interface
+    ////////////////////////////////////////////////////////////////////////////
 
     /// Applies an `Operation` to the palette. Returns an `Operation` that will
     /// undo the applied changes.

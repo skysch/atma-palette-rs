@@ -25,7 +25,7 @@ use std::borrow::Cow;
 ////////////////////////////////////////////////////////////////////////////////
 // Operation
 ////////////////////////////////////////////////////////////////////////////////
-/// A palette modifying operation.
+/// A primitive, reversable palette operation.
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 pub enum Operation {
@@ -141,7 +141,6 @@ pub enum Operation {
         /// The expression to set.
         expr: Expr,
     },
-
 }
 
 

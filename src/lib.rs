@@ -40,6 +40,7 @@
 
 // Internal modules.
 mod palette;
+mod parse;
 
 #[cfg(test)]
 mod tests;
