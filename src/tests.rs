@@ -68,7 +68,7 @@ fn cell_assign_unassign_position_method_inverse() {
     let mut pal = Palette::new();
     let _ = pal.insert_cell(None, &Cell::default());
 
-    let position = Position { page: 0, line: 10 };
+    let position = Position { page: 0, line: 10, column: 0 };
 
     let _ = pal.assign_position(CellRef::Index(0), position.clone());
     assert!(pal.cell(CellRef::Position(position.clone())).is_ok());
@@ -84,8 +84,8 @@ fn cell_assign_clear_position_method_inverse() {
     let mut pal = Palette::new();
     let _ = pal.insert_cell(None, &Cell::default());
 
-    let position1 = Position { page: 0, line: 10 };
-    let position2 = Position { page: 1, line: 4 };
+    let position1 = Position { page: 0, line: 10, column: 0 };
+    let position2 = Position { page: 1, line: 4, column: 3 };
 
     let _ = pal.assign_position(CellRef::Index(0), position1.clone());
     let _ = pal.assign_position(CellRef::Index(0), position2.clone());
@@ -164,8 +164,8 @@ fn cell_ref_parse_name() {
 #[test]
 fn cell_ref_parse_position() {
     assert_eq!(
-        CellRef::parse("@P123L15").unwrap(),
-        CellRef::Position(Position { page: 123, line: 15 }));
+        CellRef::parse("@P123L15C0").unwrap(),
+        CellRef::Position(Position { page: 123, line: 15, column: 0 }));
 }
 
 

@@ -15,6 +15,7 @@ use crate::error::Error;
 use crate::parse::CELL_REF_ID_TOKEN;
 use crate::parse::CELL_REF_PAGE_PREFIX_TOKEN;
 use crate::parse::CELL_REF_LINE_PREFIX_TOKEN;
+use crate::parse::CELL_REF_COLUMN_PREFIX_TOKEN;
 use crate::parse::entire;
 use crate::parse::parse_cell_ref;
 
@@ -144,16 +145,20 @@ pub struct Position {
     pub page: u16,
     /// The line number of the cell.
     pub line: u16,
+    /// The column number of the cell.
+    pub column: u16,
 }
 
 impl std::fmt::Display for Position {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}{}{}{}", 
+        write!(f, "{}{}{}{}{}{}{}", 
             CELL_REF_ID_TOKEN,
             CELL_REF_PAGE_PREFIX_TOKEN,
             self.page,
             CELL_REF_LINE_PREFIX_TOKEN,
-            self.line)
+            self.line,
+            CELL_REF_COLUMN_PREFIX_TOKEN,
+            self.column)
     }
 }
 

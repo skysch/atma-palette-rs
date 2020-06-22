@@ -22,10 +22,12 @@ use std::convert::TryFrom;
 
 pub(crate) const CELL_REF_ID_TOKEN: char = '@';
 pub(crate) const CELL_REF_PAGE_PREFIX_TOKEN: char = 'P';
-pub(crate) const CELL_REF_LINE_PREFIX_TOKEN: char = 'l';
+pub(crate) const CELL_REF_LINE_PREFIX_TOKEN: char = 'L';
+pub(crate) const CELL_REF_COLUMN_PREFIX_TOKEN: char = 'C';
 
 pub(crate) const CELL_REF_PAGE_PREFIX_OPTIONS: &'static str = "Pp";
 pub(crate) const CELL_REF_LINE_PREFIX_OPTIONS: &'static str = "Ll";
+pub(crate) const CELL_REF_COLUMN_PREFIX_OPTIONS: &'static str = "Cc";
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,10 +59,20 @@ pub(crate) fn parse_cell_ref<'t>(text: &mut &'t str) -> Option<CellRef<'t>> {
                         CELL_REF_LINE_PREFIX_OPTIONS)
                 {
                     Some(_) => match parse_uint::<u16>(text) {
-                        Some(line) => Some(CellRef::Position(Position {
-                            page,
-                            line,
-                        })),
+                        Some(line) => match parse_char_in(
+                                text,
+                                CELL_REF_COLUMN_PREFIX_OPTIONS)
+                        {
+                            Some(_) => match parse_uint::<u16>(text) {
+                                Some(column) => Some(CellRef::Position(Position {
+                                    page,
+                                    line,
+                                    column,
+                                })),
+                                None => None,
+                            },
+                            None => None,
+                        },
                         None => None,
                     },
                     None => None,
