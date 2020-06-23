@@ -34,7 +34,7 @@ pub(crate) const REF_SEP_TOKEN: char = ',';
 // Parser combinators.
 ////////////////////////////////////////////////////////////////////////////////
 
-pub(crate) fn entire<'t, F, T>(text: &mut &'t str, parser: F) -> Option<T>
+pub fn entire<'t, F, T>(text: &mut &'t str, parser: F) -> Option<T>
     where F: FnOnce(&mut &'t str) -> Option<T>
 {
     let input_text = *text;
@@ -49,14 +49,14 @@ pub(crate) fn entire<'t, F, T>(text: &mut &'t str, parser: F) -> Option<T>
 ////////////////////////////////////////////////////////////////////////////////
 // Parse cell selection.
 ////////////////////////////////////////////////////////////////////////////////
-pub(crate) fn parse_cell_selection<'t>(text: &mut &'t str)
+pub fn parse_cell_selection<'t>(text: &mut &'t str)
     -> Option<Vec<CellSelector<'t>>>
 {
     // delimitted sequence of cell selectors
     unimplemented!()
 }
 
-pub(crate) fn parse_cell_selector<'t>(text: &mut &'t str)
+pub fn parse_cell_selector<'t>(text: &mut &'t str)
     -> Option<CellSelector<'t>>
 {
     let input_text = *text;
@@ -112,7 +112,7 @@ pub(crate) fn parse_cell_selector<'t>(text: &mut &'t str)
 }
 
 
-pub(crate) fn parse_position_selector<'t>(text: &mut &'t str)
+pub fn parse_position_selector<'t>(text: &mut &'t str)
     -> Option<PositionSelector> 
 {
     let input_text = *text;
@@ -138,7 +138,7 @@ pub(crate) fn parse_position_selector<'t>(text: &mut &'t str)
     None
 }
 
-pub(crate) fn parse_uint_or_all<'t, T>(text: &mut &'t str) -> Option<Option<T>>
+pub fn parse_uint_or_all<'t, T>(text: &mut &'t str) -> Option<Option<T>>
     where T: TryFrom<u32>
 {
     // try parsing All first to avoid parsing it is a name.
@@ -153,7 +153,7 @@ pub(crate) fn parse_uint_or_all<'t, T>(text: &mut &'t str) -> Option<Option<T>>
 // Parse CellRef.
 ////////////////////////////////////////////////////////////////////////////////
 
-pub(crate) fn parse_cell_ref<'t>(text: &mut &'t str) -> Option<CellRef<'t>> {
+pub fn parse_cell_ref<'t>(text: &mut &'t str) -> Option<CellRef<'t>> {
     let input_text = *text;
     let res = match parse_cell_ref_position(text)
         .or_else(|| parse_cell_ref_index(text))
@@ -178,7 +178,7 @@ pub(crate) fn parse_cell_ref<'t>(text: &mut &'t str) -> Option<CellRef<'t>> {
     }
 }
 
-pub(crate) fn parse_cell_ref_position<'t>(text: &mut &'t str)
+pub fn parse_cell_ref_position<'t>(text: &mut &'t str)
     -> Option<CellRef<'t>> 
 {
     let input_text = *text;
@@ -205,7 +205,7 @@ pub(crate) fn parse_cell_ref_position<'t>(text: &mut &'t str)
     None
 }
 
-pub(crate) fn parse_cell_ref_index<'t>(text: &mut &'t str)
+pub fn parse_cell_ref_index<'t>(text: &mut &'t str)
     -> Option<CellRef<'t>> 
 {
     let input_text = *text;
@@ -220,7 +220,7 @@ pub(crate) fn parse_cell_ref_index<'t>(text: &mut &'t str)
     None
 }
 
-pub(crate) fn parse_cell_ref_name<'t>(text: &mut &'t str) -> Option<&'t str> {
+pub fn parse_cell_ref_name<'t>(text: &mut &'t str) -> Option<&'t str> {
     let mut pre_len = 0;
     let mut chars = text.chars();
     while let Some(c) = chars.next() {
@@ -242,7 +242,7 @@ pub(crate) fn parse_cell_ref_name<'t>(text: &mut &'t str) -> Option<&'t str> {
 // Parse srimitives.
 ////////////////////////////////////////////////////////////////////////////////
 
-pub(crate) fn parse_char<'t>(text: &mut &'t str, c: char) -> Option<char> {
+pub fn parse_char<'t>(text: &mut &'t str, c: char) -> Option<char> {
     if text.starts_with(c) {
         *text = &text[c.len_utf8()..];
         Some(c)
@@ -251,7 +251,7 @@ pub(crate) fn parse_char<'t>(text: &mut &'t str, c: char) -> Option<char> {
     }
 }
 
-pub(crate) fn parse_char_in<'t>(text: &mut &'t str, opts: &str) -> Option<char> {
+pub fn parse_char_in<'t>(text: &mut &'t str, opts: &str) -> Option<char> {
     let mut opts = opts.chars();
     while let Some(c) = opts.next() {
         if text.starts_with(c) {
@@ -263,7 +263,7 @@ pub(crate) fn parse_char_in<'t>(text: &mut &'t str, opts: &str) -> Option<char> 
     None
 }
 
-pub(crate) fn parse_whitespace<'t>(text: &mut &'t str) -> Option<&'t str> {
+pub fn parse_whitespace<'t>(text: &mut &'t str) -> Option<&'t str> {
     let mut pre_len = 0;
     let mut chars = text.chars();
     while let Some(c) = chars.next() {
@@ -280,7 +280,7 @@ pub(crate) fn parse_whitespace<'t>(text: &mut &'t str) -> Option<&'t str> {
     }
 }
 
-pub(crate) fn parse_uint<'t, T>(text: &mut &'t str) -> Option<T>
+pub fn parse_uint<'t, T>(text: &mut &'t str) -> Option<T>
     where T: TryFrom<u32>
 {
     fn parse_uint_prefix<'t>(text: &mut &'t str) -> Option<&'t str> {
@@ -345,4 +345,3 @@ pub(crate) fn parse_uint<'t, T>(text: &mut &'t str) -> Option<T>
         Err(_) => { *text = input_text; None }
     }
 }
-
