@@ -25,7 +25,7 @@ use crate::parse::*;
 /// Tests `parse::char`.
 #[test]
 fn parse_char_match() {
-    let char_res = char("abcd", 'a');
+    let char_res = char('a')("abcd");
     assert!(char_res.is_ok());
     assert_eq!(char_res.rest(), "bcd");
     assert_eq!(char_res.into_value(), Some('a'));
@@ -34,7 +34,7 @@ fn parse_char_match() {
 /// Tests `parse::char`.
 #[test]
 fn parse_char_nonmatch() {
-    let char_res = char("abcd", 'b');
+    let char_res = char('b')("abcd");
     assert!(char_res.is_err());
     assert_eq!(char_res.rest(), "abcd");
 }
@@ -42,7 +42,7 @@ fn parse_char_nonmatch() {
 /// Tests `parse::char_in`.
 #[test]
 fn parse_char_in_match() {
-    let char_in_res = char_in("abcd", "cab");
+    let char_in_res = char_in("cab")("abcd");
     assert!(char_in_res.is_ok());
     assert_eq!(char_in_res.rest(), "bcd");
     assert_eq!(char_in_res.into_value(), Some('a'));
@@ -51,7 +51,7 @@ fn parse_char_in_match() {
 /// Tests `parse::char_in`.
 #[test]
 fn parse_char_in_nonmatch() {
-    let char_in_res = char_in("abcd", "bdcbd");
+    let char_in_res = char_in("bdcbd")("abcd");
     assert!(char_in_res.is_err());
     assert_eq!(char_in_res.rest(), "abcd");
 }
@@ -60,7 +60,7 @@ fn parse_char_in_nonmatch() {
 /// Tests `parse::char_matching`.
 #[test]
 fn parse_char_matching_match() {
-    let char_matching_res = char_matching("abcd", |c| c == 'a');
+    let char_matching_res = char_matching(|c| c == 'a')("abcd");
     assert!(char_matching_res.is_ok());
     assert_eq!(char_matching_res.rest(), "bcd");
     assert_eq!(char_matching_res.into_value(), Some('a'));
@@ -69,7 +69,7 @@ fn parse_char_matching_match() {
 /// Tests `parse::char_matching`.
 #[test]
 fn parse_char_matching_nonmatch() {
-    let char_matching_res = char_matching("abcd", |c| c == 'b');
+    let char_matching_res = char_matching(|c| c == 'b')("abcd");
     assert!(char_matching_res.is_err());
     assert_eq!(char_matching_res.rest(), "abcd");
 }
@@ -77,25 +77,25 @@ fn parse_char_matching_nonmatch() {
 
 /// Tests `parse::whitespace`.
 #[test]
-fn parse_whitespace_match() {
-    let whitespace_res = whitespace("\tabcd");
-    assert!(whitespace_res.is_ok());
-    assert_eq!(whitespace_res.rest(), "abcd");
-    assert_eq!(whitespace_res.into_value(), Some('\t'));
+fn parse_char_whitespace_match() {
+    let char_whitespace_res = char_whitespace("\tabcd");
+    assert!(char_whitespace_res.is_ok());
+    assert_eq!(char_whitespace_res.rest(), "abcd");
+    assert_eq!(char_whitespace_res.into_value(), Some('\t'));
 
-    let whitespace_res = whitespace(" abcd");
-    assert!(whitespace_res.is_ok());
-    assert_eq!(whitespace_res.rest(), "abcd");
-    assert_eq!(whitespace_res.into_value(), Some(' '));
+    let char_whitespace_res = char_whitespace(" abcd");
+    assert!(char_whitespace_res.is_ok());
+    assert_eq!(char_whitespace_res.rest(), "abcd");
+    assert_eq!(char_whitespace_res.into_value(), Some(' '));
 }
 
-/// Tests `parse::whitespace`.
+/// Tests `parse::char_whitespace`.
 #[test]
-fn parse_whitespace_nonmatch() {
+fn parse_char_whitespace_nonmatch() {
 
-    let whitespace_res = whitespace("abcd");
-    assert!(whitespace_res.is_err());
-    assert_eq!(whitespace_res.rest(), "abcd");
+    let char_whitespace_res = char_whitespace("abcd");
+    assert!(char_whitespace_res.is_err());
+    assert_eq!(char_whitespace_res.rest(), "abcd");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +105,7 @@ fn parse_whitespace_nonmatch() {
 /// Tests `maybe` on `parse::char`.
 #[test]
 fn parse_maybe_char_match() {
-    let char_res = maybe("abcd", |t| char(t, 'a'));
+    let char_res = maybe(char('a'))("abcd");
     assert!(char_res.is_ok());
     assert_eq!(char_res.rest(), "bcd");
     assert_eq!(char_res.into_value(), Some(Some('a')));
@@ -114,7 +114,7 @@ fn parse_maybe_char_match() {
 /// Tests `maybe` on `parse::char`.
 #[test]
 fn parse_maybe_char_nonmatch() {
-    let char_res = maybe("abcd", |t| char(t, 'b'));
+    let char_res = maybe(char('b'))("abcd");
     assert!(char_res.is_ok());
     assert_eq!(char_res.rest(), "abcd");
     assert_eq!(char_res.into_value(), Some(None));
@@ -123,7 +123,7 @@ fn parse_maybe_char_nonmatch() {
 /// Tests `zero_or_more` on `parse::char`.
 #[test]
 fn parse_zero_or_more_char_match() {
-    let char_res = zero_or_more("abcd", |t| char_in(t, "ab"));
+    let char_res = zero_or_more(char_in("ab"))("abcd");
     assert!(char_res.is_ok());
     assert_eq!(char_res.rest(), "cd");
     assert_eq!(char_res.into_value(), Some(Some('b')));
@@ -132,7 +132,7 @@ fn parse_zero_or_more_char_match() {
 /// Tests `zero_or_more` on `parse::char`.
 #[test]
 fn parse_zero_or_more_char_nonmatch() {
-    let char_res = zero_or_more("abcd", |t| char_in(t, "bc"));
+    let char_res = zero_or_more(char_in("bc"))("abcd");
     assert!(char_res.is_ok());
     assert_eq!(char_res.rest(), "abcd");
     assert_eq!(char_res.into_value(), Some(None));
@@ -141,7 +141,7 @@ fn parse_zero_or_more_char_nonmatch() {
 /// Tests `one_or_more` on `parse::char`.
 #[test]
 fn parse_one_or_more_char_match() {
-    let char_res = one_or_more("abcd", |t| char_in(t, "ab"));
+    let char_res = one_or_more(char_in("ab"))("abcd");
     assert!(char_res.is_ok());
     assert_eq!(char_res.rest(), "cd");
     assert_eq!(char_res.into_value(), Some('b'));
@@ -150,7 +150,7 @@ fn parse_one_or_more_char_match() {
 /// Tests `one_or_more` on `parse::char`.
 #[test]
 fn parse_one_or_more_char_nonmatch() {
-    let char_res = one_or_more("abcd", |t| char_in(t, "bc"));
+    let char_res = one_or_more(char_in("bc"))("abcd");
     assert!(char_res.is_err());
     assert_eq!(char_res.rest(), "abcd");
 }
@@ -189,22 +189,22 @@ fn parse_radix_prefix_nonmatch() {
 /// Tests `parse::uint` for a `u8` value.
 #[test]
 fn parse_uint_u8_match() {
-    let uint_u8_res = uint::<u8>("0abcd", "u8");
+    let uint_u8_res = uint::<u8>("u8")("0abcd");
     assert!(uint_u8_res.is_ok());
     assert_eq!(uint_u8_res.rest(), "abcd");
     assert_eq!(uint_u8_res.into_value(), Some(0u8));
 
-    let uint_u8_res = uint::<u8>("0b10abcd", "u8");
+    let uint_u8_res = uint::<u8>("u8")("0b10abcd");
     assert!(uint_u8_res.is_ok());
     assert_eq!(uint_u8_res.rest(), "abcd");
     assert_eq!(uint_u8_res.into_value(), Some(0b10u8));
 
-    let uint_u8_res = uint::<u8>("0o70abcd", "u8");
+    let uint_u8_res = uint::<u8>("u8")("0o70abcd");
     assert!(uint_u8_res.is_ok());
     assert_eq!(uint_u8_res.rest(), "abcd");
     assert_eq!(uint_u8_res.into_value(), Some(0o70u8));
 
-    let uint_u8_res = uint::<u8>("0xF0 abcd", "u8");
+    let uint_u8_res = uint::<u8>("u8")("0xF0 abcd");
     assert!(uint_u8_res.is_ok());
     assert_eq!(uint_u8_res.rest(), " abcd");
     assert_eq!(uint_u8_res.into_value(), Some(0xF0u8));
@@ -213,23 +213,23 @@ fn parse_uint_u8_match() {
 /// Tests `parse::uint` for a `u8` value.
 #[test]
 fn parse_uint_u8_nonmatch() {
-    let uint_u8_res = uint::<u8>("abcd", "u8");
+    let uint_u8_res = uint::<u8>("u8")("abcd");
     assert!(uint_u8_res.is_err());
     assert_eq!(uint_u8_res.rest(), "abcd");
 
-    let uint_u8_res = uint::<u8>("0b20abcd", "u8");
+    let uint_u8_res = uint::<u8>("u8")("0b20abcd");
     assert!(uint_u8_res.is_err());
     assert_eq!(uint_u8_res.rest(), "0b20abcd");
 
-    let uint_u8_res = uint::<u8>("0o80abcd", "u8");
+    let uint_u8_res = uint::<u8>("u8")("0o80abcd");
     assert!(uint_u8_res.is_err());
     assert_eq!(uint_u8_res.rest(), "0o80abcd");
 
-    let uint_u8_res = uint::<u8>("0xG0abcd", "u8");
+    let uint_u8_res = uint::<u8>("u8")("0xG0abcd");
     assert!(uint_u8_res.is_err());
     assert_eq!(uint_u8_res.rest(), "0xG0abcd");
 
-    let uint_u8_res = uint::<u8>("0xFF0abcd", "u8");
+    let uint_u8_res = uint::<u8>("u8")("0xFF0abcd");
     assert!(uint_u8_res.is_err());
     assert_eq!(uint_u8_res.rest(), "0xFF0abcd");
 }
@@ -237,22 +237,22 @@ fn parse_uint_u8_nonmatch() {
 /// Tests `parse::uint` for a `u16` value.
 #[test]
 fn parse_uint_u16_match() {
-    let uint_u16_res = uint::<u16>("0abcd", "u16");
+    let uint_u16_res = uint::<u16>("u16")("0abcd");
     assert!(uint_u16_res.is_ok());
     assert_eq!(uint_u16_res.rest(), "abcd");
     assert_eq!(uint_u16_res.into_value(), Some(0u16));
 
-    let uint_u16_res = uint::<u16>("0b10abcd", "u16");
+    let uint_u16_res = uint::<u16>("u16")("0b10abcd");
     assert!(uint_u16_res.is_ok());
     assert_eq!(uint_u16_res.rest(), "abcd");
     assert_eq!(uint_u16_res.into_value(), Some(0b10u16));
 
-    let uint_u16_res = uint::<u16>("0o70abcd", "u16");
+    let uint_u16_res = uint::<u16>("u16")("0o70abcd");
     assert!(uint_u16_res.is_ok());
     assert_eq!(uint_u16_res.rest(), "abcd");
     assert_eq!(uint_u16_res.into_value(), Some(0o70u16));
 
-    let uint_u16_res = uint::<u16>("0xF0 abcd", "u16");
+    let uint_u16_res = uint::<u16>("u16")("0xF0 abcd");
     assert!(uint_u16_res.is_ok());
     assert_eq!(uint_u16_res.rest(), " abcd");
     assert_eq!(uint_u16_res.into_value(), Some(0xF0u16));
@@ -261,23 +261,23 @@ fn parse_uint_u16_match() {
 /// Tests `parse::uint` for a `u16` value.
 #[test]
 fn parse_uint_u16_nonmatch() {
-    let uint_u16_res = uint::<u16>("abcd", "u16");
+    let uint_u16_res = uint::<u16>("u16")("abcd");
     assert!(uint_u16_res.is_err());
     assert_eq!(uint_u16_res.rest(), "abcd");
 
-    let uint_u16_res = uint::<u16>("0b20abcd", "u16");
+    let uint_u16_res = uint::<u16>("u16")("0b20abcd");
     assert!(uint_u16_res.is_err());
     assert_eq!(uint_u16_res.rest(), "0b20abcd");
 
-    let uint_u16_res = uint::<u16>("0o80abcd", "u16");
+    let uint_u16_res = uint::<u16>("u16")("0o80abcd");
     assert!(uint_u16_res.is_err());
     assert_eq!(uint_u16_res.rest(), "0o80abcd");
 
-    let uint_u16_res = uint::<u16>("0xG0abcd", "u16");
+    let uint_u16_res = uint::<u16>("u16")("0xG0abcd");
     assert!(uint_u16_res.is_err());
     assert_eq!(uint_u16_res.rest(), "0xG0abcd");
 
-    let uint_u16_res = uint::<u16>("0xFF0abcd", "u16");
+    let uint_u16_res = uint::<u16>("u16")("0xFF0abcd");
     assert!(uint_u16_res.is_err());
     assert_eq!(uint_u16_res.rest(), "0xFF0abcd");
 }
@@ -285,22 +285,22 @@ fn parse_uint_u16_nonmatch() {
 /// Tests `parse::uint` for a `u32` value.
 #[test]
 fn parse_uint_u32_match() {
-    let uint_u32_res = uint::<u32>("0abcd", "u32");
+    let uint_u32_res = uint::<u32>("u32")("0abcd");
     assert!(uint_u32_res.is_ok());
     assert_eq!(uint_u32_res.rest(), "abcd");
     assert_eq!(uint_u32_res.into_value(), Some(0u32));
 
-    let uint_u32_res = uint::<u32>("0b10abcd", "u32");
+    let uint_u32_res = uint::<u32>("u32")("0b10abcd");
     assert!(uint_u32_res.is_ok());
     assert_eq!(uint_u32_res.rest(), "abcd");
     assert_eq!(uint_u32_res.into_value(), Some(0b10u32));
 
-    let uint_u32_res = uint::<u32>("0o70abcd", "u32");
+    let uint_u32_res = uint::<u32>("u32")("0o70abcd");
     assert!(uint_u32_res.is_ok());
     assert_eq!(uint_u32_res.rest(), "abcd");
     assert_eq!(uint_u32_res.into_value(), Some(0o70u32));
 
-    let uint_u32_res = uint::<u32>("0xF0 abcd", "u32");
+    let uint_u32_res = uint::<u32>("u32")("0xF0 abcd");
     assert!(uint_u32_res.is_ok());
     assert_eq!(uint_u32_res.rest(), " abcd");
     assert_eq!(uint_u32_res.into_value(), Some(0xF0u32));
@@ -309,23 +309,23 @@ fn parse_uint_u32_match() {
 /// Tests `parse::uint` for a `u32` value.
 #[test]
 fn parse_uint_u32_nonmatch() {
-    let uint_u32_res = uint::<u32>("abcd", "u32");
+    let uint_u32_res = uint::<u32>("u32")("abcd");
     assert!(uint_u32_res.is_err());
     assert_eq!(uint_u32_res.rest(), "abcd");
 
-    let uint_u32_res = uint::<u32>("0b20abcd", "u32");
+    let uint_u32_res = uint::<u32>("u32")("0b20abcd");
     assert!(uint_u32_res.is_err());
     assert_eq!(uint_u32_res.rest(), "0b20abcd");
 
-    let uint_u32_res = uint::<u32>("0o80abcd", "u32");
+    let uint_u32_res = uint::<u32>("u32")("0o80abcd");
     assert!(uint_u32_res.is_err());
     assert_eq!(uint_u32_res.rest(), "0o80abcd");
 
-    let uint_u32_res = uint::<u32>("0xG0abcd", "u32");
+    let uint_u32_res = uint::<u32>("u32")("0xG0abcd");
     assert!(uint_u32_res.is_err());
     assert_eq!(uint_u32_res.rest(), "0xG0abcd");
 
-    let uint_u32_res = uint::<u32>("0xFFFFFF0abcd", "u32");
+    let uint_u32_res = uint::<u32>("u32")("0xFFFFFF0abcd");
     assert!(uint_u32_res.is_err());
     assert_eq!(uint_u32_res.rest(), "0xFFFFFF0abcd");
 }

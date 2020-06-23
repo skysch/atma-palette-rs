@@ -30,61 +30,67 @@ use std::convert::TryInto;
 ////////////////////////////////////////////////////////////////////////////////
 /// Attempts a parse, wrapping the result in `Some` if it succeeds, otherwise
 /// converting the failure into a success with `None`.
-pub fn maybe<'t, F, V>(text: &'t str, mut parser: F)
-    -> ParseResult<'t, Option<V>>
-    where F: FnMut(&'t str) -> ParseResult<'t, V>
+pub fn maybe<'t, F, V>(parser: F)
+    -> impl Fn(&'t str) -> ParseResult<'t, Option<V>>
+    where F: Fn(&'t str) -> ParseResult<'t, V>
 {
-    match (parser)(text) {
-        Ok(success) => Ok(success).map_value(Some),
-        Err(failure) => Ok(Success {
+    move |text| {
+        match (parser)(text) {
+            Ok(success) => Ok(success).map_value(Some),
+            Err(failure) => Ok(Success {
+                value: None,
+                token: &text[..0],
+                rest: text,
+            }),
+        }
+    }
+}
+
+/// Repeats a parse until it fails, then returns the last successfully parsed
+/// value.
+pub fn zero_or_more<'t, F, V>(parser: F)
+    -> impl Fn(&'t str) -> ParseResult<'t, Option<V>>
+    where F: Fn(&'t str) -> ParseResult<'t, V>
+{
+    move |text| {
+        let mut result = Ok(Success {
             value: None,
             token: &text[..0],
             rest: text,
-        }),
+        });
+        let mut rest = text;
+        loop {
+            match (parser)(rest) {
+                Ok(success) => {
+                    rest = success.rest;
+                    result = Ok(success).map_value(Some);
+                }
+                Err(failure) => break,
+            }
+        }
+        result
     }
 }
 
 /// Repeats a parse until it fails, then returns the last successfully parsed
 /// value.
-pub fn zero_or_more<'t, F, V>(text: &'t str, mut parser: F)
-    -> ParseResult<'t, Option<V>>
-    where F: FnMut(&'t str) -> ParseResult<'t, V>
+pub fn one_or_more<'t, F, V>(mut parser: F)
+    -> impl Fn(&'t str) -> ParseResult<'t, V>
+    where F: Fn(&'t str) -> ParseResult<'t, V>
 {
-    let mut result = Ok(Success {
-        value: None,
-        token: &text[..0],
-        rest: text,
-    });
-    let mut rest = text;
-    loop {
-        match (parser)(rest) {
-            Ok(success) => {
-                rest = success.rest;
-                result = Ok(success).map_value(Some);
+    move |text| {
+        let mut result = (parser)(text)
+            .with_parse_context("", text)
+            .source_for("one or more")?;
+        loop {
+            match (parser)(result.rest) {
+                Ok(success) => {
+                    result.rest = success.rest;
+                    result.value = success.value;
+                }
+                Err(failure) => break,
             }
-            Err(failure) => break,
         }
+        Ok(result)
     }
-    result
-}
-
-/// Repeats a parse until it fails, then returns the last successfully parsed
-/// value.
-pub fn one_or_more<'t, F, V>(text: &'t str, mut parser: F)
-    -> ParseResult<'t, V>
-    where F: FnMut(&'t str) -> ParseResult<'t, V>
-{
-    let mut result = (parser)(text)
-        .with_parse_context("", text)
-        .source_for("one or more")?;
-    loop {
-        match (parser)(result.rest) {
-            Ok(success) => {
-                result.rest = success.rest;
-                result.value = success.value;
-            }
-            Err(failure) => break,
-        }
-    }
-    Ok(result)
 }
