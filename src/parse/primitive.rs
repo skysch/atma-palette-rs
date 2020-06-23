@@ -100,6 +100,7 @@ pub fn char_matching<'t, F>(text: &'t str, mut f: F)
 /// Parses a whitespace `char`.
 pub fn whitespace<'t>(text: &'t str) -> ParseResult<'t, char> {
     char_matching(text, |c| c.is_whitespace())
-        .with_parse_context(&text[..0], "whitespace char")
+        .with_parse_context(&text[..0], text)
+        .into_source_for("whitespace char")
 }
 

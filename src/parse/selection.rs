@@ -72,29 +72,35 @@ pub fn cell_ref<'t>(text: &'t str) -> ParseResult<'t, CellRef<'t>> {
 /// Parses a Position.
 pub fn position<'t>(text: &'t str) -> ParseResult<'t, Position> {
     let pre = char(text, REF_PREFIX_TOKEN)
-        .with_parse_context("", "cell ref position prefix")?;
+        .with_parse_context("", text)
+        .into_source_for("cell ref position prefix")?;
+    
     let context = &text[0..(text.len() - pre.rest.len())];
-
     let page = uint::<u16>(pre.rest, "u16")
-        .with_parse_context(context, "cell ref position page")?;
+        .with_parse_context(context, text)
+        .into_source_for("cell ref position page")?;
+    
     let context = &text[0..(text.len() - pre.rest.len())];
-
     let sep1 = char(page.rest, REF_POS_SEP_TOKEN)
-        .with_parse_context(context, "cell ref position separator")?;
+        .with_parse_context(context, text)
+        .into_source_for("cell ref position separator")?;
+    
     let context = &text[0..(text.len() - pre.rest.len())];
-
     let line = uint::<u16>(sep1.rest, "u16")
-        .with_parse_context(context, "cell ref position line")?;
+        .with_parse_context(context, text)
+        .into_source_for("cell ref position line")?;
+    
     let context = &text[0..(text.len() - pre.rest.len())];
-
     let sep2 = char(line.rest, REF_POS_SEP_TOKEN)
-        .with_parse_context(context, "cell ref position separator")?;
+        .with_parse_context(context, text)
+        .into_source_for("cell ref position separator")?;
+    
     let context = &text[0..(text.len() - pre.rest.len())];
-
     let column = uint::<u16>(sep2.rest, "u16")
-        .with_parse_context(context, "cell ref position column")?;
+        .with_parse_context(context, text)
+        .into_source_for("cell ref position column")?;
+    
     let context = &text[0..(text.len() - pre.rest.len())];
-
     Ok(Success {
         value: Position {
             page: page.value,
@@ -109,10 +115,12 @@ pub fn position<'t>(text: &'t str) -> ParseResult<'t, Position> {
 /// Parses a Index.
 pub fn index<'t>(text: &'t str) -> ParseResult<'t, u32> {
     let pre = char(text, REF_PREFIX_TOKEN)
-        .with_parse_context("", "cell ref index prefix")?;
+        .with_parse_context("", text)
+        .into_source_for("cell ref index prefix")?;
 
     uint::<u32>(pre.rest, "u32")
-        .with_parse_context(pre.token, "cell ref index")
+        .with_parse_context(pre.token, text)
+        .into_source_for("cell ref index prefix")
 }
 
 
@@ -126,7 +134,8 @@ pub fn name<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
                 REF_PREFIX_TOKEN,
                 REF_RANGE_TOKEN,
             ].contains(&c)))
-        .with_parse_context("", "cell ref name")?;
+        .with_parse_context("", text)
+        .into_source_for("cell ref name")?;
 
     let context = &text[0..(text.len() - res.rest.len())];
     Ok(Success {

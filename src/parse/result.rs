@@ -38,13 +38,21 @@ pub type ParseResult<'t, V> = Result<Success<'t, V>, Failure<'t>>;
 
 /// Extension trait for parse results.
 pub trait ParseResultExt<'t, V>: Sized {
-    /// Adds context and expectation detail to a failed parse.
-    fn with_parse_context<E>(self, context: &'t str, expected: E) -> Self
+    /// Converts the result into a source using the given expected parse
+    /// description.
+    fn into_source_for<E>(self, expected: E) -> Self
         where E: Into<Cow<'static, str>>;
 
-    /// Returns the value produced by a successful parse, or None if the parse
-    /// was not successful.
-    fn value(self) -> Option<V>;
+    /// Sets the parse context and resume point for a failed parse.
+    fn with_parse_context(self, context: &'t str, rest: &'t str) -> Self;
+
+    /// Returns a refernce to the value produced by a successful parse, or None
+    /// if the parse was not successful.
+    fn value(&self) -> Option<&V>;
+
+    /// Consumes the result, returning the value produced by a successful parse,
+    /// or None if the parse was not successful.
+    fn into_value(self) -> Option<V>;
 
     /// Returns the token associated with a successful parse, or None if the
     /// parse was not successful.
@@ -78,12 +86,13 @@ pub trait ParseResultExt<'t, V>: Sized {
 }
 
 impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
-    fn with_parse_context<E>(self, context: &'t str, expected: E) -> Self
+    fn into_source_for<E>(self, expected: E) -> Self
         where E: Into<Cow<'static, str>>
     {
         self.map_err(|failure| {
+            let context = failure.context;
             let rest = failure.rest;
-            let found = &context[..0];
+            let found = failure.found;
             Failure {
                 context,
                 expected: expected.into(),
@@ -94,7 +103,19 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
         })
     }
 
-    fn value(self) -> Option<V> {
+    fn with_parse_context(self, context: &'t str, rest: &'t str) -> Self {
+        self.map_err(|mut failure| {
+            failure.context = context;
+            failure.rest = rest;
+            failure
+        })
+    }
+
+    fn value(&self) -> Option<&V> {
+        self.as_ref().ok().map(|success| &success.value)
+    }
+
+    fn into_value(self) -> Option<V> {
         self.ok().map(|success| success.value)
     }
 

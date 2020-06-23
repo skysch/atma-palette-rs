@@ -73,10 +73,12 @@ impl std::fmt::Display for Error {
                 Some(msg) => write!(f, "{}", msg),
                 None => write!(f, "{}", source),
             },
+            
             IoError { msg, source } => match msg {
                 Some(msg) => write!(f, "{}", msg),
                 None => write!(f, "{}", source),
             },
+
             UndefinedCellReference { cell_ref } => write!(f, 
                 "undefined cell reference: {}", cell_ref),
             

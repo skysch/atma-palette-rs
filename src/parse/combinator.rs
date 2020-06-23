@@ -28,6 +28,22 @@ use std::convert::TryInto;
 ////////////////////////////////////////////////////////////////////////////////
 // Parser combinators.
 ////////////////////////////////////////////////////////////////////////////////
+/// Attempts a parse, wrapping the result in `Some` if it succeeds, otherwise
+/// converting the failure into a success with `None`.
+pub fn maybe<'t, F, V>(text: &'t str, mut parser: F)
+    -> ParseResult<'t, Option<V>>
+    where F: FnMut(&'t str) -> ParseResult<'t, V>
+{
+    match (parser)(text) {
+        Ok(success) => Ok(success).map_value(Some),
+        Err(failure) => Ok(Success {
+            value: None,
+            token: &text[..0],
+            rest: text,
+        }),
+    }
+}
+
 /// Repeats a parse until it fails, then returns the last successfully parsed
 /// value.
 pub fn zero_or_more<'t, F, V>(text: &'t str, mut parser: F)
@@ -52,22 +68,6 @@ pub fn zero_or_more<'t, F, V>(text: &'t str, mut parser: F)
     result
 }
 
-/// Attempts a parse, wrapping the result in `Some` if it succeeds, otherwise
-/// converting the failure into a success with `None`.
-pub fn maybe<'t, F, V>(text: &'t str, mut parser: F)
-    -> ParseResult<'t, Option<V>>
-    where F: FnMut(&'t str) -> ParseResult<'t, V>
-{
-    match (parser)(text) {
-        Ok(success) => Ok(success).map_value(Some),
-        Err(failure) => Ok(Success {
-            value: None,
-            token: &text[..0],
-            rest: text,
-        }),
-    }
-}
-
 /// Repeats a parse until it fails, then returns the last successfully parsed
 /// value.
 pub fn one_or_more<'t, F, V>(text: &'t str, mut parser: F)
@@ -75,12 +75,12 @@ pub fn one_or_more<'t, F, V>(text: &'t str, mut parser: F)
     where F: FnMut(&'t str) -> ParseResult<'t, V>
 {
     let mut result = (parser)(text)
-        .with_parse_context(&text[..0], "one or more")?;
-    let mut rest = result.rest;
+        .with_parse_context("", text)
+        .into_source_for("one or more")?;
     loop {
-        match (parser)(rest) {
+        match (parser)(result.rest) {
             Ok(success) => {
-                rest = success.rest;
+                result.rest = success.rest;
                 result.value = success.value;
             }
             Err(failure) => break,

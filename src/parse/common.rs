@@ -27,7 +27,7 @@ use std::convert::TryInto;
 // Common parsers.
 ////////////////////////////////////////////////////////////////////////////////
 /// Parses an integer radix prefix.
-fn radix_prefix<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
+pub fn radix_prefix<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
     if  text.starts_with("0b") || 
         text.starts_with("0o") ||
         text.starts_with("0x") 
@@ -53,6 +53,8 @@ pub fn uint<'t, T>(text: &'t str, int_type: &'static str)
     -> ParseResult<'t, T>
     where T: TryFrom<u32>
 {
+    // TODO: Fix this to work for u64, u128 values.
+    
     let radix_prefix = maybe(text, |t| radix_prefix(t)).unwrap();
     let radix: u32 = match radix_prefix.value {
         Some("0b") => 2,
@@ -65,7 +67,9 @@ pub fn uint<'t, T>(text: &'t str, int_type: &'static str)
     let digits = one_or_more(
             radix_prefix.rest,
             |t| char_matching(t, |c| c.is_digit(radix) || c == '_'))
-        .with_parse_context(radix_prefix.token, "integer digits")?;
+        .with_parse_context(radix_prefix.token, text)
+        .into_source_for(
+            format!("{} integer digits with radix {}", int_type, radix))?;
     
 
     let context_span = text.len() - digits.rest.len();
@@ -81,7 +85,7 @@ pub fn uint<'t, T>(text: &'t str, int_type: &'static str)
 
         let val = c.to_digit(radix).unwrap();
         
-        match res.checked_mul(10) {
+        match res.checked_mul(radix) {
             Some(x) => res = x,
             None => return Err(Failure {
                 context,
@@ -91,7 +95,7 @@ pub fn uint<'t, T>(text: &'t str, int_type: &'static str)
                     int_type: int_type.into(),
                     int_text: context.to_string().into(),
                 })),
-                rest: &text[context_span..],
+                rest: text,
             }),
         }
         match res.checked_add(val) {
@@ -104,7 +108,7 @@ pub fn uint<'t, T>(text: &'t str, int_type: &'static str)
                     int_type: int_type.into(),
                     int_text: context.to_string().into(),
                 })),
-                rest: &text[context_span..],
+                rest: text,
             }),
         }
     }

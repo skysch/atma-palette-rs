@@ -20,6 +20,9 @@ mod error;
 mod primitive;
 mod selection;
 
+#[cfg(test)]
+mod tests;
+
 // Exports.
 pub use self::result::*;
 pub use self::common::*;
