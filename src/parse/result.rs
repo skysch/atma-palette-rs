@@ -183,7 +183,7 @@ pub struct Success<'t, V> {
 
 impl<'t, V> Success<'t, V> {
     /// Applies the given closure to the parsed value and returns the result.
-    fn map_value<F, U>(self, f: F) -> Success<'t, U>
+    pub fn map_value<F, U>(self, f: F) -> Success<'t, U>
         where F: FnOnce(V) -> U
     {
         Success {
@@ -274,7 +274,7 @@ impl<'t> Failure<'t> {
     }
 
     /// Converts a borrowed `Failure` into a `FailureOwned`.
-    fn to_owned(self) -> FailureOwned {
+    pub fn to_owned(self) -> FailureOwned {
         FailureOwned {
             context: self.context.to_owned(),
             expected: self.expected,

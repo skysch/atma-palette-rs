@@ -56,9 +56,55 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
 pub fn position_selector<'t>(text: &'t str)
     -> ParseResult<'t, PositionSelector>
 {
-    unimplemented!()
+    let pre = char(REF_PREFIX_TOKEN)(text)
+        .with_parse_context("", text)
+        .source_for("cell selector position selector prefix")?;
+    
+    let context = &text[0..(text.len() - pre.rest.len())];
+    let page = uin16_or_all(pre.rest)
+        .with_parse_context(context, text)
+        .source_for("cell selector position selector page")?;
+    
+    let context = &text[0..(text.len() - pre.rest.len())];
+    let sep1 = char(REF_POS_SEP_TOKEN)(page.rest)
+        .with_parse_context(context, text)
+        .source_for("cell selector position selector separator")?;
+    
+    let context = &text[0..(text.len() - pre.rest.len())];
+    let line = uin16_or_all(sep1.rest)
+        .with_parse_context(context, text)
+        .source_for("cell selector position selector line")?;
+    
+    let context = &text[0..(text.len() - pre.rest.len())];
+    let sep2 = char(REF_POS_SEP_TOKEN)(line.rest)
+        .with_parse_context(context, text)
+        .source_for("cell selector position selector separator")?;
+    
+    let context = &text[0..(text.len() - pre.rest.len())];
+    let column = uin16_or_all(sep2.rest)
+        .with_parse_context(context, text)
+        .source_for("cell selector position selector column")?;
+    
+    let context = &text[0..(text.len() - pre.rest.len())];
+    Ok(Success {
+        value: PositionSelector {
+            page: page.value,
+            line: line.value,
+            column: column.value,
+        },
+        token: context,
+        rest: column.rest,
+    })
 }
 
+
+pub fn uin16_or_all<'t>(text: &'t str) -> ParseResult<'t, Option<u16>> {
+    if let Ok(all_suc) = char(REF_ALL_TOKEN)(text) {
+        Ok(all_suc.map_value(|_| None))
+    } else {
+        uint::<u16>("u16")(text).map_value(Some)
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Parse cell refs.
@@ -66,7 +112,30 @@ pub fn position_selector<'t>(text: &'t str)
 
 /// Parses a CellRef.
 pub fn cell_ref<'t>(text: &'t str) -> ParseResult<'t, CellRef<'t>> {
-    unimplemented!()
+    // Try Position first, as it shares a prefix with Index.
+    if let Ok(pos_suc) = position(text) {
+        Ok(pos_suc.map_value(|pos| CellRef::Position(pos)))
+    // Try Index second.
+    } else if let Ok(idx_suc) = index(text) {
+        Ok(idx_suc.map_value(|idx| CellRef::Index(idx)))
+    } else {
+        // Try name, but parse it as a group if an Index follows.
+        let name_suc = name(text)
+            .with_parse_context("", text)
+            .source_for("cell ref value")?;
+        let name = name_suc.value;
+        
+        if let Ok(idx_suc) = index(name_suc.rest) {
+            let idx = idx_suc.value;
+            let group_suc = name_suc.join(idx_suc, text);
+            Ok(group_suc.map_value(|_| CellRef::Group {
+                group: name.into(),
+                idx,
+            }))
+        } else {
+            Ok(name_suc.map_value(|_| CellRef::Name(name.into())))
+        }
+    }
 }
 
 /// Parses a Position.

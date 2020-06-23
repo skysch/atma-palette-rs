@@ -11,10 +11,10 @@
 use crate::parse::*;
 // use crate::Palette;
 // use crate::cell::Cell;
-// use crate::cell::Position;
+use crate::cell::Position;
 // use crate::selection::CellSelector;
-// use crate::selection::PositionSelector;
-// use crate::cell::CellRef;
+use crate::selection::PositionSelector;
+use crate::cell::CellRef;
 
 // use std::borrow::Cow;
 
@@ -368,7 +368,6 @@ fn parse_uint_u32_nonmatch() {
 // CellRef
 ////////////////////////////////////////////////////////////////////////////////
 
-
 /// Tests `parse::name`.
 #[test]
 fn parse_name_match() {
@@ -479,4 +478,164 @@ fn parse_index_nonmatch() {
     let index_res = index(":0xFFFFFF0abcd");
     assert!(index_res.is_err());
     assert_eq!(index_res.rest(), ":0xFFFFFF0abcd");
+}
+
+/// Tests `parse::position`.
+#[test]
+fn parse_position_match() {
+    let pos_res = position(":1.2.3abcd");
+    assert!(pos_res.is_ok());
+    assert_eq!(pos_res.rest(), "abcd");
+    assert_eq!(pos_res.into_value(), Some(Position {
+        page: 1,
+        line: 2,
+        column: 3,
+    }));
+
+    let pos_res = position(":0b101.0x2F.0o17abcd");
+    assert!(pos_res.is_ok());
+    assert_eq!(pos_res.rest(), "abcd");
+    assert_eq!(pos_res.into_value(), Some(Position {
+        page: 0b101,
+        line: 0x2F,
+        column: 0o17,
+    }));
+}
+
+/// Tests `parse::position`.
+#[test]
+fn parse_position_nonmatch() {
+    let pos_res = position(":0xFFFFF1.2.3abcd");
+    assert!(pos_res.is_err());
+    assert_eq!(pos_res.rest(), ":0xFFFFF1.2.3abcd");
+
+    let pos_res = position(":0xF1 .2.3abcd");
+    assert!(pos_res.is_err());
+    assert_eq!(pos_res.rest(), ":0xF1 .2.3abcd");
+
+    let pos_res = position(":0xF1.*.3abcd");
+    assert!(pos_res.is_err());
+    assert_eq!(pos_res.rest(), ":0xF1.*.3abcd");
+}
+
+/// Tests `parse::cell_ref`.
+#[test]
+fn parse_cell_ref_index_match() {
+    let cell_ref_res = cell_ref(":0abcd");
+    assert!(cell_ref_res.is_ok());
+    assert_eq!(cell_ref_res.rest(), "abcd");
+    assert_eq!(cell_ref_res.into_value(), Some(CellRef::Index(0u32)));
+}
+
+/// Tests `parse::cell_ref`.
+#[test]
+fn parse_cell_ref_position_match() {
+    let cell_ref_res = cell_ref(":1.2.3abcd");
+    assert!(cell_ref_res.is_ok());
+    assert_eq!(cell_ref_res.rest(), "abcd");
+    assert_eq!(cell_ref_res.into_value(), Some(CellRef::Position(Position {
+        page: 1,
+        line: 2,
+        column: 3,
+    })));
+}
+
+/// Tests `parse::cell_ref`.
+#[test]
+fn parse_cell_ref_name_match() {
+    let cell_ref_res = cell_ref("0abcd.abcd");
+    assert!(cell_ref_res.is_ok());
+    assert_eq!(cell_ref_res.rest(), ".abcd");
+    assert_eq!(cell_ref_res.into_value(), Some(CellRef::Name("0abcd".into())));
+}
+
+/// Tests `parse::cell_ref`.
+#[test]
+fn parse_cell_ref_group_match() {
+    let cell_ref_res = cell_ref("0abcd:123abcd");
+    assert!(cell_ref_res.is_ok());
+    assert_eq!(cell_ref_res.rest(), "abcd");
+    assert_eq!(cell_ref_res.into_value(), Some(CellRef::Group {
+        group: "0abcd".into(),
+        idx: 123,
+    }));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// CellSelector
+////////////////////////////////////////////////////////////////////////////////
+
+
+/// Tests `parse::position`.
+#[test]
+fn parse_position_selector_match() {
+    let pos_sel_res = position_selector(":1.2.3abcd");
+    assert!(pos_sel_res.is_ok());
+    assert_eq!(pos_sel_res.rest(), "abcd");
+    assert_eq!(pos_sel_res.into_value(), Some(PositionSelector {
+        page: Some(1),
+        line: Some(2),
+        column: Some(3),
+    }));
+
+    let pos_sel_res = position_selector(":0b101.0x2F.0o17abcd");
+    assert!(pos_sel_res.is_ok());
+    assert_eq!(pos_sel_res.rest(), "abcd");
+    assert_eq!(pos_sel_res.into_value(), Some(PositionSelector {
+        page: Some(0b101),
+        line: Some(0x2F),
+        column: Some(0o17),
+    }));
+
+    let pos_sel_res = position_selector(":*.2.3abcd");
+    assert!(pos_sel_res.is_ok());
+    assert_eq!(pos_sel_res.rest(), "abcd");
+    assert_eq!(pos_sel_res.into_value(), Some(PositionSelector {
+        page: None,
+        line: Some(2),
+        column: Some(3),
+    }));
+
+    let pos_sel_res = position_selector(":1.*.3abcd");
+    assert!(pos_sel_res.is_ok());
+    assert_eq!(pos_sel_res.rest(), "abcd");
+    assert_eq!(pos_sel_res.into_value(), Some(PositionSelector {
+        page: Some(1),
+        line: None,
+        column: Some(3),
+    }));
+
+    let pos_sel_res = position_selector(":*.2.*abcd");
+    assert!(pos_sel_res.is_ok());
+    assert_eq!(pos_sel_res.rest(), "abcd");
+    assert_eq!(pos_sel_res.into_value(), Some(PositionSelector {
+        page: None,
+        line: Some(2),
+        column: None,
+    }));
+
+    let pos_sel_res = position_selector(":*.*.*abcd");
+    assert!(pos_sel_res.is_ok());
+    assert_eq!(pos_sel_res.rest(), "abcd");
+    assert_eq!(pos_sel_res.into_value(), Some(PositionSelector {
+        page: None,
+        line: None,
+        column: None,
+    }));
+}
+
+/// Tests `parse::position`.
+#[test]
+fn parse_position_selector_nonmatch() {
+    let pos_sel_res = position_selector(":0xFFFFF1.2.3abcd");
+    assert!(pos_sel_res.is_err());
+    assert_eq!(pos_sel_res.rest(), ":0xFFFFF1.2.3abcd");
+
+    let pos_sel_res = position_selector(":0xF1 .2.3abcd");
+    assert!(pos_sel_res.is_err());
+    assert_eq!(pos_sel_res.rest(), ":0xF1 .2.3abcd");
+
+    let pos_sel_res = position_selector(":0xF1.**.3abcd");
+    assert!(pos_sel_res.is_err());
+    assert_eq!(pos_sel_res.rest(), ":0xF1.**.3abcd");
 }
