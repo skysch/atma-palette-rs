@@ -14,7 +14,6 @@
 
 // Internal modules.
 mod result;
-mod common;
 mod combinator;
 mod error;
 mod primitive;
@@ -25,7 +24,6 @@ mod tests;
 
 // Exports.
 pub use self::result::*;
-pub use self::common::*;
 pub use self::combinator::*;
 pub use self::error::*;
 pub use self::primitive::*;
