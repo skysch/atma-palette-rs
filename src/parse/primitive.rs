@@ -27,7 +27,7 @@ use std::convert::TryInto;
 // Primitive parsers.
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Parses the specified `char`.
+/// Returns a parser which parses the specified `char`.
 pub fn char<'t>(c: char) -> impl FnMut(&'t str) -> ParseResult<'t, char> {
     move |text| {
         if text.starts_with(c) {
@@ -47,7 +47,7 @@ pub fn char<'t>(c: char) -> impl FnMut(&'t str) -> ParseResult<'t, char> {
     }
 }
 
-/// Parses any single `char` in the given string.
+/// Returns a parser which parses any single `char` in the given string.
 pub fn char_in<'t, 'o: 't>(opts: &'o str)
     -> impl FnMut(&'t str) -> ParseResult<'t, char>
 {
@@ -68,7 +68,7 @@ pub fn char_in<'t, 'o: 't>(opts: &'o str)
     }
 }
 
-/// Parses a `char` if it satisfies the given predicate.
+/// Returns a parser which parses a `char` if it satisfies the given predicate.
 pub fn char_matching<'t, F>(mut f: F)
     -> impl FnMut(&'t str) -> ParseResult<'t, char>
     where F: FnMut(char) -> bool
@@ -126,7 +126,8 @@ pub fn radix_prefix<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
     }
 }
 
-/// Parses an unsigned integer with optional radix prefix.
+/// Returns a parser which parses an unsigned integer with optional radix
+/// prefix.
 pub fn uint<'t, T>(int_type: &'static str)
     -> impl FnMut(&'t str) -> ParseResult<'t, T>
     where T: TryFrom<u32>

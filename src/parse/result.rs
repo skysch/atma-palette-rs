@@ -181,6 +181,74 @@ pub struct Success<'t, V> {
     pub rest: &'t str,
 }
 
+impl<'t, V> Success<'t, V> {
+    /// Applies the given closure to the parsed value and returns the result.
+    fn map_value<F, U>(self, f: F) -> Success<'t, U>
+        where F: FnOnce(V) -> U
+    {
+        Success {
+            value: (f)(self.value),
+            token: self.token,
+            rest: self.rest,
+        }
+    }
+
+    /// Discards the parsed value.
+    pub fn discard_value(self) -> Success<'t, ()> {
+        Success {
+            value: (),
+            token: self.token,
+            rest: self.rest,
+        }
+    }
+
+    /// Discards the parsed value, replacing it with the parsed text.
+    pub fn tokenize_value(self) -> Success<'t, &'t str> {
+        Success {
+            value: self.token,
+            token: self.token,
+            rest: self.rest,
+        }
+    }
+
+    /// Joins two sequential successful parse results together, discardin their
+    /// values.
+    pub fn join<U>(self, other: Success<'t, U>)
+        -> Success<'t, ()>
+    {
+        Success {
+            value: (),
+            token: &self.rest[other.token.len()..],
+            rest: other.rest,
+        }
+    }
+
+    /// Joins two sequential successful parse results together, tokenizing their
+    /// values.
+    pub fn join_tokenize<U>(self, other: Success<'t, U>)
+        -> Success<'t, &'t str>
+    {
+        Success {
+            value: &self.rest[other.token.len()..],
+            token: &self.rest[other.token.len()..],
+            rest: other.rest,
+        }
+    }
+
+    /// Joins two sequential successful parse results together, combining values
+    /// with the given function.
+    pub fn join_with<F, U, T>(self, other: Success<'t, U>, f: F)
+        -> Success<'t, T>
+        where F: FnOnce(V, U) -> T
+    {
+        Success {
+            value: (f)(self.value, other.value),
+            token: &self.rest[other.token.len()..],
+            rest: other.rest,
+        }
+    }
+}
+
 /// A struct representing a failed parse with borrowed data.
 #[derive(Debug)]
 pub struct Failure<'t> {
