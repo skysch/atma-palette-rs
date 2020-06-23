@@ -92,11 +92,9 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
         self.map_err(|failure| {
             let context = failure.context;
             let rest = failure.rest;
-            let found = failure.found;
             Failure {
                 context,
                 expected: expected.into(),
-                found,
                 source: Some(Box::new(failure.to_owned())),
                 rest,
             }
@@ -146,7 +144,6 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
             Ok(success) => Err(Failure {
                 context: success.token,
                 expected: "end-of-text".into(),
-                found: success.rest,
                 source: None,
                 rest: success.rest,
             }),
@@ -159,7 +156,6 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
             Ok(success) => Err(Failure {
                 context: success.token,
                 expected: "parse failure".into(),
-                found: success.token,
                 source: None,
                 rest: success.rest,
             }),
@@ -196,8 +192,6 @@ pub struct Failure<'t> {
     /// The expected result of the failing parse. Recommended to be a literal,
     /// function name, or description of the context.
     pub expected: Cow<'static, str>,
-    /// The text at the failed parse location.
-    pub found: &'t str,
     /// The parse failure that caused this one.
     pub source: Option<Box<dyn std::error::Error + 'static>>,
     /// The remainder of the parsable text. Failed parses should return their
@@ -215,7 +209,6 @@ impl<'t> Failure<'t> {
         FailureOwned {
             context: self.context.to_owned(),
             expected: self.expected,
-            found: self.found.to_owned(),
             source: self.source,
         }
     }
@@ -224,11 +217,8 @@ impl<'t> Failure<'t> {
 impl<'t> std::fmt::Display for Failure<'t> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "parse error: expected {}", self.expected)?;
-        if !self.found.is_empty() {
-            write!(f, ", found {}", self.found)?;
-        }
         if !self.context.is_empty() {
-            write!(f, ", after successful parse of {}", self.context)?;
+            write!(f, ", found {}", self.context)?;
         }
         Ok(())
     }
@@ -256,8 +246,6 @@ pub struct FailureOwned {
     /// The expected result of the failing parse. Recommended to be a literal,
     /// function name, or contextual description.
     pub expected: Cow<'static, str>,
-    /// The text at the failed parse location.
-    pub found: String,
     /// The parse failure that caused this one.
     pub source: Option<Box<dyn std::error::Error + 'static>>,
 }
@@ -265,11 +253,8 @@ pub struct FailureOwned {
 impl std::fmt::Display for FailureOwned {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "parse error: expected {}", self.expected)?;
-        if !self.found.is_empty() {
-            write!(f, ", found {}", self.found)?;
-        }
         if !self.context.is_empty() {
-            write!(f, ", after successful parse of {}", self.context)?;
+            write!(f, ", found {}", self.context)?;
         }
         Ok(())
     }

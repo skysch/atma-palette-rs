@@ -39,10 +39,6 @@ pub fn char<'t>(text: &'t str, c: char) -> ParseResult<'t, char> {
         Err(Failure {
             context: "",
             expected: c.to_string().into(),
-            found: {
-                let len = text.chars().next().map(char::len_utf8).unwrap_or(0);
-                &text[..len]
-            },
             source: None,
             rest: text,
         })
@@ -61,10 +57,6 @@ pub fn char_in<'t>(text: &'t str, opts: &str) -> ParseResult<'t, char> {
     Err(Failure {
         context: "",
         expected: format!("One of {}", opts).into(),
-        found: {
-            let len = text.chars().next().map(char::len_utf8).unwrap_or(0);
-            &text[..len]
-        },
         source: None,
         rest: text,
     })
@@ -88,10 +80,6 @@ pub fn char_matching<'t, F>(text: &'t str, mut f: F)
     Err(Failure {
         context: "",
         expected: "char satisfying predicate".into(),
-        found: {
-            let len = text.chars().next().map(char::len_utf8).unwrap_or(0);
-            &text[..len]
-        },
         source: None,
         rest: text,
     })
@@ -124,7 +112,6 @@ pub fn radix_prefix<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
         Err(Failure { 
             context: "",
             expected: "0[box]".into(),
-            found: text,
             source: None,
             rest: text,
         })
@@ -174,7 +161,6 @@ pub fn uint<'t, T>(text: &'t str, int_type: &'static str)
             None => return Err(Failure {
                 context,
                 expected: "parse integer".into(),
-                found: text,
                 source: Some(Box::new(ParseIntegerOverflow {
                     int_type: int_type.into(),
                     int_text: context.to_string().into(),
@@ -187,7 +173,6 @@ pub fn uint<'t, T>(text: &'t str, int_type: &'static str)
             None => return Err(Failure {
                 context,
                 expected: "parse integer".into(),
-                found: text,
                 source: Some(Box::new(ParseIntegerOverflow {
                     int_type: int_type.into(),
                     int_text: context.to_string().into(),
@@ -206,7 +191,6 @@ pub fn uint<'t, T>(text: &'t str, int_type: &'static str)
         Err(_) => Err(Failure {
             context,
             expected: "parse integer".into(),
-            found: text,
             source: Some(Box::new(ParseIntegerOverflow {
                 int_type: int_type.into(),
                 int_text: context.to_string().into(),
