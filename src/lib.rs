@@ -41,7 +41,6 @@
 // Internal modules.
 mod palette;
 pub mod parse;
-pub mod parser_base;
 
 #[cfg(test)]
 mod tests;

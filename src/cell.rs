@@ -10,10 +10,7 @@
 
 // Local imports.
 use crate::color::Color;
-use crate::error::Error;
 use crate::expr::Expr;
-use crate::parse::entire;
-use crate::parse::parse_cell_ref;
 use crate::parse::REF_POS_SEP_TOKEN;
 use crate::parse::REF_PREFIX_TOKEN;
 
@@ -105,12 +102,6 @@ impl<'name> CellRef<'name> {
             CellRef::Name(_) => false,
             _ => true,
         }
-    }
-
-    /// Parses a `CellRef` from the given string.
-    pub fn parse(text: &'name str) -> Result<Self, Error> {
-        entire(&mut &*text, parse_cell_ref)
-            .ok_or(Error::ParseError)
     }
 
     /// Converts a `CellRef` to a static lifetime.
