@@ -76,7 +76,7 @@ pub fn one_or_more<'t, F, V>(text: &'t str, mut parser: F)
 {
     let mut result = (parser)(text)
         .with_parse_context("", text)
-        .into_source_for("one or more")?;
+        .source_for("one or more")?;
     loop {
         match (parser)(result.rest) {
             Ok(success) => {

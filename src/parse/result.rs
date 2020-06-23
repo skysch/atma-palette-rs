@@ -40,7 +40,7 @@ pub type ParseResult<'t, V> = Result<Success<'t, V>, Failure<'t>>;
 pub trait ParseResultExt<'t, V>: Sized {
     /// Converts the result into a source using the given expected parse
     /// description.
-    fn into_source_for<E>(self, expected: E) -> Self
+    fn source_for<E>(self, expected: E) -> Self
         where E: Into<Cow<'static, str>>;
 
     /// Sets the parse context and resume point for a failed parse.
@@ -86,7 +86,7 @@ pub trait ParseResultExt<'t, V>: Sized {
 }
 
 impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
-    fn into_source_for<E>(self, expected: E) -> Self
+    fn source_for<E>(self, expected: E) -> Self
         where E: Into<Cow<'static, str>>
     {
         self.map_err(|failure| {

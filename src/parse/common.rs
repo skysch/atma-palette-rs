@@ -68,10 +68,9 @@ pub fn uint<'t, T>(text: &'t str, int_type: &'static str)
             radix_prefix.rest,
             |t| char_matching(t, |c| c.is_digit(radix) || c == '_'))
         .with_parse_context(radix_prefix.token, text)
-        .into_source_for(
+        .source_for(
             format!("{} integer digits with radix {}", int_type, radix))?;
     
-
     let context_span = text.len() - digits.rest.len();
     let context = &text[0..context_span];
 
