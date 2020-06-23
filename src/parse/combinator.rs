@@ -101,7 +101,7 @@ pub fn repeat<'t, F, V>(low: usize, high: Option<usize>, mut parser: F)
                         "".into()
                     }))?;
 
-            result = result.join(next);
+            result = result.join(next, text);
             count += 1;
         }
 
@@ -118,7 +118,7 @@ pub fn repeat<'t, F, V>(low: usize, high: Option<usize>, mut parser: F)
 
             match next_res {
                 Ok(next) => {
-                    result = result.join(next);
+                    result = result.join(next, text);
                     count += 1;
                 }
                 Err(_) => break,

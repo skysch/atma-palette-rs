@@ -19,7 +19,7 @@ use crate::parse::*;
 // use std::borrow::Cow;
 
 ////////////////////////////////////////////////////////////////////////////////
-// Primitives
+// Char primitives
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Tests `parse::char`.
@@ -75,7 +75,7 @@ fn parse_char_matching_nonmatch() {
 }
 
 
-/// Tests `parse::whitespace`.
+/// Tests `parse::char_whitespace`.
 #[test]
 fn parse_char_whitespace_match() {
     let char_whitespace_res = char_whitespace("\tabcd");
@@ -92,11 +92,29 @@ fn parse_char_whitespace_match() {
 /// Tests `parse::char_whitespace`.
 #[test]
 fn parse_char_whitespace_nonmatch() {
-
     let char_whitespace_res = char_whitespace("abcd");
     assert!(char_whitespace_res.is_err());
     assert_eq!(char_whitespace_res.rest(), "abcd");
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// String primitives
+////////////////////////////////////////////////////////////////////////////////
+
+/// Tests `parse::whitespace`.
+#[test]
+fn parse_whitespace() {
+    let whitespace_res = whitespace("\t \n \tabcd");
+    assert!(whitespace_res.is_ok());
+    assert_eq!(whitespace_res.rest(), "abcd");
+    assert_eq!(whitespace_res.into_value(), Some("\t \n \t"));
+
+    let whitespace_res = whitespace("abcd");
+    assert!(whitespace_res.is_ok());
+    assert_eq!(whitespace_res.rest(), "abcd");
+    assert_eq!(whitespace_res.into_value(), Some(""));
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Combinators

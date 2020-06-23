@@ -24,7 +24,7 @@ use std::convert::TryFrom;
 use std::convert::TryInto;
 
 ////////////////////////////////////////////////////////////////////////////////
-// Primitive parsers.
+// Char parsing.
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Returns a parser which parses the specified `char`.
@@ -61,7 +61,7 @@ pub fn char_in<'t, 'o: 't>(opts: &'o str)
 
         Err(Failure {
             context: "",
-            expected: format!("One of {}", opts).into(),
+            expected: format!("one of {}", opts).into(),
             source: None,
             rest: text,
         })
@@ -96,8 +96,20 @@ pub fn char_matching<'t, F>(mut f: F)
 /// Parses a whitespace `char`.
 pub fn char_whitespace<'t>(text: &'t str) -> ParseResult<'t, char> {
     char_matching(char::is_whitespace)(text)
-        .with_parse_context(&text[..0], text)
+        .with_parse_context("", text)
         .source_for("whitespace char")
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// String parsing.
+////////////////////////////////////////////////////////////////////////////////
+
+/// Parses any amount of whitespace.
+pub fn whitespace<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
+    zero_or_more(char_whitespace)(text)
+        .tokenize_value()
+        .with_parse_context("", text)
+        .source_for("whitespace")
 }
 
 

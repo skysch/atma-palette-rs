@@ -213,41 +213,43 @@ impl<'t, V> Success<'t, V> {
 
     /// Joins two sequential successful parse results together, discardin their
     /// values.
-    pub fn join<U>(self, other: Success<'t, U>)
+    pub fn join<U>(self, other: Success<'t, U>, base: &'t str)
         -> Success<'t, ()>
     {
         Success {
             value: (),
-            token: &self.rest[other.token.len()..],
+            token: &base[..self.token.len() + other.token.len()],
             rest: other.rest,
         }
     }
 
     /// Joins two sequential successful parse results together, tokenizing their
     /// values.
-    pub fn join_tokenize<U>(self, other: Success<'t, U>)
+    pub fn join_tokenize<U>(self, other: Success<'t, U>, base: &'t str)
         -> Success<'t, &'t str>
     {
+        let token = &base[..self.token.len() + other.token.len()];
         Success {
-            value: &self.rest[other.token.len()..],
-            token: &self.rest[other.token.len()..],
+            value: token,
+            token,
             rest: other.rest,
         }
     }
 
     /// Joins two sequential successful parse results together, combining values
     /// with the given function.
-    pub fn join_with<F, U, T>(self, other: Success<'t, U>, f: F)
+    pub fn join_with<F, U, T>(self, other: Success<'t, U>, base: &'t str, f: F)
         -> Success<'t, T>
         where F: FnOnce(V, U) -> T
     {
         Success {
             value: (f)(self.value, other.value),
-            token: &self.rest[other.token.len()..],
+            token: &base[..self.token.len() + other.token.len()],
             rest: other.rest,
         }
     }
 }
+
 
 /// A struct representing a failed parse with borrowed data.
 #[derive(Debug)]
