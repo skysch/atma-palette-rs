@@ -14,20 +14,25 @@
 
 
 // Standard library imports.
+use std::borrow::Borrow;
+use std::borrow::Cow;
+use std::borrow::ToOwned;
 use std::convert::Into;
 use std::convert::TryFrom;
 use std::convert::TryInto;
-use std::borrow::Cow;
-use std::borrow::ToOwned;
-use std::borrow::Borrow;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // ParseResult
 ////////////////////////////////////////////////////////////////////////////////
+/// The result of a parse attempt.
 pub type ParseResult<'t, V> = Result<Success<'t, V>, Failure<'t>>;
 
+// Truncate context.
+// Try other on failure.
+// Try next on success.
 
+/// Extension trait for parse results.
 pub trait ParseResultExt<'t, V>: Sized {
     /// Adds context and expectation detail to a failed parse.
     fn with_parse_context<E>(self, context: &'t str, expected: E) -> Self
@@ -145,6 +150,7 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
 ////////////////////////////////////////////////////////////////////////////////
 // Success and Failure
 ////////////////////////////////////////////////////////////////////////////////
+/// A struct representing a successful parse.
 #[derive(Debug)]
 pub struct Success<'t, V> {
     /// The parsed value.
@@ -155,7 +161,7 @@ pub struct Success<'t, V> {
     pub rest: &'t str,
 }
 
-
+/// A struct representing a failed parse with borrowed data.
 #[derive(Debug)]
 pub struct Failure<'t> {
     /// The previously successful parse text. Usually non-empty for any parse
@@ -202,7 +208,14 @@ impl<'t> std::error::Error for Failure<'t> {
     }
 }
 
-
+/// A struct representing a failed parse with owned data.
+///
+/// Similar to [`Failure`], except this  version owns all of its data, and can
+/// thus  be used as an [`Error`] [`source`].
+///
+/// [`Failure`]: struct.Failure.html
+/// [`Error`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html
+/// [`source`]: https://doc.rust-lang.org/stable/std/error/trait.Error.html#method.source
 #[derive(Debug)]
 pub struct FailureOwned {
     /// The previously successful parse text. Usually non-empty for any parse
@@ -263,7 +276,8 @@ pub fn zero_or_more<'t, F, V>(text: &'t str, mut parser: F)
     result
 }
 
-/// Attempts a parse, returning its value if it succeeds.
+/// Attempts a parse, wrapping the result in `Some` if it succeeds, otherwise
+/// converting the failure into a success with `None`.
 pub fn maybe<'t, F, V>(text: &'t str, mut parser: F)
     -> ParseResult<'t, Option<V>>
     where F: FnMut(&'t str) -> ParseResult<'t, V>
@@ -299,43 +313,12 @@ pub fn one_or_more<'t, F, V>(text: &'t str, mut parser: F)
     Ok(result)
 }
 
-/// Repeats a parse until it fails, chaining the successful parse results into
-/// each other using the given function.
-pub fn one_or_more_chained<'t, F, V, G>(
-    text: &'t str,
-    mut parser: F,
-    mut chain: G)
-    -> ParseResult<'t, V>
-    where
-        F: FnMut(&'t str) -> ParseResult<'t, V>,
-        G: FnMut(Success<'t, V>, Success<'t, V>) -> Success<'t, V>,
-{
-    let mut result = (parser)(text)
-        .with_parse_context(&text[..0], "one or more")?;
-    let mut rest = result.rest;
-    loop {
-        match (parser)(rest) {
-            Ok(success) => {
-                rest = success.rest;
-                result = (chain)(result, success);
-            }
-            Err(failure) => break,
-        }
-    }
-    Ok(result)
-}
-
-// Truncate context.
-// Repeat.
-// Try other on failure.
-// Try next on success.
-// Invert success and failure.
 
 ////////////////////////////////////////////////////////////////////////////////
 // Primitive parsers.
 ////////////////////////////////////////////////////////////////////////////////
 
-// Parses the specified char from the beginning of the text.
+/// Parses the specified `char` from the beginning of the text.
 pub fn char<'t>(text: &'t str, c: char) -> ParseResult<'t, char> {
     if text.starts_with(c) {
         Ok(Success { 
@@ -357,7 +340,7 @@ pub fn char<'t>(text: &'t str, c: char) -> ParseResult<'t, char> {
     }
 }
 
-// Parses any single char in the given string from the beginning of the text.
+/// Parses any single `char` in the given string from the beginning of the text.
 pub fn char_in<'t>(text: &'t str, opts: &str) -> ParseResult<'t, char> {
     let mut opt_chars = opts.chars();
     while let Some(c) = opt_chars.next() {
@@ -378,7 +361,8 @@ pub fn char_in<'t>(text: &'t str, opts: &str) -> ParseResult<'t, char> {
     })
 }
 
-// Parses any single char in the given string from the beginning of the text.
+/// Parses a `char` from the beginning ot the text if it satisfies the given
+/// predicate.
 pub fn char_matching<'t, F>(text: &'t str, mut f: F)
     -> ParseResult<'t, char>
     where F: FnMut(char) -> bool
@@ -405,7 +389,7 @@ pub fn char_matching<'t, F>(text: &'t str, mut f: F)
     })
 }
 
-// Parses the specified char from the beginning of the text.
+/// Parses a whitespace char from the beginning of the text.
 pub fn whitespace<'t>(text: &'t str) -> ParseResult<'t, char> {
     char_matching(text, |c| c.is_whitespace())
         .with_parse_context(&text[..0], "whitespace char")
@@ -537,7 +521,6 @@ impl std::fmt::Display for ParseIntegerOverflow {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "the integer value '{}' does not fit in type {}",
             self.int_text, self.int_type)
-        
     }
 }
 
