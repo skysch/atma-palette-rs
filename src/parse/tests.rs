@@ -350,3 +350,130 @@ fn parse_uint_u32_nonmatch() {
     assert_eq!(uint_u32_res.rest(), "0xFFFFFF0abcd");
     assert_eq!(uint_u32_res.into_value(), None);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// CellRef
+////////////////////////////////////////////////////////////////////////////////
+
+
+/// Tests `parse::name`.
+#[test]
+fn parse_name_match() {
+    let name_res = name("abcd");
+    assert!(name_res.is_ok());
+    assert_eq!(name_res.rest(), "");
+    assert_eq!(name_res.into_value(), Some("abcd"));
+
+    let name_res = name("   ab   cd   ");
+    assert!(name_res.is_ok());
+    assert_eq!(name_res.rest(), "");
+    assert_eq!(name_res.into_value(), Some("ab   cd"));
+
+    let name_res = name("xyz .abcd");
+    assert!(name_res.is_ok());
+    assert_eq!(name_res.rest(), ".abcd");
+    assert_eq!(name_res.into_value(), Some("xyz"));
+
+    let name_res = name("xyz :abcd");
+    assert!(name_res.is_ok());
+    assert_eq!(name_res.rest(), ":abcd");
+    assert_eq!(name_res.into_value(), Some("xyz"));
+
+    let name_res = name("xyz *abcd");
+    assert!(name_res.is_ok());
+    assert_eq!(name_res.rest(), "*abcd");
+    assert_eq!(name_res.into_value(), Some("xyz"));
+
+    let name_res = name("xyz -abcd");
+    assert!(name_res.is_ok());
+    assert_eq!(name_res.rest(), "-abcd");
+    assert_eq!(name_res.into_value(), Some("xyz"));
+
+    let name_res = name("xyz ,abcd");
+    assert!(name_res.is_ok());
+    assert_eq!(name_res.rest(), ",abcd");
+    assert_eq!(name_res.into_value(), Some("xyz"));
+}
+
+/// Tests `parse::name`.
+#[test]
+fn parse_name_nonmatch() {
+    let name_res = name(".abcd");
+    assert!(name_res.is_err());
+    assert_eq!(name_res.rest(), ".abcd");
+    assert_eq!(name_res.into_value(), None);
+
+    let name_res = name(":abcd");
+    assert!(name_res.is_err());
+    assert_eq!(name_res.rest(), ":abcd");
+    assert_eq!(name_res.into_value(), None);
+
+    let name_res = name("*abcd");
+    assert!(name_res.is_err());
+    assert_eq!(name_res.rest(), "*abcd");
+    assert_eq!(name_res.into_value(), None);
+
+    let name_res = name("-abcd");
+    assert!(name_res.is_err());
+    assert_eq!(name_res.rest(), "-abcd");
+    assert_eq!(name_res.into_value(), None);
+
+    let name_res = name(",abcd");
+    assert!(name_res.is_err());
+    assert_eq!(name_res.rest(), ",abcd");
+    assert_eq!(name_res.into_value(), None);
+}
+
+
+/// Tests `parse::index`.
+#[test]
+fn parse_index_match() {
+    let index_res = index(":0abcd");
+    assert!(index_res.is_ok());
+    assert_eq!(index_res.rest(), "abcd");
+    assert_eq!(index_res.into_value(), Some(0u32));
+
+    let index_res = index(":0b10abcd");
+    assert!(index_res.is_ok());
+    assert_eq!(index_res.rest(), "abcd");
+    assert_eq!(index_res.into_value(), Some(0b10u32));
+
+    let index_res = index(":0o70abcd");
+    assert!(index_res.is_ok());
+    assert_eq!(index_res.rest(), "abcd");
+    assert_eq!(index_res.into_value(), Some(0o70u32));
+
+    let index_res = index(":0xF0 abcd");
+    assert!(index_res.is_ok());
+    assert_eq!(index_res.rest(), " abcd");
+    assert_eq!(index_res.into_value(), Some(0xF0u32));
+}
+
+/// Tests `parse::index`.
+#[test]
+fn parse_index_nonmatch() {
+    let index_res = index(":abcd");
+    assert!(index_res.is_err());
+    assert_eq!(index_res.rest(), ":abcd");
+    assert_eq!(index_res.into_value(), None);
+
+    let index_res = index(":0b20abcd");
+    assert!(index_res.is_err());
+    assert_eq!(index_res.rest(), ":0b20abcd");
+    assert_eq!(index_res.into_value(), None);
+
+    let index_res = index(":0o80abcd");
+    assert!(index_res.is_err());
+    assert_eq!(index_res.rest(), ":0o80abcd");
+    assert_eq!(index_res.into_value(), None);
+
+    let index_res = index(":0xG0abcd");
+    assert!(index_res.is_err());
+    assert_eq!(index_res.rest(), ":0xG0abcd");
+    assert_eq!(index_res.into_value(), None);
+
+    let index_res = index(":0xFFFFFF0abcd");
+    assert!(index_res.is_err());
+    assert_eq!(index_res.rest(), ":0xFFFFFF0abcd");
+    assert_eq!(index_res.into_value(), None);
+}

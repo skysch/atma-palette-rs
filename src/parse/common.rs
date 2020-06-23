@@ -41,9 +41,9 @@ pub fn radix_prefix<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
         Err(Failure { 
             context: "",
             expected: "0[box]".into(),
-            found: &text[0..],
+            found: text,
             source: None,
-            rest: &text[0..],
+            rest: text,
         })
     }
 }
@@ -83,6 +83,8 @@ pub fn uint<'t, T>(text: &'t str, int_type: &'static str)
     while let Some(c) = chars.next() {
         if c == '_' { continue; }
 
+        // TODO: Consider parsing all hex digits and emitting an error if any
+        // remain. This should make error handling nicer.
         let val = c.to_digit(radix).unwrap();
         
         match res.checked_mul(radix) {
@@ -90,7 +92,7 @@ pub fn uint<'t, T>(text: &'t str, int_type: &'static str)
             None => return Err(Failure {
                 context,
                 expected: "parse integer".into(),
-                found: &text[0..],
+                found: text,
                 source: Some(Box::new(ParseIntegerOverflow {
                     int_type: int_type.into(),
                     int_text: context.to_string().into(),
@@ -103,7 +105,7 @@ pub fn uint<'t, T>(text: &'t str, int_type: &'static str)
             None => return Err(Failure {
                 context,
                 expected: "parse integer".into(),
-                found: &text[0..],
+                found: text,
                 source: Some(Box::new(ParseIntegerOverflow {
                     int_type: int_type.into(),
                     int_text: context.to_string().into(),

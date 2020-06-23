@@ -139,7 +139,7 @@ pub fn name<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
 
     let context = &text[0..(text.len() - res.rest.len())];
     Ok(Success {
-        value: context,
+        value: context.trim(),
         token: context,
         rest: res.rest,
     })
