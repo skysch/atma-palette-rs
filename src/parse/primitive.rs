@@ -28,7 +28,7 @@ use std::convert::TryInto;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Parses the specified `char`.
-pub fn char<'t>(c: char) -> impl Fn(&'t str) -> ParseResult<'t, char> {
+pub fn char<'t>(c: char) -> impl FnMut(&'t str) -> ParseResult<'t, char> {
     move |text| {
         if text.starts_with(c) {
             Ok(Success { 
@@ -49,7 +49,7 @@ pub fn char<'t>(c: char) -> impl Fn(&'t str) -> ParseResult<'t, char> {
 
 /// Parses any single `char` in the given string.
 pub fn char_in<'t, 'o: 't>(opts: &'o str)
-    -> impl Fn(&'t str) -> ParseResult<'t, char>
+    -> impl FnMut(&'t str) -> ParseResult<'t, char>
 {
     move |text| {
         let mut opt_chars = opts.chars();
@@ -70,8 +70,8 @@ pub fn char_in<'t, 'o: 't>(opts: &'o str)
 
 /// Parses a `char` if it satisfies the given predicate.
 pub fn char_matching<'t, F>(mut f: F)
-    -> impl Fn(&'t str) -> ParseResult<'t, char>
-    where F: Fn(char) -> bool
+    -> impl FnMut(&'t str) -> ParseResult<'t, char>
+    where F: FnMut(char) -> bool
 {
     move |text| {
         if let Some(c) = text.chars().next() {
@@ -128,7 +128,7 @@ pub fn radix_prefix<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
 
 /// Parses an unsigned integer with optional radix prefix.
 pub fn uint<'t, T>(int_type: &'static str)
-    -> impl Fn(&'t str) -> ParseResult<'t, T>
+    -> impl FnMut(&'t str) -> ParseResult<'t, T>
     where T: TryFrom<u32>
 {
     move |text| {

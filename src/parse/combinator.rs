@@ -30,9 +30,9 @@ use std::convert::TryInto;
 ////////////////////////////////////////////////////////////////////////////////
 /// Attempts a parse, wrapping the result in `Some` if it succeeds, otherwise
 /// converting the failure into a success with `None`.
-pub fn maybe<'t, F, V>(parser: F)
-    -> impl Fn(&'t str) -> ParseResult<'t, Option<V>>
-    where F: Fn(&'t str) -> ParseResult<'t, V>
+pub fn maybe<'t, F, V>(mut parser: F)
+    -> impl FnMut(&'t str) -> ParseResult<'t, Option<V>>
+    where F: FnMut(&'t str) -> ParseResult<'t, V>
 {
     move |text| {
         match (parser)(text) {
@@ -48,9 +48,9 @@ pub fn maybe<'t, F, V>(parser: F)
 
 /// Repeats a parse until it fails, then returns the last successfully parsed
 /// value.
-pub fn zero_or_more<'t, F, V>(parser: F)
-    -> impl Fn(&'t str) -> ParseResult<'t, Option<V>>
-    where F: Fn(&'t str) -> ParseResult<'t, V>
+pub fn zero_or_more<'t, F, V>(mut parser: F)
+    -> impl FnMut(&'t str) -> ParseResult<'t, Option<V>>
+    where F: FnMut(&'t str) -> ParseResult<'t, V>
 {
     move |text| {
         let mut result = Ok(Success {
@@ -75,8 +75,8 @@ pub fn zero_or_more<'t, F, V>(parser: F)
 /// Repeats a parse until it fails, then returns the last successfully parsed
 /// value.
 pub fn one_or_more<'t, F, V>(mut parser: F)
-    -> impl Fn(&'t str) -> ParseResult<'t, V>
-    where F: Fn(&'t str) -> ParseResult<'t, V>
+    -> impl FnMut(&'t str) -> ParseResult<'t, V>
+    where F: FnMut(&'t str) -> ParseResult<'t, V>
 {
     move |text| {
         let mut result = (parser)(text)
