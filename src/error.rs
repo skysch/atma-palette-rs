@@ -37,7 +37,7 @@ pub enum Error {
     },
 
     /// An attempt to resolve a CellRef failed.
-    UnrecognizedCellReference {
+    UndefinedCellReference {
         /// The failing reference.
         cell_ref: CellRef<'static>,
     },
@@ -52,8 +52,17 @@ pub enum Error {
         max: u32,
     },
 
+    /// An attempt to resolve a cell's color failed.
+    UndefinedColor {
+        /// The failing reference.
+        cell_ref: CellRef<'static>,
+        /// Whether the color is undefined due to a circular reference.
+        circular: bool,
+    },
+
     /// A parse error occurred.
     ParseError,
+
 }
 
 impl std::fmt::Display for Error {
@@ -68,11 +77,20 @@ impl std::fmt::Display for Error {
                 Some(msg) => write!(f, "{}", msg),
                 None => write!(f, "{}", source),
             },
-            UnrecognizedCellReference { cell_ref } => write!(f, 
-                "invalid cell reference: {}", cell_ref),
+            UndefinedCellReference { cell_ref } => write!(f, 
+                "undefined cell reference: {}", cell_ref),
             
             GroupIndexOutOfBounds { group, index, max } => write!(f, 
                 "group index out of bounds: {}:{} > {}", group, index, max),
+
+            UndefinedColor { cell_ref, circular } => if *circular {
+                write!(f,
+                    "color is undefined due to circular cell references: {}",
+                    cell_ref)
+            } else {
+                write!(f, "color is undefined for cell reference: {}",
+                    cell_ref)
+            },
 
             ParseError => write!(f, "parse error"),
         }

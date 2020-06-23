@@ -24,9 +24,8 @@ use std::convert::TryFrom;
 use std::convert::TryInto;
 
 ////////////////////////////////////////////////////////////////////////////////
-// Advanced parsers.
+// Common parsers.
 ////////////////////////////////////////////////////////////////////////////////
-
 /// Parses an integer radix prefix.
 fn radix_prefix<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
     if  text.starts_with("0b") || 

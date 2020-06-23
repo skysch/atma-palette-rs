@@ -169,7 +169,7 @@ impl Palette {
 
         self.cells
             .get(&idx)
-            .ok_or(Error::UnrecognizedCellReference { 
+            .ok_or(Error::UndefinedCellReference { 
                 cell_ref: cell_ref.into_static(),
             })
     }
@@ -187,7 +187,7 @@ impl Palette {
 
         self.cells
             .get_mut(&idx)
-            .ok_or(Error::UnrecognizedCellReference { 
+            .ok_or(Error::UndefinedCellReference { 
                 cell_ref: cell_ref.into_static(),
             })
     }
@@ -206,14 +206,14 @@ impl Palette {
             Name(name) => names
                 .get(&*name)
                 .cloned()
-                .ok_or(Error::UnrecognizedCellReference { 
+                .ok_or(Error::UndefinedCellReference { 
                     cell_ref: cell_ref.clone().into_static(),
                 }),
 
             Position(position) => positions
                 .get(position)
                 .cloned()
-                .ok_or(Error::UnrecognizedCellReference { 
+                .ok_or(Error::UndefinedCellReference { 
                     cell_ref: cell_ref.clone().into_static(),
                 }),
 
@@ -221,7 +221,7 @@ impl Palette {
                 .get(&*group)
                 .and_then(|cells| cells.get(*idx as usize))
                 .cloned()
-                .ok_or(Error::UnrecognizedCellReference { 
+                .ok_or(Error::UndefinedCellReference { 
                     cell_ref: cell_ref.clone().into_static(),
                 }),
         }
