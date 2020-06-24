@@ -842,5 +842,5 @@ fn parse_cell_selection_match() {
         CellSelector::Index(0),
         CellSelector::IndexRange { low: 3, high: 4 },
         CellSelector::Name("xyz".into()),
-    ]));
+    ].into()));
 }

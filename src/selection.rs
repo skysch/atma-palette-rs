@@ -23,7 +23,61 @@ use serde::Deserialize;
 
 // Standard library imports.
 use std::borrow::Cow;
+use std::collections::BTreeSet;
 use std::convert::TryFrom;
+
+
+////////////////////////////////////////////////////////////////////////////////
+// CellSelection
+////////////////////////////////////////////////////////////////////////////////
+/// A reference to a set of `Cell`s in a palette.
+///
+/// The lifetime of the CellSelector is the lifetime of any names. The same
+/// `CellSelection` may be resolved for a palette multiple times yielding
+/// different results if the palette is modified intermediately.
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
+#[derive(Serialize, Deserialize)]
+pub struct CellSelection<'name>(Vec<CellSelector<'name>>);
+
+impl<'name> CellSelection<'name> {
+    /// Returns an iterator of `CellSelector`s.
+    pub fn iter(&self) -> impl Iterator<Item=&CellSelector<'name>> {
+        self.0.iter()
+    }
+}
+
+impl<'name> From<Vec<CellSelector<'name>>> for CellSelection<'name> {
+    fn from(selectors: Vec<CellSelector<'name>>) -> Self {
+        CellSelection(selectors)
+    }
+}
+
+impl<'name> IntoIterator for CellSelection<'name> {
+    type Item = CellSelector<'name>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+/// A resolved `CellSelection`, holding a set of indices for `Cell`s in a
+/// palette.
+///
+/// The lifetime of the CellSelector is the lifetime of any names. The set of
+/// `Cell`s referenced is fixed, and edits to the palette may invalidate the
+/// selection.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
+pub struct CellIndexSelection(BTreeSet<u32>);
+
+impl CellIndexSelection {
+    /// Returns an iterator oof cell indexes.
+    pub fn iter(&self) -> impl Iterator<Item=&u32> {
+        self.0.iter()
+    }
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////

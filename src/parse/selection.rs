@@ -9,24 +9,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::parse::Failure;
-use crate::parse::maybe;
-use crate::parse::InvalidRangeIndexOrder;
-use crate::parse::GroupRangeMismatch;
-use crate::parse::ParseResult;
-use crate::parse::ParseResultExt as _;
-use crate::parse::repeat;
-use crate::parse::repeat_collect;
-use crate::parse::char;
-use crate::parse::prefix;
-use crate::parse::char_matching;
-use crate::parse::whitespace;
-use crate::parse::postfix;
-use crate::parse::circumfix;
-use crate::parse::uint;
-use crate::parse::Success;
 use crate::cell::CellRef;
 use crate::cell::Position;
+use crate::parse::char;
+use crate::parse::char_matching;
+use crate::parse::circumfix;
+use crate::parse::Failure;
+use crate::parse::GroupRangeMismatch;
+use crate::parse::InvalidRangeIndexOrder;
+use crate::parse::maybe;
+use crate::parse::ParseResult;
+use crate::parse::ParseResultExt as _;
+use crate::parse::postfix;
+use crate::parse::prefix;
+use crate::parse::repeat;
+use crate::parse::repeat_collect;
+use crate::parse::Success;
+use crate::parse::uint;
+use crate::parse::whitespace;
+use crate::selection::CellSelection;
 use crate::selection::CellSelector;
 use crate::selection::PositionSelector;
 
@@ -52,7 +53,7 @@ pub const REF_SEP_TOKEN: char = ',';
 
 /// Parses a CellSelection.
 pub fn cell_selection<'t>(text: &'t str)
-    -> ParseResult<'t, Vec<CellSelector<'t>>>
+    -> ParseResult<'t, CellSelection<'t>>
 {
     let init_suc = repeat_collect(1, None,
             postfix(
@@ -72,7 +73,7 @@ pub fn cell_selection<'t>(text: &'t str)
         if let Some(tail) = tail {
             list.push(tail);
         }; 
-        list
+        list.into()
     }))
 }
 
