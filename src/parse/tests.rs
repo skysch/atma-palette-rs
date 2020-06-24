@@ -9,14 +9,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 use crate::parse::*;
-// use crate::Palette;
-// use crate::cell::Cell;
 use crate::cell::Position;
-// use crate::selection::CellSelector;
+use crate::selection::CellSelector;
 use crate::selection::PositionSelector;
 use crate::cell::CellRef;
 
-// use std::borrow::Cow;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Char primitives
@@ -723,4 +720,144 @@ fn parse_range_suffix_group_nonmatch() {
     let range_suffix_res = range_suffix(group)(":  -:0xH0abcd");
     assert!(range_suffix_res.is_err());
     assert_eq!(range_suffix_res.rest(), ":  -:0xH0abcd");
+}
+
+
+/// Tests `parse::cell_selector`.
+#[test]
+fn parse_cell_selector_all_match() {
+    let cel_sel_res = cell_selector("*abcd");
+    assert!(cel_sel_res.is_ok());
+    assert_eq!(cel_sel_res.rest(), "abcd");
+    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::All));
+}
+
+/// Tests `parse::cell_selector`.
+#[test]
+fn parse_cell_selector_index_match() {
+    let cel_sel_res = cell_selector(":1abcd");
+    assert!(cel_sel_res.is_ok());
+    assert_eq!(cel_sel_res.rest(), "abcd");
+    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::Index(1)));
+}
+
+/// Tests `parse::cell_selector`.
+#[test]
+fn parse_cell_selector_index_range_match() {
+    let cel_sel_res = cell_selector(":1-:2abcd");
+    assert!(cel_sel_res.is_ok());
+    assert_eq!(cel_sel_res.rest(), "abcd");
+    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::IndexRange { 
+        low: 1,
+        high: 2,
+    }));
+}
+
+/// Tests `parse::cell_selector`.
+#[test]
+fn parse_cell_selector_position_match() {
+    let cel_sel_res = cell_selector(":1.2.3abcd");
+    assert!(cel_sel_res.is_ok());
+    assert_eq!(cel_sel_res.rest(), "abcd");
+    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::PositionSelector(
+        PositionSelector {
+            page: Some(1),
+            line: Some(2),
+            column: Some(3),
+        }
+    )));
+}
+
+/// Tests `parse::cell_selector`.
+#[test]
+fn parse_cell_selector_position_range_match() {
+    let cel_sel_res = cell_selector(":1.2.3-:4.5.6abcd");
+    assert!(cel_sel_res.is_ok());
+    assert_eq!(cel_sel_res.rest(), "abcd");
+    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::PositionRange {
+        low: Position { page: 1, line: 2, column: 3 },
+        high: Position { page: 4, line: 5, column: 6 },
+    }));
+}
+
+/// Tests `parse::cell_selector`.
+#[test]
+fn parse_cell_selector_position_selector_match() {
+    let cel_sel_res = cell_selector(":*.2.3abcd");
+    assert!(cel_sel_res.is_ok());
+    assert_eq!(cel_sel_res.rest(), "abcd");
+    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::PositionSelector(
+        PositionSelector {
+            page: None,
+            line: Some(2),
+            column: Some(3),
+        }
+    )));
+
+    let cel_sel_res = cell_selector(":*.*.3abcd");
+    assert!(cel_sel_res.is_ok());
+    assert_eq!(cel_sel_res.rest(), "abcd");
+    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::PositionSelector(
+        PositionSelector {
+            page: None,
+            line: None,
+            column: Some(3),
+        }
+    )));
+
+    let cel_sel_res = cell_selector(":*.2.*abcd");
+    assert!(cel_sel_res.is_ok());
+    assert_eq!(cel_sel_res.rest(), "abcd");
+    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::PositionSelector(
+        PositionSelector {
+            page: None,
+            line: Some(2),
+            column: None,
+        }
+    )));
+}
+
+/// Tests `parse::cell_selector`.
+#[test]
+fn parse_cell_selector_group_match() {
+    let cel_sel_res = cell_selector("xyz:2abcd");
+    assert!(cel_sel_res.is_ok());
+    assert_eq!(cel_sel_res.rest(), "abcd");
+    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::Group {
+        group: "xyz".into(),
+        idx: 2,
+    }));
+}
+
+/// Tests `parse::cell_selector`.
+#[test]
+fn parse_cell_selector_group_range_match() {
+    let cel_sel_res = cell_selector("xyz:2-xyz:4abcd");
+    assert!(cel_sel_res.is_ok());
+    assert_eq!(cel_sel_res.rest(), "abcd");
+    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::GroupRange {
+        group: "xyz".into(),
+        low: 2,
+        high: 4,
+    }));
+}
+
+/// Tests `parse::cell_selector`.
+#[test]
+fn parse_cell_selector_group_all_match() {
+    let cel_sel_res = cell_selector("xyz:*abcd");
+    assert!(cel_sel_res.is_ok());
+    assert_eq!(cel_sel_res.rest(), "abcd");
+    assert_eq!(cel_sel_res.into_value(),
+        Some(CellSelector::GroupAll("xyz".into())));
+}
+
+/// Tests `parse::cell_selector`.
+#[test]
+fn parse_cell_selector_name_match() {
+    let cel_sel_res = cell_selector("xyz:abcd");
+    assert!(cel_sel_res.is_ok());
+    assert_eq!(cel_sel_res.rest(), ":abcd");
+    assert_eq!(cel_sel_res.into_value(),
+        Some(CellSelector::Name("xyz".into())));
 }
