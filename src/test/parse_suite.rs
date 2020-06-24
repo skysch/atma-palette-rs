@@ -714,11 +714,13 @@ fn parse_cell_selector_index_match() {
 #[test]
 fn parse_cell_selector_index_range_match() {
     let cel_sel_res = cell_selector(":1-:2abcd");
-    assert!(cel_sel_res.is_ok());
-    assert_eq!(cel_sel_res.rest(), "abcd");
-    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::IndexRange { 
-        low: 1,
-        high: 2,
+    assert_eq!(cel_sel_res, Ok(Success {
+        value: CellSelector::IndexRange { 
+            low: 1,
+            high: 2,
+        },
+        token: ":1-:2",
+        rest: "abcd",
     }));
 }
 

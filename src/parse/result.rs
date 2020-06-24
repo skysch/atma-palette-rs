@@ -162,6 +162,7 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
 ////////////////////////////////////////////////////////////////////////////////
 /// A struct representing a successful parse.
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Success<'t, V> {
     /// The parsed value.
     pub value: V,
@@ -287,6 +288,16 @@ impl<'t> std::fmt::Display for Failure<'t> {
 impl<'t> std::error::Error for Failure<'t> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.source.as_ref().map(|src| src.as_ref())
+    }
+}
+
+#[cfg(test)]
+impl<'t> PartialEq for Failure<'t> {
+    fn eq(&self, other: &Self) -> bool {
+        self.context == other.context &&
+        self.expected == other.expected &&
+        self.source.is_some() == other.source.is_some() &&
+        self.rest == other.rest
     }
 }
 

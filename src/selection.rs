@@ -15,7 +15,6 @@ use crate::parse::REF_ALL_TOKEN;
 use crate::parse::REF_POS_SEP_TOKEN;
 use crate::parse::REF_PREFIX_TOKEN;
 use crate::parse::REF_RANGE_TOKEN;
-// use crate::parse::REF_SEP_TOKEN;
 
 // External library imports.
 use serde::Serialize;
@@ -25,6 +24,7 @@ use serde::Deserialize;
 use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
+use std::iter::FromIterator;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,6 +41,16 @@ use std::convert::TryFrom;
 pub struct CellSelection<'name>(Vec<CellSelector<'name>>);
 
 impl<'name> CellSelection<'name> {
+    /// Moves all `CellSelector`s in `other` into `self`, leaving `other` empty.
+    pub fn append(&mut self, other: &mut Self) {
+        self.0.append(&mut other.0)
+    }
+
+    /// Pushes a `CellSelector` into the selection.
+    pub fn push(&mut self, selector: CellSelector<'name>) {
+        self.0.push(selector);
+    }
+
     /// Returns an iterator of `CellSelector`s.
     pub fn iter(&self) -> impl Iterator<Item=&CellSelector<'name>> {
         self.0.iter()
@@ -50,6 +60,14 @@ impl<'name> CellSelection<'name> {
 impl<'name> From<Vec<CellSelector<'name>>> for CellSelection<'name> {
     fn from(selectors: Vec<CellSelector<'name>>) -> Self {
         CellSelection(selectors)
+    }
+}
+
+impl<'name> FromIterator<CellSelector<'name>> for CellSelection<'name> {
+    fn from_iter<I: IntoIterator<Item=CellSelector<'name>>>(iter: I)
+        -> CellSelection<'name> 
+    {
+        CellSelection(Vec::from_iter(iter))
     }
 }
 
@@ -76,12 +94,49 @@ impl<'name> IntoIterator for CellSelection<'name> {
 pub struct CellIndexSelection(BTreeSet<u32>);
 
 impl CellIndexSelection {
+    /// Moves all indices in `other` into `self`, leaving `other` empty.
+    pub fn append(&mut self, other: &mut Self) {
+        self.0.append(&mut other.0)
+    }
+
+    /// Inserts a cell index into the selection. Returns true if the element is
+    /// index is new.
+    pub fn insert(&mut self, idx: u32) -> bool {
+        self.0.insert(idx)
+    }
+
+    /// Inserts cell indices into the selection from an iterator. Returns the
+    /// number of new indices inserted.
+    pub fn insert_all<I>(&mut self, indices: I) -> usize 
+        where I: IntoIterator<Item=u32>
+    {
+        let mut count = 0;
+        for idx in indices.into_iter() {
+            if self.0.insert(idx) { count += 1; }
+        }
+        count
+    }
+
     /// Returns an iterator oof cell indexes.
     pub fn iter(&self) -> impl Iterator<Item=&u32> {
         self.0.iter()
     }
 }
 
+impl FromIterator<u32> for CellIndexSelection {
+    fn from_iter<I: IntoIterator<Item=u32>>(iter: I) -> CellIndexSelection {
+        CellIndexSelection(BTreeSet::from_iter(iter))
+    }
+}
+
+impl IntoIterator for CellIndexSelection {
+    type Item = u32;
+    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // CellSelector
@@ -166,6 +221,59 @@ impl<'name> CellSelector<'name> {
             GroupAll(group) => GroupAll(Cow::from(group.into_owned())),
         }
     }
+
+    /// Constructs a `CellSelecto::IndexRange` from its indices.
+    pub fn index_range(low: u32, high: u32)
+        -> Result<CellSelector<'name>, InvalidCellSelector>
+    {
+        if low >= high {
+            Err(InvalidCellSelector::range_mismatch(
+                CellRef::Index(low),
+                CellRef::Index(high)))
+        } else {
+            Ok(CellSelector::IndexRange { low, high })
+        }
+    }
+
+    /// Constructs a `CellSelecto::PositionRange` from its positions.
+    pub fn position_range(low: Position, high: Position)
+        -> Result<CellSelector<'name>, InvalidCellSelector>
+    {
+        if low >= high {
+            Err(InvalidCellSelector::range_mismatch(
+                CellRef::Position(low),
+                CellRef::Position(high)))
+        } else {
+            Ok(CellSelector::PositionRange { low, high })
+        }
+    }
+
+    /// Constructs a `CellSelecto::GroupRange` from its group names and indices.
+    pub fn group_range(
+        group_low: Cow<'name, str>,
+        idx_low: u32,
+        group_high: Cow<'name, str>,
+        idx_high: u32)
+        -> Result<CellSelector<'name>, InvalidCellSelector>
+    {
+        if group_low != group_high {
+            Err(InvalidCellSelector::range_mismatch(
+                CellRef::Group { group: group_low, idx: idx_low },
+                CellRef::Group { group: group_high, idx: idx_high }))
+
+        } else if idx_low >= idx_high {
+            Err(InvalidCellSelector::range_order(
+                CellRef::Group { group: group_low, idx: idx_low },
+                CellRef::Group { group: group_high, idx: idx_high }))
+
+        } else {
+            Ok(CellSelector::GroupRange { 
+                group: group_low,
+                low: idx_low,
+                high: idx_high,
+            })
+        }
+    }
 }
 
 
@@ -206,42 +314,30 @@ impl<'name> From<CellRef<'name>> for CellSelector<'name> {
 }
 
 impl<'name> TryFrom<(CellRef<'name>, CellRef<'name>)> for CellSelector<'name> {
-    type Error = InvalidCellSelectorRange;
-    fn try_from((low, high): (CellRef<'name>, CellRef<'name>)) -> Result<Self, Self::Error> {
+    type Error = InvalidCellSelector;
+    fn try_from((low, high): (CellRef<'name>, CellRef<'name>))
+        -> Result<Self, Self::Error>
+    {
         match (low, high) {
-            (CellRef::Index(low), CellRef::Index(high)) => {
-                if low <= high {
-                    Ok(CellSelector::IndexRange { low, high })
-                } else {
-                    Err(InvalidCellSelectorRange)
-                }
-            },
+            (CellRef::Index(low), CellRef::Index(high))
+                => CellSelector::index_range(low, high),
 
-            (CellRef::Position(low), CellRef::Position(high)) => {
-                if low <= high {
-                    Ok(CellSelector::PositionRange { low, high })
-                } else {
-                    Err(InvalidCellSelectorRange)
-                }
-            },
+            (CellRef::Position(low), CellRef::Position(high))
+                => CellSelector::position_range(low, high),
 
-            (CellRef::Group { group: group_low, idx: low },
-                    CellRef::Group { group: group_high, idx: high }) => 
-            {
-                if group_low == group_high && low <= high {
-                    Ok(CellSelector::GroupRange { group: group_low, low, high })
-                } else {
-                    Err(InvalidCellSelectorRange)
-                }
-            },
-            _ => Err(InvalidCellSelectorRange),
+            (CellRef::Group { group: group_low, idx: idx_low },
+                    CellRef::Group { group: group_high, idx: idx_high })
+                => CellSelector::group_range(
+                    group_low,
+                    idx_low,
+                    group_high,
+                    idx_high),
+
+            (low, high) => Err(InvalidCellSelector::range_mismatch(low, high)),
         }
     }
 }
 
-/// A cell selector range was invalid.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct InvalidCellSelectorRange;
 
 ////////////////////////////////////////////////////////////////////////////////
 // PositionSelector
@@ -287,3 +383,68 @@ impl From<Position> for PositionSelector {
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// InvalidCellSelector
+////////////////////////////////////////////////////////////////////////////////
+
+/// A cell selector range was invalid.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum InvalidCellSelector {
+    /// A range Cellref with incompatable bounds.
+    RangeMismatch {
+        /// The range's lower bound.
+        low: Cow<'static, str>,
+        /// The range's upper bound.
+        high: Cow<'static, str>,
+    },
+    /// A range Cellref with invalid bound ordering.
+    RangeOrder {
+        /// The range's lower bound.
+        low: Cow<'static, str>,
+        /// The range's upper bound.
+        high: Cow<'static, str>,
+    },
+}
+
+impl InvalidCellSelector {
+    /// Constructs an `InvalidCellSelector::RangeMismatch` from `CellRef`
+    /// bounds.
+    pub fn range_mismatch<'name>(low: CellRef<'name>, high: CellRef<'name>)
+        -> Self
+    {
+        InvalidCellSelector::RangeMismatch {
+            low: format!("{}", low).into(),
+            high: format!("{}", high).into(),
+        }
+    }
+
+    /// Constructs an `InvalidCellSelector::RangeOrder` from `CellRef` bounds.
+    pub fn range_order<'name>(low: CellRef<'name>, high: CellRef<'name>)
+        -> Self
+    {
+        InvalidCellSelector::RangeOrder {
+            low: format!("{}", low).into(),
+            high: format!("{}", high).into(),
+        }
+    }
+}
+
+
+impl std::fmt::Display for InvalidCellSelector {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use InvalidCellSelector::*;
+        write!(f, "invalid cell selector: ")?;
+        match self {
+            RangeMismatch { low, high } => write!(f,
+                "range with lower bound '{}' \
+                    incompatable with upper bound `{}`",
+                low, high),
+            RangeOrder { low, high } => write!(f, "range lower bound '{}'\
+                exceeds range upper bound '{}'",
+                low, high),
+        }
+    }
+}
+
+impl std::error::Error for InvalidCellSelector {}

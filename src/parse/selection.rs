@@ -15,8 +15,6 @@ use crate::parse::char;
 use crate::parse::char_matching;
 use crate::parse::circumfix;
 use crate::parse::Failure;
-use crate::parse::GroupRangeMismatch;
-use crate::parse::InvalidRangeIndexOrder;
 use crate::parse::maybe;
 use crate::parse::ParseResult;
 use crate::parse::ParseResultExt as _;
@@ -61,11 +59,11 @@ pub fn cell_selection<'t>(text: &'t str) -> ParseResult<'t, CellSelection<'t>> {
                     whitespace)))
         (text)
         .with_parse_context("", text)
-        .source_for("cell selection initial elements")?;
+        .source_for("cell selection")?;
 
     let tail_suc = maybe(cell_selector)(init_suc.rest)
         .with_parse_context(init_suc.token, text)
-        .source_for("cell selection tail element")?;
+        .source_for("cell selection")?;
 
     Ok(init_suc.join_with(tail_suc, text, |mut list, tail| {
         if let Some(tail) = tail {
@@ -86,26 +84,16 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
 
     } else if let Ok(pos_suc) = position(text) {
         if let Ok(ub_suc) = range_suffix(position)(pos_suc.rest) {
-            // Validate range order.
-            let pos_low = pos_suc.value;
-            let pos_high = ub_suc.value;
-
-            let res = pos_suc.join_with(ub_suc, text, 
-                |low, high| CellSelector::PositionRange { low, high });
-
-            if pos_low > pos_high {
-                Err(Failure {
-                    context: res.token,
-                    expected: "valid position range index order".into(),
-                    source: Some(Box::new(InvalidRangeIndexOrder {
-                        range: res.token.to_string().into(),
-                    })),
+            match CellSelector::position_range(pos_suc.value, ub_suc.value) {
+                Ok(pos_range) => Ok(pos_suc.join_with(ub_suc, text,
+                    |_, _| pos_range)),
+                Err(range_err) => Err(Failure {
+                    context: pos_suc.join(ub_suc, text).token,
+                    expected: "valid position range".into(),
+                    source: Some(Box::new(range_err)),
                     rest: text,
-                })
-            } else {
-                Ok(res)
+                }),
             }
-
         } else {
             Ok(pos_suc.map_value(
                 |pos| CellSelector::PositionSelector(pos.into())))
@@ -117,24 +105,15 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
 
     } else if let Ok(index_suc) = index(text) {
         if let Ok(ub_suc) = range_suffix(index)(index_suc.rest) {
-            // Validate range order.
-            let index_low = index_suc.value;
-            let index_high = ub_suc.value;
-
-            let res = index_suc.join_with(ub_suc, text, 
-                |low, high| CellSelector::IndexRange { low, high });
-
-            if index_low > index_high {
-                Err(Failure {
-                    context: res.token,
-                    expected: "valid range index order".into(),
-                    source: Some(Box::new(InvalidRangeIndexOrder {
-                        range: res.token.to_string().into(),
-                    })),
+            match CellSelector::index_range(index_suc.value, ub_suc.value) {
+                Ok(index_range) => Ok(index_suc.join_with(ub_suc, text,
+                    |_, _| index_range)),
+                Err(range_err) => Err(Failure {
+                    context: index_suc.join(ub_suc, text).token,
+                    expected: "valid index range".into(),
+                    source: Some(Box::new(range_err)),
                     rest: text,
-                })
-            } else {
-                Ok(res)
+                }),
             }
         } else {
             Ok(index_suc.map_value(
@@ -147,43 +126,21 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
 
     } else if let Ok(group_suc) = group(text) {
         if let Ok(ub_suc) = range_suffix(group)(group_suc.rest) {
-            // Validate range order.
-            let group_index_low = group_suc.value.1;
-            let group_index_high = ub_suc.value.1;
-            // Validate same group
-            let group_low = group_suc.value.0;
-            let group_high = ub_suc.value.0;
-
-            let res = group_suc.join(ub_suc, text)
-                .map_value(|_| CellSelector::GroupRange {
-                    group: group_low.into(),
-                    low: group_index_low,
-                    high: group_index_high,
-                });
-
-            if group_low != group_high {
-                Err(Failure {
-                    context: res.token,
-                    expected: "matching group names".into(),
-                    source: Some(Box::new(GroupRangeMismatch {
-                        group_low: group_low.to_string().into(),
-                        group_high: group_high.to_string().into(),
-                    })),
+            match CellSelector::group_range(
+                group_suc.value.0.into(),
+                group_suc.value.1,
+                ub_suc.value.0.into(),
+                ub_suc.value.1)
+            {
+                Ok(group_range) => Ok(group_suc.join_with(ub_suc, text,
+                    |_, _| group_range)),
+                Err(range_err) => Err(Failure {
+                    context: group_suc.join(ub_suc, text).token,
+                    expected: "valid group range".into(),
+                    source: Some(Box::new(range_err)),
                     rest: text,
-                })
-            } else if group_index_low > group_index_high {
-                Err(Failure {
-                    context: res.token,
-                    expected: "valid group range index order".into(),
-                    source: Some(Box::new(InvalidRangeIndexOrder {
-                        range: res.token.to_string().into(),
-                    })),
-                    rest: text,
-                })
-            } else {
-                Ok(res)
+                }),
             }
-
         } else {
             Ok(group_suc.map_value(|(group, idx)| CellSelector::Group {
                 group: group.into(), 
@@ -348,13 +305,12 @@ pub fn position<'t>(text: &'t str) -> ParseResult<'t, Position> {
 
 /// Parses a Index.
 pub fn index<'t>(text: &'t str) -> ParseResult<'t, u32> {
-    let pre = char(REF_PREFIX_TOKEN)(text)
+    prefix(
+        uint::<u32>("u32"),
+        char(REF_PREFIX_TOKEN))
+    (text)
         .with_parse_context("", text)
-        .source_for("cell ref index prefix")?;
-
-    uint::<u32>("u32")(pre.rest)
-        .with_parse_context(pre.token, text)
-        .source_for("cell ref index prefix")
+        .source_for("cell ref index")
 }
 
 
