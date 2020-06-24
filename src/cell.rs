@@ -11,8 +11,8 @@
 // Local imports.
 use crate::color::Color;
 use crate::expr::Expr;
-use crate::parse::REF_POS_SEP_TOKEN;
-use crate::parse::REF_PREFIX_TOKEN;
+use crate::selection::REF_POS_SEP_TOKEN;
+use crate::selection::REF_PREFIX_TOKEN;
 
 // External library imports.
 use serde::Serialize;

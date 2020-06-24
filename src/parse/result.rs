@@ -27,13 +27,31 @@ pub type ParseResult<'t, V> = Result<Success<'t, V>, Failure<'t>>;
 
 /// Extension trait for parse results.
 pub trait ParseResultExt<'t, V>: Sized {
-    /// Converts the result into a source using the given expected parse
-    /// description.
+    /// Converts any Err result into an parse failure source.
+    ///
+    /// The given discription will become the new parse description.
+    ///
+    /// It is recommended to call this before any calls to `with_join_context`
+    /// or `with_new_context` to ensure the subparse context is maintained in
+    /// the failure source.
     fn source_for<E>(self, expected: E) -> Self
         where E: Into<Cow<'static, str>>;
 
-    /// Sets the parse context and resume point for a failed parse.
-    fn with_parse_context(self, context: &'t str, rest: &'t str) -> Self;
+    /// Sets the context for a failed parse by extending back to include a
+    /// previously successful parse.
+    ///
+    /// This is typically used to set establish a recovery point before a
+    /// previously successful parse.
+    fn with_join_context<U>(self, success: &Success<'t, U>, text: &'t str)
+        -> ParseResult<'t, V>;
+
+    /// Sets a new context for a failed parse.
+    ///
+    /// This is typically used by a parser combinator to establish a recovery
+    /// point before any subparser calls. The `context` argument sets the context directly, and should only be
+    /// non-empty if there is a known recovery point for the parse.
+    fn with_new_context(self, context: &'t str, text: &'t str)
+        -> ParseResult<'t, V>;
 
     /// Returns a refernce to the value produced by a successful parse, or None
     /// if the parse was not successful.
@@ -90,10 +108,18 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
         })
     }
 
-    fn with_parse_context(self, context: &'t str, rest: &'t str) -> Self {
+    fn with_join_context<U>(self, success: &Success<'t, U>, text: &'t str)
+        -> ParseResult<'t, V>
+    {
+        self.map_err(|failure| success.join_failure(failure, text))
+    }
+
+    fn with_new_context(self, context: &'t str, text: &'t str)
+        -> ParseResult<'t, V>
+    {
         self.map_err(|mut failure| {
             failure.context = context;
-            failure.rest = rest;
+            failure.rest = text;
             failure
         })
     }
@@ -204,40 +230,37 @@ impl<'t, V> Success<'t, V> {
 
     /// Joins two sequential successful parse results together, discardin their
     /// values.
-    pub fn join<U>(self, other: Success<'t, U>, base: &'t str)
+    pub fn join<U>(self, other: Success<'t, U>, text: &'t str)
         -> Success<'t, ()>
     {
         Success {
             value: (),
-            token: &base[..self.token.len() + other.token.len()],
-            rest: other.rest,
-        }
-    }
-
-    /// Joins two sequential successful parse results together, tokenizing their
-    /// values.
-    pub fn join_tokenize<U>(self, other: Success<'t, U>, base: &'t str)
-        -> Success<'t, &'t str>
-    {
-        let token = &base[..self.token.len() + other.token.len()];
-        Success {
-            value: token,
-            token,
+            token: &text[..self.token.len() + other.token.len()],
             rest: other.rest,
         }
     }
 
     /// Joins two sequential successful parse results together, combining values
     /// with the given function.
-    pub fn join_with<F, U, T>(self, other: Success<'t, U>, base: &'t str, f: F)
+    pub fn join_with<F, U, T>(self, other: Success<'t, U>, text: &'t str, f: F)
         -> Success<'t, T>
         where F: FnOnce(V, U) -> T
     {
         Success {
             value: (f)(self.value, other.value),
-            token: &base[..self.token.len() + other.token.len()],
+            token: &text[..self.token.len() + other.token.len()],
             rest: other.rest,
         }
+    }
+
+    /// Joins a failure result to a previously successful result, expanding the
+    /// context of the failure.
+    pub fn join_failure(&self, mut other: Failure<'t>, text: &'t str)
+        -> Failure<'t>
+    {
+        other.context = &text[..self.token.len() + other.context.len()];
+        other.rest = text;
+        other
     }
 }
 

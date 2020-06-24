@@ -11,8 +11,96 @@
 use crate::parse::*;
 use crate::cell::Position;
 use crate::selection::CellSelector;
+use crate::selection::CellSelection;
 use crate::selection::PositionSelector;
 use crate::cell::CellRef;
+
+////////////////////////////////////////////////////////////////////////////////
+// ParseResult handling.
+////////////////////////////////////////////////////////////////////////////////
+
+
+/// Tests `Success::join`.
+#[test]
+fn success_join() {
+    let input = "abcdefg";
+
+    let l = Success {
+        value: 2u32,
+        token: &input[..2],
+        rest: &input[3..],
+    };
+
+    let r = Success {
+        value: 3u32,
+        token: &input[2..5],
+        rest: &input[5..],
+    };
+
+    assert_eq!(
+        l.join(r, input),
+        Success {
+            value: (),
+            token: &input[..5],
+            rest: &input[5..],
+        })
+}
+
+/// Tests `Success::join_with`.
+#[test]
+fn success_join_with() {
+    let input = "abcdefg";
+
+    let l = Success {
+        value: 2u32,
+        token: &input[..2],
+        rest: &input[3..],
+    };
+
+    let r = Success {
+        value: 3u32,
+        token: &input[2..5],
+        rest: &input[5..],
+    };
+
+    assert_eq!(
+        l.join_with(r, input, |l, r| l * r),
+        Success {
+            value: 6u32,
+            token: &input[..5],
+            rest: &input[5..],
+        })
+
+}
+
+/// Tests `Success::join_failure`.
+#[test]
+fn failure_join_failure() {
+
+    let input = "abcdefg";
+
+    let l = Success {
+        value: 2u32,
+        token: &input[..2],
+        rest: &input[3..],
+    };
+
+    let r = Failure {
+        context: &input[2..5],
+        rest: &input[2..],
+        // These fields are unchecked:
+        expected: "".into(), source: None,
+    };
+
+    assert_eq!(
+        l.join_failure(r, input),
+        Failure {
+            context: &input[..5],
+            rest: input,
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        })
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +222,7 @@ fn parse_char_whitespace_nonmatch() {
 
 /// Tests `parse::whitespace`.
 #[test]
-fn parse_whitespace() {
+fn parse_whitespace_match() {
     assert_eq!(
         whitespace("\t \n \tabcd"),
         Ok(Success {
@@ -144,14 +232,26 @@ fn parse_whitespace() {
         }));
 
     assert_eq!(
-        whitespace("abcd"),
+        maybe(whitespace)("abcd"),
         Ok(Success {
-            value: "",
+            value: None,
             token: "",
             rest: "abcd",
         }));
 }
 
+/// Tests `parse::whitespace`.
+#[test]
+fn parse_whitespace_nonmatch() {
+    assert_eq!(
+        whitespace("abcd"),
+        Err(Failure {
+            context: "",
+            rest: "abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Combinators
@@ -281,7 +381,7 @@ fn parse_uint_u8_match() {
     assert_eq!(
         uint::<u8>("u8")("0xFf abcd"),
         Ok(Success {
-            value: 0xFfu8,
+            value: 0xFFu8,
             token: "0xFf",
             rest: " abcd",
         }));
@@ -290,122 +390,307 @@ fn parse_uint_u8_match() {
 /// Tests `parse::uint` for a `u8` value.
 #[test]
 fn parse_uint_u8_nonmatch() {
-    let uint_u8_res = uint::<u8>("u8")("abcd");
-    assert!(uint_u8_res.is_err());
-    assert_eq!(uint_u8_res.rest(), "abcd");
+    assert_eq!(
+        uint::<u8>("u8")("abcd"),
+        Err(Failure {
+            context: "",
+            rest: "abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let uint_u8_res = uint::<u8>("u8")("0b20abcd");
-    assert!(uint_u8_res.is_err());
-    assert_eq!(uint_u8_res.rest(), "0b20abcd");
+    assert_eq!(
+        uint::<u8>("u8")("0b20abcd"),
+        Err(Failure {
+            context: "0b",
+            rest: "0b20abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let uint_u8_res = uint::<u8>("u8")("0o80abcd");
-    assert!(uint_u8_res.is_err());
-    assert_eq!(uint_u8_res.rest(), "0o80abcd");
+    assert_eq!(
+        uint::<u8>("u8")("0o80abcd"),
+        Err(Failure {
+            context: "0o",
+            rest: "0o80abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let uint_u8_res = uint::<u8>("u8")("0xG0abcd");
-    assert!(uint_u8_res.is_err());
-    assert_eq!(uint_u8_res.rest(), "0xG0abcd");
+    assert_eq!(
+        uint::<u8>("u8")("0xG0abcd"),
+        Err(Failure {
+            context: "0x",
+            rest: "0xG0abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let uint_u8_res = uint::<u8>("u8")("0xFF0abcd");
-    assert!(uint_u8_res.is_err());
-    assert_eq!(uint_u8_res.rest(), "0xFF0abcd");
+    assert_eq!(
+        uint::<u8>("u8")("0x100Gabcd"),
+        Err(Failure {
+            context: "0x100",
+            rest: "0x100Gabcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 /// Tests `parse::uint` for a `u16` value.
 #[test]
 fn parse_uint_u16_match() {
-    let uint_u16_res = uint::<u16>("u16")("0abcd");
-    assert!(uint_u16_res.is_ok());
-    assert_eq!(uint_u16_res.rest(), "abcd");
-    assert_eq!(uint_u16_res.into_value(), Some(0u16));
+    assert_eq!(
+        uint::<u16>("u16")("0abcd"),
+        Ok(Success {
+            value: 0u16,
+            token: "0",
+            rest: "abcd",
+        }));
 
-    let uint_u16_res = uint::<u16>("u16")("0b10abcd");
-    assert!(uint_u16_res.is_ok());
-    assert_eq!(uint_u16_res.rest(), "abcd");
-    assert_eq!(uint_u16_res.into_value(), Some(0b10u16));
+    assert_eq!(
+        uint::<u16>("u16")("0b10abcd"),
+        Ok(Success {
+            value: 0b10u16,
+            token: "0b10",
+            rest: "abcd",
+        }));
 
-    let uint_u16_res = uint::<u16>("u16")("0o70abcd");
-    assert!(uint_u16_res.is_ok());
-    assert_eq!(uint_u16_res.rest(), "abcd");
-    assert_eq!(uint_u16_res.into_value(), Some(0o70u16));
+    assert_eq!(
+        uint::<u16>("u16")("0o70abcd"),
+        Ok(Success {
+            value: 0o70u16,
+            token: "0o70",
+            rest: "abcd",
+        }));
 
-    let uint_u16_res = uint::<u16>("u16")("0xF0 abcd");
-    assert!(uint_u16_res.is_ok());
-    assert_eq!(uint_u16_res.rest(), " abcd");
-    assert_eq!(uint_u16_res.into_value(), Some(0xF0u16));
+    assert_eq!(
+        uint::<u16>("u16")("0xFfFf abcd"),
+        Ok(Success {
+            value: 0xFFFFu16,
+            token: "0xFfFf",
+            rest: " abcd",
+        }));
 }
 
 /// Tests `parse::uint` for a `u16` value.
 #[test]
 fn parse_uint_u16_nonmatch() {
-    let uint_u16_res = uint::<u16>("u16")("abcd");
-    assert!(uint_u16_res.is_err());
-    assert_eq!(uint_u16_res.rest(), "abcd");
+    assert_eq!(
+        uint::<u16>("u16")("abcd"),
+        Err(Failure {
+            context: "",
+            rest: "abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let uint_u16_res = uint::<u16>("u16")("0b20abcd");
-    assert!(uint_u16_res.is_err());
-    assert_eq!(uint_u16_res.rest(), "0b20abcd");
+    assert_eq!(
+        uint::<u16>("u16")("0b20abcd"),
+        Err(Failure {
+            context: "0b",
+            rest: "0b20abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let uint_u16_res = uint::<u16>("u16")("0o80abcd");
-    assert!(uint_u16_res.is_err());
-    assert_eq!(uint_u16_res.rest(), "0o80abcd");
+    assert_eq!(
+        uint::<u16>("u16")("0o80abcd"),
+        Err(Failure {
+            context: "0o",
+            rest: "0o80abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let uint_u16_res = uint::<u16>("u16")("0xG0abcd");
-    assert!(uint_u16_res.is_err());
-    assert_eq!(uint_u16_res.rest(), "0xG0abcd");
+    assert_eq!(
+        uint::<u16>("u16")("0xG0abcd"),
+        Err(Failure {
+            context: "0x",
+            rest: "0xG0abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let uint_u16_res = uint::<u16>("u16")("0xFF0abcd");
-    assert!(uint_u16_res.is_err());
-    assert_eq!(uint_u16_res.rest(), "0xFF0abcd");
+    assert_eq!(
+        uint::<u16>("u16")("0x10000Gabcd"),
+        Err(Failure {
+            context: "0x10000",
+            rest: "0x10000Gabcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 /// Tests `parse::uint` for a `u32` value.
 #[test]
 fn parse_uint_u32_match() {
-    let uint_u32_res = uint::<u32>("u32")("0abcd");
-    assert!(uint_u32_res.is_ok());
-    assert_eq!(uint_u32_res.rest(), "abcd");
-    assert_eq!(uint_u32_res.into_value(), Some(0u32));
+    assert_eq!(
+        uint::<u32>("u32")("0abcd"),
+        Ok(Success {
+            value: 0u32,
+            token: "0",
+            rest: "abcd",
+        }));
 
-    let uint_u32_res = uint::<u32>("u32")("0b10abcd");
-    assert!(uint_u32_res.is_ok());
-    assert_eq!(uint_u32_res.rest(), "abcd");
-    assert_eq!(uint_u32_res.into_value(), Some(0b10u32));
+    assert_eq!(
+        uint::<u32>("u32")("0b10abcd"),
+        Ok(Success {
+            value: 0b10u32,
+            token: "0b10",
+            rest: "abcd",
+        }));
 
-    let uint_u32_res = uint::<u32>("u32")("0o70abcd");
-    assert!(uint_u32_res.is_ok());
-    assert_eq!(uint_u32_res.rest(), "abcd");
-    assert_eq!(uint_u32_res.into_value(), Some(0o70u32));
+    assert_eq!(
+        uint::<u32>("u32")("0o70abcd"),
+        Ok(Success {
+            value: 0o70u32,
+            token: "0o70",
+            rest: "abcd",
+        }));
 
-    let uint_u32_res = uint::<u32>("u32")("0xF0 abcd");
-    assert!(uint_u32_res.is_ok());
-    assert_eq!(uint_u32_res.rest(), " abcd");
-    assert_eq!(uint_u32_res.into_value(), Some(0xF0u32));
+    assert_eq!(
+        uint::<u32>("u32")("0xFfFfFfFf abcd"),
+        Ok(Success {
+            value: 0xFFFFFFFFu32,
+            token: "0xFfFfFfFf",
+            rest: " abcd",
+        }));
 }
 
 /// Tests `parse::uint` for a `u32` value.
 #[test]
 fn parse_uint_u32_nonmatch() {
-    let uint_u32_res = uint::<u32>("u32")("abcd");
-    assert!(uint_u32_res.is_err());
-    assert_eq!(uint_u32_res.rest(), "abcd");
+    assert_eq!(
+        uint::<u32>("u32")("abcd"),
+        Err(Failure {
+            context: "",
+            rest: "abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let uint_u32_res = uint::<u32>("u32")("0b20abcd");
-    assert!(uint_u32_res.is_err());
-    assert_eq!(uint_u32_res.rest(), "0b20abcd");
+    assert_eq!(
+        uint::<u32>("u32")("0b20abcd"),
+        Err(Failure {
+            context: "0b",
+            rest: "0b20abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let uint_u32_res = uint::<u32>("u32")("0o80abcd");
-    assert!(uint_u32_res.is_err());
-    assert_eq!(uint_u32_res.rest(), "0o80abcd");
+    assert_eq!(
+        uint::<u32>("u32")("0o80abcd"),
+        Err(Failure {
+            context: "0o",
+            rest: "0o80abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let uint_u32_res = uint::<u32>("u32")("0xG0abcd");
-    assert!(uint_u32_res.is_err());
-    assert_eq!(uint_u32_res.rest(), "0xG0abcd");
+    assert_eq!(
+        uint::<u32>("u32")("0xG0abcd"),
+        Err(Failure {
+            context: "0x",
+            rest: "0xG0abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let uint_u32_res = uint::<u32>("u32")("0xFFFFFF0abcd");
-    assert!(uint_u32_res.is_err());
-    assert_eq!(uint_u32_res.rest(), "0xFFFFFF0abcd");
+    assert_eq!(
+        uint::<u32>("u32")("0x100000000Gabcd"),
+        Err(Failure {
+            context: "0x100000000",
+            rest: "0x100000000Gabcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
+
+/// Tests `parse::uint` for a `u64` value.
+#[test]
+fn parse_uint_u64_match() {
+    assert_eq!(
+        uint::<u64>("u64")("0abcd"),
+        Ok(Success {
+            value: 0u64,
+            token: "0",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        uint::<u64>("u64")("0b10abcd"),
+        Ok(Success {
+            value: 0b10u64,
+            token: "0b10",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        uint::<u64>("u64")("0o70abcd"),
+        Ok(Success {
+            value: 0o70u64,
+            token: "0o70",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        uint::<u64>("u64")("0xFfFfFfFfFfFfFfFf abcd"),
+        Ok(Success {
+            value: 0xFFFFFFFFFFFFFFFFu64,
+            token: "0xFfFfFfFfFfFfFfFf",
+            rest: " abcd",
+        }));
+}
+
+/// Tests `parse::uint` for a `u64` value.
+#[test]
+fn parse_uint_u64_nonmatch() {
+    assert_eq!(
+        uint::<u64>("u64")("abcd"),
+        Err(Failure {
+            context: "",
+            rest: "abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
+
+    assert_eq!(
+        uint::<u64>("u64")("0b20abcd"),
+        Err(Failure {
+            context: "0b",
+            rest: "0b20abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
+
+    assert_eq!(
+        uint::<u64>("u64")("0o80abcd"),
+        Err(Failure {
+            context: "0o",
+            rest: "0o80abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
+
+    assert_eq!(
+        uint::<u64>("u64")("0xG0abcd"),
+        Err(Failure {
+            context: "0x",
+            rest: "0xG0abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
+
+    assert_eq!(
+        uint::<u64>("u64")("0x10000000000000000Gabcd"),
+        Err(Failure {
+            context: "0x10000000000000000",
+            rest: "0x10000000000000000Gabcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // CellRef
@@ -414,198 +699,312 @@ fn parse_uint_u32_nonmatch() {
 /// Tests `parse::name`.
 #[test]
 fn parse_name_match() {
-    let name_res = name("abcd");
-    assert!(name_res.is_ok());
-    assert_eq!(name_res.rest(), "");
-    assert_eq!(name_res.into_value(), Some("abcd"));
+    assert_eq!(
+        name("xyz"),
+        Ok(Success {
+            value: "xyz",
+            token: "xyz",
+            rest: "",
+        }));
 
-    let name_res = name("xyz .abcd");
-    assert!(name_res.is_ok());
-    assert_eq!(name_res.rest(), " .abcd");
-    assert_eq!(name_res.into_value(), Some("xyz"));
+    assert_eq!(
+        name("xyz abcd"),
+        Ok(Success {
+            value: "xyz",
+            token: "xyz",
+            rest: " abcd",
+        }));
 
-    let name_res = name("xyz.abcd");
-    assert!(name_res.is_ok());
-    assert_eq!(name_res.rest(), ".abcd");
-    assert_eq!(name_res.into_value(), Some("xyz"));
+    assert_eq!(
+        name("xyz.abcd"),
+        Ok(Success {
+            value: "xyz",
+            token: "xyz",
+            rest: ".abcd",
+        }));
 
-    let name_res = name("xyz:abcd");
-    assert!(name_res.is_ok());
-    assert_eq!(name_res.rest(), ":abcd");
-    assert_eq!(name_res.into_value(), Some("xyz"));
+    assert_eq!(
+        name("xyz,abcd"),
+        Ok(Success {
+            value: "xyz",
+            token: "xyz",
+            rest: ",abcd",
+        }));
 
-    let name_res = name("xyz*abcd");
-    assert!(name_res.is_ok());
-    assert_eq!(name_res.rest(), "*abcd");
-    assert_eq!(name_res.into_value(), Some("xyz"));
+    assert_eq!(
+        name("xyz:abcd"),
+        Ok(Success {
+            value: "xyz",
+            token: "xyz",
+            rest: ":abcd",
+        }));
 
-    let name_res = name("xyz-abcd");
-    assert!(name_res.is_ok());
-    assert_eq!(name_res.rest(), "-abcd");
-    assert_eq!(name_res.into_value(), Some("xyz"));
+    assert_eq!(
+        name("xyz-abcd"),
+        Ok(Success {
+            value: "xyz",
+            token: "xyz",
+            rest: "-abcd",
+        }));
 
-    let name_res = name("xyz,abcd");
-    assert!(name_res.is_ok());
-    assert_eq!(name_res.rest(), ",abcd");
-    assert_eq!(name_res.into_value(), Some("xyz"));
+    assert_eq!(
+        name("xyz*abcd"),
+        Ok(Success {
+            value: "xyz",
+            token: "xyz",
+            rest: "*abcd",
+        }));
 }
 
 /// Tests `parse::name`.
 #[test]
 fn parse_name_nonmatch() {
-    let name_res = name(" abcd");
-    assert!(name_res.is_err());
-    assert_eq!(name_res.rest(), " abcd");
+    assert_eq!(
+        name(" xyz"),
+        Err(Failure {
+            context: "",
+            rest: " xyz",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let name_res = name(".abcd");
-    assert!(name_res.is_err());
-    assert_eq!(name_res.rest(), ".abcd");
+    assert_eq!(
+        name(".xyz"),
+        Err(Failure {
+            context: "",
+            rest: ".xyz",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let name_res = name(":abcd");
-    assert!(name_res.is_err());
-    assert_eq!(name_res.rest(), ":abcd");
+    assert_eq!(
+        name(",xyz"),
+        Err(Failure {
+            context: "",
+            rest: ",xyz",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let name_res = name("*abcd");
-    assert!(name_res.is_err());
-    assert_eq!(name_res.rest(), "*abcd");
+    assert_eq!(
+        name(":xyz"),
+        Err(Failure {
+            context: "",
+            rest: ":xyz",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let name_res = name("-abcd");
-    assert!(name_res.is_err());
-    assert_eq!(name_res.rest(), "-abcd");
+    assert_eq!(
+        name("-xyz"),
+        Err(Failure {
+            context: "",
+            rest: "-xyz",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let name_res = name(",abcd");
-    assert!(name_res.is_err());
-    assert_eq!(name_res.rest(), ",abcd");
+    assert_eq!(
+        name("*xyz"),
+        Err(Failure {
+            context: "",
+            rest: "*xyz",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 
 /// Tests `parse::index`.
 #[test]
 fn parse_index_match() {
-    let index_res = index(":0abcd");
-    assert!(index_res.is_ok());
-    assert_eq!(index_res.rest(), "abcd");
-    assert_eq!(index_res.into_value(), Some(0u32));
+    assert_eq!(
+        index(":0abcd"),
+        Ok(Success {
+            value: 0,
+            token: ":0",
+            rest: "abcd",
+        }));
 
-    let index_res = index(":0b10abcd");
-    assert!(index_res.is_ok());
-    assert_eq!(index_res.rest(), "abcd");
-    assert_eq!(index_res.into_value(), Some(0b10u32));
-
-    let index_res = index(":0o70abcd");
-    assert!(index_res.is_ok());
-    assert_eq!(index_res.rest(), "abcd");
-    assert_eq!(index_res.into_value(), Some(0o70u32));
-
-    let index_res = index(":0xF0 abcd");
-    assert!(index_res.is_ok());
-    assert_eq!(index_res.rest(), " abcd");
-    assert_eq!(index_res.into_value(), Some(0xF0u32));
+    assert_eq!(
+        index(":0b10abcd"),
+        Ok(Success {
+            value: 0b10,
+            token: ":0b10",
+            rest: "abcd",
+        }));
+    
+    assert_eq!(
+        index(":0o70abcd"),
+        Ok(Success {
+            value: 0o70,
+            token: ":0o70",
+            rest: "abcd",
+        }));
+    
+    assert_eq!(
+        index(":0xF0 abcd"),
+        Ok(Success {
+            value: 0xF0,
+            token: ":0xF0",
+            rest: " abcd",
+        }));
+    
+    assert_eq!(
+        index(":0xFFFF abcd"),
+        Ok(Success {
+            value: 0xFFFF,
+            token: ":0xFFFF",
+            rest: " abcd",
+        }));
 }
 
 /// Tests `parse::index`.
 #[test]
 fn parse_index_nonmatch() {
-    let index_res = index(":abcd");
-    assert!(index_res.is_err());
-    assert_eq!(index_res.rest(), ":abcd");
+    assert_eq!(
+        index(":abcd"),
+        Err(Failure {
+            context: ":",
+            rest: ":abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let index_res = index(":0b20abcd");
-    assert!(index_res.is_err());
-    assert_eq!(index_res.rest(), ":0b20abcd");
+    assert_eq!(
+        index(":0b20abcd"),
+        Err(Failure {
+            context: ":0b",
+            rest: ":0b20abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let index_res = index(":0o80abcd");
-    assert!(index_res.is_err());
-    assert_eq!(index_res.rest(), ":0o80abcd");
+    assert_eq!(
+        index(":0o80abcd"),
+        Err(Failure {
+            context: ":0o",
+            rest: ":0o80abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let index_res = index(":0xG0abcd");
-    assert!(index_res.is_err());
-    assert_eq!(index_res.rest(), ":0xG0abcd");
+    assert_eq!(
+        index(":0xG0abcd"),
+        Err(Failure {
+            context: ":0x",
+            rest: ":0xG0abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let index_res = index(":0xFFFFFF0abcd");
-    assert!(index_res.is_err());
-    assert_eq!(index_res.rest(), ":0xFFFFFF0abcd");
+    assert_eq!(
+        index(":0x100000000 abcd"),
+        Err(Failure {
+            context: ":0x100000000",
+            rest: ":0x100000000 abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 /// Tests `parse::position`.
 #[test]
 fn parse_position_match() {
-    let pos_res = position(":1.2.3abcd");
-    assert!(pos_res.is_ok());
-    assert_eq!(pos_res.rest(), "abcd");
-    assert_eq!(pos_res.into_value(), Some(Position {
-        page: 1,
-        line: 2,
-        column: 3,
-    }));
+    assert_eq!(
+        position(":1.2.3abcd"),
+        Ok(Success {
+            value: Position { page: 1, line: 2, column: 3 },
+            token: ":1.2.3",
+            rest: "abcd",
+        }));
 
-    let pos_res = position(":0b101.0x2F.0o17abcd");
-    assert!(pos_res.is_ok());
-    assert_eq!(pos_res.rest(), "abcd");
-    assert_eq!(pos_res.into_value(), Some(Position {
-        page: 0b101,
-        line: 0x2F,
-        column: 0o17,
-    }));
+    assert_eq!(
+        position(":0b101.0x2F.0o17abcd"),
+        Ok(Success {
+            value: Position { page: 0b101, line: 0x2F, column: 0o17 },
+            token: ":0b101.0x2F.0o17",
+            rest: "abcd",
+        }));
 }
 
 /// Tests `parse::position`.
 #[test]
 fn parse_position_nonmatch() {
-    let pos_res = position(":0xFFFFF1.2.3abcd");
-    assert!(pos_res.is_err());
-    assert_eq!(pos_res.rest(), ":0xFFFFF1.2.3abcd");
+    assert_eq!(
+        position(":1 .2.3abcd"),
+        Err(Failure {
+            context: ":1",
+            rest: ":1 .2.3abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let pos_res = position(":0xF1 .2.3abcd");
-    assert!(pos_res.is_err());
-    assert_eq!(pos_res.rest(), ":0xF1 .2.3abcd");
+    assert_eq!(
+        position(":1.*.3abcd"),
+        Err(Failure {
+            context: ":1.",
+            rest: ":1.*.3abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let pos_res = position(":0xF1.*.3abcd");
-    assert!(pos_res.is_err());
-    assert_eq!(pos_res.rest(), ":0xF1.*.3abcd");
+    assert_eq!(
+        position(":1.2.0x10000 abcd"),
+        Err(Failure {
+            context: ":1.2.0x10000",
+            rest: ":1.2.0x10000 abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 /// Tests `parse::cell_ref`.
 #[test]
 fn parse_cell_ref_index_match() {
-    let cell_ref_res = cell_ref(":0abcd");
-    assert!(cell_ref_res.is_ok());
-    assert_eq!(cell_ref_res.rest(), "abcd");
-    assert_eq!(cell_ref_res.into_value(), Some(CellRef::Index(0u32)));
+    assert_eq!(
+        cell_ref(":0abcd"),
+        Ok(Success {
+            value: CellRef::Index(0u32),
+            token: ":0",
+            rest: "abcd",
+        }));
 }
 
 /// Tests `parse::cell_ref`.
 #[test]
 fn parse_cell_ref_position_match() {
-    let cell_ref_res = cell_ref(":1.2.3abcd");
-    assert!(cell_ref_res.is_ok());
-    assert_eq!(cell_ref_res.rest(), "abcd");
-    assert_eq!(cell_ref_res.into_value(), Some(CellRef::Position(Position {
-        page: 1,
-        line: 2,
-        column: 3,
-    })));
+    assert_eq!(
+        cell_ref(":1.2.3abcd"),
+        Ok(Success {
+            value: CellRef::Position(Position { page: 1, line: 2, column: 3 }),
+            token: ":1.2.3",
+            rest: "abcd",
+        }));
 }
 
 /// Tests `parse::cell_ref`.
 #[test]
 fn parse_cell_ref_name_match() {
-    let cell_ref_res = cell_ref("0abcd.abcd");
-    assert!(cell_ref_res.is_ok());
-    assert_eq!(cell_ref_res.rest(), ".abcd");
-    assert_eq!(cell_ref_res.into_value(), Some(CellRef::Name("0abcd".into())));
+    assert_eq!(
+        cell_ref("xyz abcd"),
+        Ok(Success {
+            value: CellRef::Name("xyz".into()),
+            token: "xyz",
+            rest: " abcd",
+        }));
 }
 
 /// Tests `parse::cell_ref`.
 #[test]
 fn parse_cell_ref_group_match() {
-    let cell_ref_res = cell_ref("0abcd:123abcd");
-    assert!(cell_ref_res.is_ok());
-    assert_eq!(cell_ref_res.rest(), "abcd");
-    assert_eq!(cell_ref_res.into_value(), Some(CellRef::Group {
-        group: "0abcd".into(),
-        idx: 123,
-    }));
+    assert_eq!(
+        cell_ref("xyz:12 abcd"),
+        Ok(Success {
+            value: CellRef::Group { group: "xyz".into(), idx: 12 },
+            token: "xyz:12",
+            rest: " abcd",
+        }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -615,315 +1014,471 @@ fn parse_cell_ref_group_match() {
 /// Tests `parse::position`.
 #[test]
 fn parse_position_selector_match() {
-    let pos_sel_res = position_selector(":1.2.3abcd");
-    assert!(pos_sel_res.is_ok());
-    assert_eq!(pos_sel_res.rest(), "abcd");
-    assert_eq!(pos_sel_res.into_value(), Some(PositionSelector {
-        page: Some(1),
-        line: Some(2),
-        column: Some(3),
-    }));
+    assert_eq!(
+        position_selector(":1.2.3abcd"),
+        Ok(Success {
+            value: PositionSelector { 
+                page: Some(1),
+                line: Some(2),
+                column: Some(3),
+            },
+            token: ":1.2.3",
+            rest: "abcd",
+        }));
 
-    let pos_sel_res = position_selector(":0b101.0x2F.0o17abcd");
-    assert!(pos_sel_res.is_ok());
-    assert_eq!(pos_sel_res.rest(), "abcd");
-    assert_eq!(pos_sel_res.into_value(), Some(PositionSelector {
-        page: Some(0b101),
-        line: Some(0x2F),
-        column: Some(0o17),
-    }));
+    assert_eq!(
+        position_selector(":0b1111111111111111.0o177777.0xFFFF.abcd"),
+        Ok(Success {
+            value: PositionSelector { 
+                page: Some(0b1111111111111111),
+                line: Some(0o177777),
+                column: Some(0xFFFF),
+            },
+            token: ":0b1111111111111111.0o177777.0xFFFF",
+            rest: ".abcd",
+        }));
 
-    let pos_sel_res = position_selector(":*.2.3abcd");
-    assert!(pos_sel_res.is_ok());
-    assert_eq!(pos_sel_res.rest(), "abcd");
-    assert_eq!(pos_sel_res.into_value(), Some(PositionSelector {
-        page: None,
-        line: Some(2),
-        column: Some(3),
-    }));
+    assert_eq!(
+        position_selector(":*.2.3abcd"),
+        Ok(Success {
+            value: PositionSelector { 
+                page: None,
+                line: Some(2),
+                column: Some(3),
+            },
+            token: ":*.2.3",
+            rest: "abcd",
+        }));
 
-    let pos_sel_res = position_selector(":1.*.3abcd");
-    assert!(pos_sel_res.is_ok());
-    assert_eq!(pos_sel_res.rest(), "abcd");
-    assert_eq!(pos_sel_res.into_value(), Some(PositionSelector {
-        page: Some(1),
-        line: None,
-        column: Some(3),
-    }));
+    assert_eq!(
+        position_selector(":*.*.3abcd"),
+        Ok(Success {
+            value: PositionSelector { 
+                page: None,
+                line: None,
+                column: Some(3),
+            },
+            token: ":*.*.3",
+            rest: "abcd",
+        }));
 
-    let pos_sel_res = position_selector(":*.2.*abcd");
-    assert!(pos_sel_res.is_ok());
-    assert_eq!(pos_sel_res.rest(), "abcd");
-    assert_eq!(pos_sel_res.into_value(), Some(PositionSelector {
-        page: None,
-        line: Some(2),
-        column: None,
-    }));
-
-    let pos_sel_res = position_selector(":*.*.*abcd");
-    assert!(pos_sel_res.is_ok());
-    assert_eq!(pos_sel_res.rest(), "abcd");
-    assert_eq!(pos_sel_res.into_value(), Some(PositionSelector {
-        page: None,
-        line: None,
-        column: None,
-    }));
+    assert_eq!(
+        position_selector(":1.2.*abcd"),
+        Ok(Success {
+            value: PositionSelector { 
+                page: Some(1),
+                line: Some(2),
+                column: None,
+            },
+            token: ":1.2.*",
+            rest: "abcd",
+        }));
 }
 
 /// Tests `parse::position`.
 #[test]
 fn parse_position_selector_nonmatch() {
-    let pos_sel_res = position_selector(":0xFFFFF1.2.3abcd");
-    assert!(pos_sel_res.is_err());
-    assert_eq!(pos_sel_res.rest(), ":0xFFFFF1.2.3abcd");
+    assert_eq!(
+        position_selector(":1.2.abcd"),
+        Err(Failure {
+            context: ":1.2.",
+            rest: ":1.2.abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let pos_sel_res = position_selector(":0xF1 .2.3abcd");
-    assert!(pos_sel_res.is_err());
-    assert_eq!(pos_sel_res.rest(), ":0xF1 .2.3abcd");
+    assert_eq!(
+        position_selector(":1.2.0x1FFFF abcd"),
+        Err(Failure {
+            context: ":1.2.0x1FFFF",
+            rest: ":1.2.0x1FFFF abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let pos_sel_res = position_selector(":0xF1.**.3abcd");
-    assert!(pos_sel_res.is_err());
-    assert_eq!(pos_sel_res.rest(), ":0xF1.**.3abcd");
+    assert_eq!(
+        position_selector(":1.**.3abcd"),
+        Err(Failure {
+            context: ":1.*",
+            rest: ":1.**.3abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 /// Tests `parse::range_suffix`.
 #[test]
 fn parse_range_suffix_index_match() {
-    let range_suffix_res = range_suffix(index)("-:10abcd");
-    assert!(range_suffix_res.is_ok());
-    assert_eq!(range_suffix_res.rest(), "abcd");
-    assert_eq!(range_suffix_res.into_value(), Some(10u32));
+    assert_eq!(
+        range_suffix(index)("-:10abcd"),
+        Ok(Success {
+            value: 10,
+            token: "-:10",
+            rest: "abcd",
+        }));
 
-    let range_suffix_res = range_suffix(index)("  -  :0b10abcd");
-    assert!(range_suffix_res.is_ok());
-    assert_eq!(range_suffix_res.rest(), "abcd");
-    assert_eq!(range_suffix_res.into_value(), Some(0b10u32));
+    assert_eq!(
+        range_suffix(index)(" - :10abcd"),
+        Ok(Success {
+            value: 10,
+            token: " - :10",
+            rest: "abcd",
+        }));
 }
 
 /// Tests `parse::range_suffix`.
 #[test]
 fn parse_range_suffix_index_nonmatch() {
-    let range_suffix_res = range_suffix(index)("-::10abcd");
-    assert!(range_suffix_res.is_err());
-    assert_eq!(range_suffix_res.rest(), "-::10abcd");
+    assert_eq!(
+        range_suffix(index)("-:0x1FFFFFFFF abcd"),
+        Err(Failure {
+            context: "-:0x1FFFFFFFF",
+            rest: "-:0x1FFFFFFFF abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let range_suffix_res = range_suffix(index)(":  -:0xH0abcd");
-    assert!(range_suffix_res.is_err());
-    assert_eq!(range_suffix_res.rest(), ":  -:0xH0abcd");
+    assert_eq!(
+        range_suffix(index)("-: 10abcd"),
+        Err(Failure {
+            context: "-:",
+            rest: "-: 10abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
+
+    assert_eq!(
+        range_suffix(index)("--: 10abcd"),
+        Err(Failure {
+            context: "-",
+            rest: "--: 10abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 /// Tests `parse::range_suffix`.
 #[test]
 fn parse_range_suffix_position_match() {
-    let range_suffix_res = range_suffix(position)("-:10.2.4abcd");
-    assert!(range_suffix_res.is_ok());
-    assert_eq!(range_suffix_res.rest(), "abcd");
-    assert_eq!(range_suffix_res.into_value(), Some(Position {
-        page: 10,
-        line: 2,
-        column: 4
-    }));
+    assert_eq!(
+        range_suffix(position)("-:1.2.3abcd"),
+        Ok(Success {
+            value: Position { page: 1, line: 2, column: 3 },
+            token: "-:1.2.3",
+            rest: "abcd",
+        }));
 
-    let range_suffix_res = range_suffix(position)("  - \t :0b10.2.0o4abcd");
-    assert!(range_suffix_res.is_ok());
-    assert_eq!(range_suffix_res.rest(), "abcd");
-    assert_eq!(range_suffix_res.into_value(), Some(Position {
-        page: 0b10,
-        line: 2,
-        column: 0o4
-    }));
+    assert_eq!(
+        range_suffix(position)("\t-  :1.2.3abcd"),
+        Ok(Success {
+            value: Position { page: 1, line: 2, column: 3 },
+            token: "\t-  :1.2.3",
+            rest: "abcd",
+        }));
 }
 
 /// Tests `parse::range_suffix`.
 #[test]
 fn parse_range_suffix_position_nonmatch() {
-    let range_suffix_res = range_suffix(position)("-::10abcd");
-    assert!(range_suffix_res.is_err());
-    assert_eq!(range_suffix_res.rest(), "-::10abcd");
+    assert_eq!(
+        range_suffix(position)("- -: 10abcd"),
+        Err(Failure {
+            context: "- ",
+            rest: "- -: 10abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let range_suffix_res = range_suffix(position)(":  -:0xH0abcd");
-    assert!(range_suffix_res.is_err());
-    assert_eq!(range_suffix_res.rest(), ":  -:0xH0abcd");
+    assert_eq!(
+        range_suffix(position)(" -:0xFFFF.0xFFFF.0x1FFFF abcd"),
+        Err(Failure {
+            context: " -:0xFFFF.0xFFFF.0x1FFFF",
+            rest: " -:0xFFFF.0xFFFF.0x1FFFF abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 /// Tests `parse::range_suffix`.
 #[test]
 fn parse_range_suffix_group_match() {
-    let range_suffix_res = range_suffix(group)("-xyz:0abcd");
-    assert!(range_suffix_res.is_ok());
-    assert_eq!(range_suffix_res.rest(), "abcd");
-    assert_eq!(range_suffix_res.into_value(), Some(("xyz", 0)));
+    assert_eq!(
+        range_suffix(group)("- xyz:0abcd"),
+        Ok(Success {
+            value: ("xyz", 0),
+            token: "- xyz:0",
+            rest: "abcd",
+        }));
 
-    let range_suffix_res = range_suffix(group)(" - \t\nxyz:0o077abcd");
-    assert!(range_suffix_res.is_ok());
-    assert_eq!(range_suffix_res.rest(), "abcd");
-    assert_eq!(range_suffix_res.into_value(), Some(("xyz", 0o077)));
+    assert_eq!(
+        range_suffix(group)("- xyz:0xFFFFFFFF abcd"),
+        Ok(Success {
+            value: ("xyz", 0xFFFFFFFF),
+            token: "- xyz:0xFFFFFFFF",
+            rest: " abcd",
+        }));
 }
 
 /// Tests `parse::range_suffix`.
 #[test]
 fn parse_range_suffix_group_nonmatch() {
-    let range_suffix_res = range_suffix(group)("--:10abcd");
-    assert!(range_suffix_res.is_err());
-    assert_eq!(range_suffix_res.rest(), "--:10abcd");
+    assert_eq!(
+        range_suffix(group)("- -xyz:0abcd"),
+        Err(Failure {
+            context: "- ",
+            rest: "- -xyz:0abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 
-    let range_suffix_res = range_suffix(group)(":  -:0xH0abcd");
-    assert!(range_suffix_res.is_err());
-    assert_eq!(range_suffix_res.rest(), ":  -:0xH0abcd");
+    assert_eq!(
+        range_suffix(group)(" -xyz:0xHabcd"),
+        Err(Failure {
+            context: " -xyz:0x",
+            rest: " -xyz:0xHabcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 
 /// Tests `parse::cell_selector`.
 #[test]
 fn parse_cell_selector_all_match() {
-    let cel_sel_res = cell_selector("*abcd");
-    assert!(cel_sel_res.is_ok());
-    assert_eq!(cel_sel_res.rest(), "abcd");
-    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::All));
+    assert_eq!(
+        cell_selector("*abcd"),
+        Ok(Success {
+            value: CellSelector::All,
+            token: "*",
+            rest: "abcd",
+        }));
 }
 
 /// Tests `parse::cell_selector`.
 #[test]
 fn parse_cell_selector_index_match() {
-    let cel_sel_res = cell_selector(":1abcd");
-    assert!(cel_sel_res.is_ok());
-    assert_eq!(cel_sel_res.rest(), "abcd");
-    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::Index(1)));
+    assert_eq!(
+        cell_selector(":1abcd"),
+        Ok(Success {
+            value: CellSelector::Index(1),
+            token: ":1",
+            rest: "abcd",
+        }));
 }
 
 /// Tests `parse::cell_selector`.
 #[test]
 fn parse_cell_selector_index_range_match() {
-    let cel_sel_res = cell_selector(":1-:2abcd");
-    assert_eq!(cel_sel_res, Ok(Success {
-        value: CellSelector::IndexRange { 
-            low: 1,
-            high: 2,
-        },
-        token: ":1-:2",
-        rest: "abcd",
-    }));
+    assert_eq!(
+        cell_selector(":1-:2abcd"),
+        Ok(Success {
+            value: CellSelector::IndexRange { low: 1, high: 2 },
+            token: ":1-:2",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        cell_selector(":1-:1abcd"),
+        Ok(Success {
+            value: CellSelector::Index(1),
+            token: ":1-:1",
+            rest: "abcd",
+        }));
+}
+
+/// Tests `parse::cell_selector`.
+#[test]
+fn parse_cell_selector_index_range_nonmatch() {
+    assert_eq!(
+        cell_selector(":1-:0abcd"),
+        Err(Failure {
+            context: ":1-:0",
+            rest: ":1-:0abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 /// Tests `parse::cell_selector`.
 #[test]
 fn parse_cell_selector_position_match() {
-    let cel_sel_res = cell_selector(":1.2.3abcd");
-    assert!(cel_sel_res.is_ok());
-    assert_eq!(cel_sel_res.rest(), "abcd");
-    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::PositionSelector(
-        PositionSelector {
-            page: Some(1),
-            line: Some(2),
-            column: Some(3),
-        }
-    )));
+    assert_eq!(
+        cell_selector(":1.2.3abcd"),
+        Ok(Success {
+            value: CellSelector::PositionSelector(PositionSelector {
+                page: Some(1),
+                line: Some(2),
+                column: Some(3),
+            }),
+            token: ":1.2.3",
+            rest: "abcd",
+        }));
 }
 
 /// Tests `parse::cell_selector`.
 #[test]
 fn parse_cell_selector_position_range_match() {
-    let cel_sel_res = cell_selector(":1.2.3-:4.5.6abcd");
-    assert!(cel_sel_res.is_ok());
-    assert_eq!(cel_sel_res.rest(), "abcd");
-    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::PositionRange {
-        low: Position { page: 1, line: 2, column: 3 },
-        high: Position { page: 4, line: 5, column: 6 },
-    }));
+    assert_eq!(
+        cell_selector(":1.2.3-:4.5.6abcd"),
+        Ok(Success {
+            value: CellSelector::PositionRange {
+                low: Position { page: 1, line: 2, column: 3 },
+                high: Position { page: 4, line: 5, column: 6 }
+            },
+            token: ":1.2.3-:4.5.6",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        cell_selector(":1.2.3-:1.2.3abcd"),
+        Ok(Success {
+            value: CellSelector::PositionSelector(PositionSelector {
+                page: Some(1),
+                line: Some(2),
+                column: Some(3),
+            }),
+            token: ":1.2.3-:1.2.3",
+            rest: "abcd",
+        }));
+}
+
+/// Tests `parse::cell_selector`.
+#[test]
+fn parse_cell_selector_position_range_nonmatch() {
+    assert_eq!(
+        cell_selector(":1.2.3-:0.5.6abcd"),
+        Err(Failure {
+            context: ":1.2.3-:0.5.6",
+            rest: ":1.2.3-:0.5.6abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 /// Tests `parse::cell_selector`.
 #[test]
 fn parse_cell_selector_position_selector_match() {
-    let cel_sel_res = cell_selector(":*.2.3abcd");
-    assert!(cel_sel_res.is_ok());
-    assert_eq!(cel_sel_res.rest(), "abcd");
-    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::PositionSelector(
-        PositionSelector {
-            page: None,
-            line: Some(2),
-            column: Some(3),
-        }
-    )));
+    assert_eq!(
+        cell_selector(":1.2.*abcd"),
+        Ok(Success {
+            value: CellSelector::PositionSelector(PositionSelector {
+                page: Some(1),
+                line: Some(2),
+                column: None,
+            }),
+            token: ":1.2.*",
+            rest: "abcd",
+        }));
 
-    let cel_sel_res = cell_selector(":*.*.3abcd");
-    assert!(cel_sel_res.is_ok());
-    assert_eq!(cel_sel_res.rest(), "abcd");
-    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::PositionSelector(
-        PositionSelector {
-            page: None,
-            line: None,
-            column: Some(3),
-        }
-    )));
+    assert_eq!(
+        cell_selector(":*.*.*abcd"),
+        Ok(Success {
+            value: CellSelector::PositionSelector(PositionSelector {
+                page: None,
+                line: None,
+                column: None,
+            }),
+            token: ":*.*.*",
+            rest: "abcd",
+        }));
 
-    let cel_sel_res = cell_selector(":*.2.*abcd");
-    assert!(cel_sel_res.is_ok());
-    assert_eq!(cel_sel_res.rest(), "abcd");
-    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::PositionSelector(
-        PositionSelector {
-            page: None,
-            line: Some(2),
-            column: None,
-        }
-    )));
 }
 
 /// Tests `parse::cell_selector`.
 #[test]
 fn parse_cell_selector_group_match() {
-    let cel_sel_res = cell_selector("xyz:2abcd");
-    assert!(cel_sel_res.is_ok());
-    assert_eq!(cel_sel_res.rest(), "abcd");
-    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::Group {
-        group: "xyz".into(),
-        idx: 2,
-    }));
+    assert_eq!(
+        cell_selector("xyz:2abcd"),
+        Ok(Success {
+            value: CellSelector::Group { group: "xyz".into(), idx: 2 },
+            token: "xyz:2",
+            rest: "abcd",
+        }));
 }
 
 /// Tests `parse::cell_selector`.
 #[test]
 fn parse_cell_selector_group_range_match() {
-    let cel_sel_res = cell_selector("xyz:2-xyz:4abcd");
-    assert!(cel_sel_res.is_ok());
-    assert_eq!(cel_sel_res.rest(), "abcd");
-    assert_eq!(cel_sel_res.into_value(), Some(CellSelector::GroupRange {
-        group: "xyz".into(),
-        low: 2,
-        high: 4,
-    }));
+    assert_eq!(
+        cell_selector("xyz:2-xyz:4abcd"),
+        Ok(Success {
+            value: CellSelector::GroupRange {
+                group: "xyz".into(),
+                low: 2,
+                high: 4,
+            },
+            token: "xyz:2-xyz:4",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        cell_selector("xyz:2-xyz:2abcd"),
+        Ok(Success {
+            value: CellSelector::Group { group: "xyz".into(), idx: 2 },
+            token: "xyz:2-xyz:2",
+            rest: "abcd",
+        }));
+}
+
+/// Tests `parse::cell_selector`.
+#[test]
+fn parse_cell_selector_group_range_nonmatch() {
+    assert_eq!(
+        cell_selector("xyz:2-xyzt:4abcd"),
+        Err(Failure {
+            context: "xyz:2-xyzt:4",
+            rest: "xyz:2-xyzt:4abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
+
+    assert_eq!(
+        cell_selector("xyz:2-xyz:1abcd"),
+        Err(Failure {
+            context: "xyz:2-xyz:1",
+            rest: "xyz:2-xyz:1abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 /// Tests `parse::cell_selector`.
 #[test]
 fn parse_cell_selector_group_all_match() {
-    let cel_sel_res = cell_selector("xyz:*abcd");
-    assert!(cel_sel_res.is_ok());
-    assert_eq!(cel_sel_res.rest(), "abcd");
-    assert_eq!(cel_sel_res.into_value(),
-        Some(CellSelector::GroupAll("xyz".into())));
+    assert_eq!(
+        cell_selector("xyz:*abcd"),
+        Ok(Success {
+            value: CellSelector::GroupAll("xyz".into()),
+            token: "xyz:*",
+            rest: "abcd",
+        }));
 }
 
 /// Tests `parse::cell_selector`.
 #[test]
 fn parse_cell_selector_name_match() {
-    let cel_sel_res = cell_selector("xyz:abcd");
-    assert!(cel_sel_res.is_ok());
-    assert_eq!(cel_sel_res.rest(), ":abcd");
-    assert_eq!(cel_sel_res.into_value(),
-        Some(CellSelector::Name("xyz".into())));
+    assert_eq!(
+        cell_selector("xyz abcd"),
+        Ok(Success {
+            value: CellSelector::Name("xyz".into()),
+            token: "xyz",
+            rest: " abcd",
+        }));
 }
 
 /// Tests `parse::cell_selection`.
 #[test]
 fn parse_cell_selection_match() {
-    let cel_sel_res = cell_selection("*, :0 , :3-:4, xyz*abcd");
-    assert!(cel_sel_res.is_ok());
-    assert_eq!(cel_sel_res.rest(), "*abcd");
-    assert_eq!(cel_sel_res.into_value(), Some(vec![
-        CellSelector::All,
-        CellSelector::Index(0),
-        CellSelector::IndexRange { low: 3, high: 4 },
-        CellSelector::Name("xyz".into()),
-    ].into()));
+    assert_eq!(
+        cell_selection("*, :0 , :3-:4, xyz*abcd"),
+        Ok(Success {
+            value: vec![
+                CellSelector::All,
+                CellSelector::Index(0),
+                CellSelector::IndexRange { low: 3, high: 4 },
+                CellSelector::Name("xyz".into()),
+            ].into(),
+            token: "*, :0 , :3-:4, xyz",
+            rest: "*abcd",
+        }));
 }

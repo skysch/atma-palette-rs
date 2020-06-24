@@ -45,7 +45,7 @@ pub fn repeat<'t, F, V>(low: usize, high: Option<usize>, mut parser: F)
     where F: FnMut(&'t str) -> ParseResult<'t, V>
 {
     move |text| {
-        let mut result = match (parser)(text) {
+        let mut sub_suc = match (parser)(text) {
             Ok(first) => first.discard_value(),
             Err(_) if low == 0 => return Ok(Success {
                 value: 0,
@@ -54,45 +54,45 @@ pub fn repeat<'t, F, V>(low: usize, high: Option<usize>, mut parser: F)
             }),
             Err(fail) => return Err(fail)
                 .map_value(|_: V| 0)
-                .with_parse_context("", text)
                 .source_for(format!("repeat {}{}", low,
                     if let Some(high) = high {
                         format!(" to {}", high)
                     } else {
                         "".into()
-                    })),
+                    }))
+                .with_new_context("", text)
         };
 
         let mut count = 1;
         while count < low {
-            let next = (parser)(result.rest)
+            let next_suc = (parser)(sub_suc.rest)
                 .discard_value()
-                .with_parse_context(result.token, text)
                 .source_for(format!("repeat {}{}", low,
                     if let Some(high) = high {
                         format!(" to {}", high)
                     } else {
                         "".into()
-                    }))?;
+                    }))
+                .with_join_context(&sub_suc, text)?;
 
-            result = result.join(next, text);
+            sub_suc = sub_suc.join(next_suc, text);
             count += 1;
         }
 
         loop {
-            let next_res = (parser)(result.rest)
+            let next_res = (parser)(sub_suc.rest)
                 .discard_value()
-                .with_parse_context(result.token, text)
                 .source_for(format!("repeat {}{}", low,
                     if let Some(high) = high {
                         format!(" to {}", high)
                     } else {
                         "".into()
-                    }));
+                    }))
+                .with_join_context(&sub_suc, text);
 
             match next_res {
-                Ok(next) => {
-                    result = result.join(next, text);
+                Ok(next_suc) => {
+                    sub_suc = sub_suc.join(next_suc, text);
                     count += 1;
                 }
                 Err(_) => break,
@@ -103,7 +103,7 @@ pub fn repeat<'t, F, V>(low: usize, high: Option<usize>, mut parser: F)
             }
         }
 
-        Ok(result).map_value(|_| count)
+        Ok(sub_suc.map_value(|_| count))
     }
 }
 
@@ -115,7 +115,7 @@ pub fn repeat_collect<'t, F, V>(low: usize, high: Option<usize>, mut parser: F)
     where F: FnMut(&'t str) -> ParseResult<'t, V>
 {
     move |text| {
-        let mut result = match (parser)(text) {
+        let mut sub_suc = match (parser)(text) {
             Ok(first) => first.map_value(|val| vec![val]) ,
             Err(_) if low == 0 => return Ok(Success {
                 value: Vec::new(),
@@ -124,19 +124,19 @@ pub fn repeat_collect<'t, F, V>(low: usize, high: Option<usize>, mut parser: F)
             }),
             Err(fail) => return Err(fail)
                 .map_value(|_: V| Vec::new())
-                .with_parse_context("", text)
                 .source_for(format!("repeat {}{}", low,
                     if let Some(high) = high {
                         format!(" to {}", high)
                     } else {
                         "".into()
-                    })),
+                    }))
+                .with_new_context("", text),
         };
 
         let mut count = 1;
         while count < low {
-            let next = (parser)(result.rest)
-                .with_parse_context(result.token, text)
+            let next_suc = (parser)(sub_suc.rest)
+                .with_join_context(&sub_suc, text)
                 .source_for(format!("repeat {}{}", low,
                     if let Some(high) = high {
                         format!(" to {}", high)
@@ -144,24 +144,24 @@ pub fn repeat_collect<'t, F, V>(low: usize, high: Option<usize>, mut parser: F)
                         "".into()
                     }))?;
 
-            result = result.join_with(next, text,
+            sub_suc = sub_suc.join_with(next_suc, text,
                 |mut vals, val| { vals.push(val); vals });
             count += 1;
         }
 
         loop {
-            let next_res = (parser)(result.rest)
-                .with_parse_context(result.token, text)
+            let next_res = (parser)(sub_suc.rest)
                 .source_for(format!("repeat {}{}", low,
                     if let Some(high) = high {
                         format!(" to {}", high)
                     } else {
                         "".into()
-                    }));
+                    }))
+                .with_join_context(&sub_suc, text);
 
             match next_res {
-                Ok(next) => {
-                    result = result.join_with(next, text,
+                Ok(next_suc) => {
+                    sub_suc = sub_suc.join_with(next_suc, text,
                         |mut vals, val| { vals.push(val); vals });
                     count += 1;
                 }
@@ -173,7 +173,7 @@ pub fn repeat_collect<'t, F, V>(low: usize, high: Option<usize>, mut parser: F)
             }
         }
 
-        Ok(result)
+        Ok(sub_suc)
     }
 }
 
@@ -189,13 +189,13 @@ pub fn prefix<'t, F, G, V, U>(mut parser: F, mut prefix_parser: G)
 {
     move |text| {
         let pre_suc = (prefix_parser)(text)
-            .with_parse_context("", text)?;
+            .with_new_context("", text)?;
         
-        let parser_suc = (parser)(pre_suc.rest)
-            .with_parse_context(pre_suc.token, text)
-            .source_for("postfix")?;
+        let sub_suc = (parser)(pre_suc.rest)
+            .source_for("prefix")
+            .with_join_context(&pre_suc, text)?;
 
-        Ok(pre_suc.join_with(parser_suc, text, |_, r| r))
+        Ok(pre_suc.join_with(sub_suc, text, |_, r| r))
     }
 }
 
@@ -209,14 +209,14 @@ pub fn postfix<'t, F, G, V, U>(mut parser: F, mut postfix_parser: G)
         G: FnMut(&'t str) -> ParseResult<'t, U>
 {
     move |text| {
-        let parser_suc = (parser)(text)
-            .with_parse_context("", text)?;
+        let sub_suc = (parser)(text)
+            .with_new_context("", text)?;
         
-        let post_suc = (postfix_parser)(parser_suc.rest)
-            .with_parse_context(parser_suc.token, text)
-            .source_for("postfix")?;
+        let post_suc = (postfix_parser)(sub_suc.rest)
+            .source_for("postfix")
+            .with_join_context(&sub_suc, text)?;
 
-        Ok(parser_suc.join_with(post_suc, text, |l, _| l))
+        Ok(sub_suc.join_with(post_suc, text, |l, _| l))
     }
 }
 
@@ -232,18 +232,18 @@ pub fn circumfix<'t, F, G, V, U>(mut parser: F, mut circumfix_parser: G)
 {
     move |text| {
         let pre_suc = (circumfix_parser)(text)
-            .with_parse_context("", text)?;
+            .with_new_context("", text)?;
         
-        let parser_suc = (parser)(pre_suc.rest)
-            .with_parse_context(pre_suc.token, text)
-            .source_for("postfix")?;
-        let parser_suc = pre_suc.join_with(parser_suc, text, |_, r| r);
+        let sub_suc = (parser)(pre_suc.rest)
+            .source_for("circumfix")
+            .with_join_context(&pre_suc, text)?;
+        let sub_suc = pre_suc.join_with(sub_suc, text, |_, r| r);
 
-        let post_suc = (circumfix_parser)(parser_suc.rest)
-            .with_parse_context(parser_suc.token, text)
-            .source_for("postfix")?;
+        let post_suc = (circumfix_parser)(sub_suc.rest)
+            .source_for("circumfix")
+            .with_join_context(&sub_suc, text)?;
 
-        Ok(parser_suc.join_with(post_suc, text, |l, _| l))
+        Ok(sub_suc.join_with(post_suc, text, |l, _| l))
     }
 }
 

@@ -94,7 +94,6 @@ pub fn char_matching<'t, F>(mut f: F)
 /// Parses a whitespace `char`.
 pub fn char_whitespace<'t>(text: &'t str) -> ParseResult<'t, char> {
     char_matching(char::is_whitespace)(text)
-        .with_parse_context("", text)
         .source_for("whitespace char")
 }
 
@@ -102,11 +101,10 @@ pub fn char_whitespace<'t>(text: &'t str) -> ParseResult<'t, char> {
 // String parsing.
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Parses any amount of whitespace.
+/// Parses any nonzero amount of whitespace.
 pub fn whitespace<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
-    repeat(0, None, char_whitespace)(text)
+    repeat(1, None, char_whitespace)(text)
         .tokenize_value()
-        .with_parse_context("", text)
         .source_for("whitespace")
 }
 
@@ -143,8 +141,8 @@ pub fn uint<'t, T>(int_type: &'static str)
     where T: TryFrom<u64>
 {
     move |text| {
-        let radix_prefix = maybe(radix_prefix)(text).unwrap();
-        let radix: u32 = match radix_prefix.value {
+        let radix_suc = maybe(radix_prefix)(text).unwrap();
+        let radix: u32 = match radix_suc.value {
             Some("0b") => 2,
             Some("0o") => 8,
             Some("0x") => 16,
@@ -153,19 +151,16 @@ pub fn uint<'t, T>(int_type: &'static str)
         };
 
         let digit = char_matching(|c| c.is_digit(radix) || c == '_');
-        let digits = repeat(1, None, digit)(radix_prefix.rest)
-            .with_parse_context(radix_prefix.token, text)
+        let digits_suc = repeat(1, None, digit)(radix_suc.rest)
             .source_for(
-                format!("{} integer digits with radix {}", int_type, radix))?;
-        
-        let context_span = text.len() - digits.rest.len();
-        let context = &text[0..context_span];
+                format!("{} integer digits with radix {}", int_type, radix))
+            .with_join_context(&radix_suc, text)?;
 
-        let digits_span = radix_prefix.rest.len() - digits.rest.len();
-        let digits_text = &radix_prefix.rest[0..digits_span];
+        let digits = digits_suc.token;
+        let uint_suc = radix_suc.join_with(digits_suc, text, |_, r| r);
 
         let mut res: u64 = 0;
-        let mut chars = digits_text.chars();
+        let mut chars = digits.chars();
         while let Some(c) = chars.next() {
             if c == '_' { continue; }
 
@@ -176,12 +171,12 @@ pub fn uint<'t, T>(int_type: &'static str)
             match res.checked_mul(u64::from(radix)) {
                 Some(x) => res = x,
                 None => return Err(Failure {
-                    context,
-                    expected: "parse integer".into(),
+                    context: uint_suc.token,
+                    expected: format!("{} value", int_type).into(),
                     source: Some(Box::new(ParseIntegerOverflow {
                         int_type: int_type.into(),
-                        int_text: context.to_string().into(),
-                        value: u64::from(res),
+                        int_text: uint_suc.token.to_string().into(),
+                        value: u128::from(res),
                     })),
                     rest: text,
                 }),
@@ -189,12 +184,12 @@ pub fn uint<'t, T>(int_type: &'static str)
             match res.checked_add(val) {
                 Some(x) => res = x,
                 None => return Err(Failure {
-                    context,
-                    expected: "parse integer".into(),
+                    context: uint_suc.token,
+                    expected: format!("{} value", int_type).into(),
                     source: Some(Box::new(ParseIntegerOverflow {
                         int_type: int_type.into(),
-                        int_text: context.to_string().into(),
-                        value: u64::from(res) + u64::from(val),
+                        int_text: uint_suc.token.to_string().into(),
+                        value: u128::from(res) + u128::from(val),
                     })),
                     rest: text,
                 }),
@@ -202,18 +197,14 @@ pub fn uint<'t, T>(int_type: &'static str)
         }
         
         match res.try_into() {
-            Ok(res) => Ok(Success {
-                value: res,
-                token: &text[..context_span],
-                rest: &text[context_span..],
-            }),
+            Ok(res) => Ok(uint_suc.map_value(|_| res)),
             Err(_) => Err(Failure {
-                context,
-                expected: "parse integer".into(),
+                context: uint_suc.token,
+                expected: format!("{} value", int_type).into(),
                 source: Some(Box::new(ParseIntegerOverflow {
                     int_type: int_type.into(),
-                    int_text: context.to_string().into(),
-                    value: u64::from(res),
+                    int_text: uint_suc.token.to_string().into(),
+                    value: u128::from(res),
                 })),
                 rest: text,
             }),
@@ -233,14 +224,14 @@ pub struct ParseIntegerOverflow {
     /// The integer text.
     pub int_text: Cow<'static, str>,
     /// The parsed value.
-    pub value: u64,
+    pub value: u128,
 }
 
 
 impl std::fmt::Display for ParseIntegerOverflow {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "integer value {} ('{}' does not fit in type {}",
-            self.value, self.int_text, self.int_type)
+        write!(f, "integer value '{}' ({}) does not fit in type {}",
+            self.int_text, self.value, self.int_type)
     }
 }
 

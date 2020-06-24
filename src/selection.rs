@@ -11,10 +11,6 @@
 // Local imports.
 use crate::cell::Position;
 use crate::cell::CellRef;
-use crate::parse::REF_ALL_TOKEN;
-use crate::parse::REF_POS_SEP_TOKEN;
-use crate::parse::REF_PREFIX_TOKEN;
-use crate::parse::REF_RANGE_TOKEN;
 
 // External library imports.
 use serde::Serialize;
@@ -26,6 +22,21 @@ use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::iter::FromIterator;
 
+
+/// The CellSelector 'all' selection token.
+pub const REF_ALL_TOKEN: char = '*';
+
+/// The CellSelector position separator token.
+pub const REF_POS_SEP_TOKEN: char = '.';
+
+/// The CellSelector index prefix token.
+pub const REF_PREFIX_TOKEN: char = ':';
+
+/// The CellSelector range separator token.
+pub const REF_RANGE_TOKEN: char = '-';
+
+/// The CellSelection list separator token.
+pub const REF_SEP_TOKEN: char = ',';
 
 ////////////////////////////////////////////////////////////////////////////////
 // CellSelection
@@ -226,10 +237,12 @@ impl<'name> CellSelector<'name> {
     pub fn index_range(low: u32, high: u32)
         -> Result<CellSelector<'name>, InvalidCellSelector>
     {
-        if low >= high {
+        if low > high {
             Err(InvalidCellSelector::range_mismatch(
                 CellRef::Index(low),
                 CellRef::Index(high)))
+        } else if low == high {
+            Ok(CellSelector::Index(low))
         } else {
             Ok(CellSelector::IndexRange { low, high })
         }
@@ -239,10 +252,12 @@ impl<'name> CellSelector<'name> {
     pub fn position_range(low: Position, high: Position)
         -> Result<CellSelector<'name>, InvalidCellSelector>
     {
-        if low >= high {
+        if low > high {
             Err(InvalidCellSelector::range_mismatch(
                 CellRef::Position(low),
                 CellRef::Position(high)))
+        } else if low == high {
+            Ok(CellSelector::PositionSelector(low.into()))
         } else {
             Ok(CellSelector::PositionRange { low, high })
         }
@@ -261,11 +276,13 @@ impl<'name> CellSelector<'name> {
                 CellRef::Group { group: group_low, idx: idx_low },
                 CellRef::Group { group: group_high, idx: idx_high }))
 
-        } else if idx_low >= idx_high {
+        } else if idx_low > idx_high {
             Err(InvalidCellSelector::range_order(
                 CellRef::Group { group: group_low, idx: idx_low },
                 CellRef::Group { group: group_high, idx: idx_high }))
 
+        } else if idx_low == idx_high {
+            Ok(CellSelector::Group { group: group_low, idx: idx_low })
         } else {
             Ok(CellSelector::GroupRange { 
                 group: group_low,
