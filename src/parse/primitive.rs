@@ -7,21 +7,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Parse primitives.
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: This module is currently under development.
-#![allow(unused)]
-#![allow(unused_imports)]
-#![allow(missing_docs)]
 
 // Local imports.
-use crate::parse::*;
+use crate::parse::Failure;
+use crate::parse::maybe;
+use crate::parse::ParseIntegerOverflow;
+use crate::parse::ParseResult;
+use crate::parse::ParseResultExt as _;
+use crate::parse::repeat;
+use crate::parse::Success;
 
 // Standard library imports.
-use std::borrow::Borrow;
-use std::borrow::Cow;
-use std::borrow::ToOwned;
-use std::convert::Into;
 use std::convert::TryFrom;
-use std::convert::TryInto;
+use std::convert::TryInto as _;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Char parsing.
@@ -106,7 +104,7 @@ pub fn char_whitespace<'t>(text: &'t str) -> ParseResult<'t, char> {
 
 /// Parses any amount of whitespace.
 pub fn whitespace<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
-    zero_or_more(char_whitespace)(text)
+    repeat(0, None, char_whitespace)(text)
         .tokenize_value()
         .with_parse_context("", text)
         .source_for("whitespace")
@@ -157,7 +155,7 @@ pub fn uint<'t, T>(int_type: &'static str)
         };
 
         let digit = char_matching(|c| c.is_digit(radix) || c == '_');
-        let digits = one_or_more(digit)(radix_prefix.rest)
+        let digits = repeat(1, None, digit)(radix_prefix.rest)
             .with_parse_context(radix_prefix.token, text)
             .source_for(
                 format!("{} integer digits with radix {}", int_type, radix))?;

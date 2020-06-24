@@ -7,21 +7,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Parse errors.
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: This module is currently under development.
-#![allow(unused)]
-#![allow(unused_imports)]
-#![allow(missing_docs)]
-
-// Local imports.
-use crate::parse::*;
 
 // Standard library imports.
-use std::borrow::Borrow;
 use std::borrow::Cow;
-use std::borrow::ToOwned;
-use std::convert::Into;
-use std::convert::TryFrom;
-use std::convert::TryInto;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // ParseIntegerOverflow
@@ -73,22 +62,22 @@ impl std::error::Error for GroupRangeMismatch {}
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// RangeIndexOrder
+// InvalidRangeIndexOrder
 ////////////////////////////////////////////////////////////////////////////////
 /// A range was parsed with the wrong element order.
 #[derive(Debug, Clone)]
-pub struct RangeIndexOrder {
+pub struct InvalidRangeIndexOrder {
     /// The parsed range.
     pub range: Cow<'static, str>,
 }
 
 
-impl std::fmt::Display for RangeIndexOrder {
+impl std::fmt::Display for InvalidRangeIndexOrder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "range with lower bound exceeding upper bound '{}'",
             self.range)
     }
 }
 
-impl std::error::Error for RangeIndexOrder {}
+impl std::error::Error for InvalidRangeIndexOrder {}
 

@@ -134,41 +134,6 @@ fn parse_maybe_char_nonmatch() {
     assert_eq!(char_res.rest(), "abcd");
 }
 
-/// Tests `zero_or_more` on `parse::char`.
-#[test]
-fn parse_zero_or_more_char_match() {
-    let char_res = zero_or_more(char_in("ab"))("abcd");
-    assert!(char_res.is_ok());
-    assert_eq!(char_res.rest(), "cd");
-    assert_eq!(char_res.into_value(), Some(2));
-}
-
-/// Tests `zero_or_more` on `parse::char`.
-#[test]
-fn parse_zero_or_more_char_nonmatch() {
-    let char_res = zero_or_more(char_in("bc"))("abcd");
-    assert!(char_res.is_ok());
-    assert_eq!(char_res.rest(), "abcd");
-    assert_eq!(char_res.into_value(), Some(0));
-}
-
-/// Tests `one_or_more` on `parse::char`.
-#[test]
-fn parse_one_or_more_char_match() {
-    let char_res = one_or_more(char_in("ab"))("abcd");
-    assert!(char_res.is_ok());
-    assert_eq!(char_res.rest(), "cd");
-    assert_eq!(char_res.into_value(), Some(2));
-}
-
-/// Tests `one_or_more` on `parse::char`.
-#[test]
-fn parse_one_or_more_char_nonmatch() {
-    let char_res = one_or_more(char_in("bc"))("abcd");
-    assert!(char_res.is_err());
-    assert_eq!(char_res.rest(), "abcd");
-}
-
 /// Tests `repeat` on `parse::char`.
 #[test]
 fn parse_repeat_char_match() {

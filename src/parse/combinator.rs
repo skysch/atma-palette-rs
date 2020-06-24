@@ -7,27 +7,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Parser combinators.
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: This module is currently under development.
-#![allow(unused)]
-#![allow(unused_imports)]
-#![allow(missing_docs)]
 
 // Local imports.
-use crate::parse::*;
-
-// Standard library imports.
-use std::borrow::Borrow;
-use std::borrow::Cow;
-use std::borrow::ToOwned;
-use std::convert::Into;
-use std::convert::TryFrom;
-use std::convert::TryInto;
+use crate::parse::ParseResult;
+use crate::parse::ParseResultExt as _;
+use crate::parse::Success;
 
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // Parser combinators.
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Returns a parser which will attempt a parse, wrapping the result in `Some`
 /// if it succeeds, otherwise converting the failure into a success with `None`.
 pub fn maybe<'t, F, V>(mut parser: F)
@@ -37,7 +28,7 @@ pub fn maybe<'t, F, V>(mut parser: F)
     move |text| {
         match (parser)(text) {
             Ok(success) => Ok(success).map_value(Some),
-            Err(failure) => Ok(Success {
+            Err(_) => Ok(Success {
                 value: None,
                 token: "",
                 rest: text,
@@ -46,26 +37,9 @@ pub fn maybe<'t, F, V>(mut parser: F)
     }
 }
 
-/// Returns a parser which will repeat a parse until it fails and return the
-/// last successfully parsed value.
-pub fn zero_or_more<'t, F, V>(mut parser: F)
-    -> impl FnMut(&'t str) -> ParseResult<'t, usize>
-    where F: FnMut(&'t str) -> ParseResult<'t, V>
-{
-    repeat(0, None, parser)
-}
-
-/// Returns a parser which will repeat a parse until it fails and return the
-/// last successfully parsed value. If no attempts succeed, a failure is
-/// returned.
-pub fn one_or_more<'t, F, V>(mut parser: F)
-    -> impl FnMut(&'t str) -> ParseResult<'t, usize>
-    where F: FnMut(&'t str) -> ParseResult<'t, V>
-{
-    repeat(1, None, parser)
-}
-
-
+/// Returns a parser which repeats a parse a givin number of times, stopping if
+/// a failure occurs or the upper limit is reached, returning the number of
+/// successes. Fails if the lower limit is not reached.
 pub fn repeat<'t, F, V>(low: usize, high: Option<usize>, mut parser: F)
     -> impl FnMut(&'t str) -> ParseResult<'t, usize>
     where F: FnMut(&'t str) -> ParseResult<'t, V>
@@ -130,6 +104,76 @@ pub fn repeat<'t, F, V>(low: usize, high: Option<usize>, mut parser: F)
         }
 
         Ok(result).map_value(|_| count)
+    }
+}
+
+/// Returns a parser which repeats a parse a givin number of times, stopping if
+/// a failure occurs or the upper limit is reached, returning a `Vec` containing
+/// each successful result in order. Fails if the lower limit is not reached.
+pub fn repeat_collect<'t, F, V>(low: usize, high: Option<usize>, mut parser: F)
+    -> impl FnMut(&'t str) -> ParseResult<'t, Vec<V>>
+    where F: FnMut(&'t str) -> ParseResult<'t, V>
+{
+    move |text| {
+        let mut result = match (parser)(text) {
+            Ok(first) => first.map_value(|val| vec![val]) ,
+            Err(_) if low == 0 => return Ok(Success {
+                value: Vec::new(),
+                token: "",
+                rest: text,
+            }),
+            Err(fail) => return Err(fail)
+                .map_value(|_: V| Vec::new())
+                .with_parse_context("", text)
+                .source_for(format!("repeat {}{}", low,
+                    if let Some(high) = high {
+                        format!(" to {}", high)
+                    } else {
+                        "".into()
+                    })),
+        };
+
+        let mut count = 1;
+        while count < low {
+            let next = (parser)(result.rest)
+                .with_parse_context(result.token, text)
+                .source_for(format!("repeat {}{}", low,
+                    if let Some(high) = high {
+                        format!(" to {}", high)
+                    } else {
+                        "".into()
+                    }))?;
+
+            result = result.join_with(next, text,
+                |mut vals, val| { vals.push(val); vals });
+            count += 1;
+        }
+
+        loop {
+            let next_res = (parser)(result.rest)
+                .with_parse_context(result.token, text)
+                .source_for(format!("repeat {}{}", low,
+                    if let Some(high) = high {
+                        format!(" to {}", high)
+                    } else {
+                        "".into()
+                    }));
+
+            match next_res {
+                Ok(next) => {
+                    result = result.join_with(next, text,
+                        |mut vals, val| { vals.push(val); vals });
+                    count += 1;
+                }
+                Err(_) => break,
+            }
+
+            if high.map_or(false, |h| count >= h) {
+                break;
+            }
+        }
+
+        Ok(result)
     }
 }
 
@@ -203,71 +247,3 @@ pub fn circumfix<'t, F, G, V, U>(mut parser: F, mut circumfix_parser: G)
     }
 }
 
-
-
-pub fn repeat_collect<'t, F, V>(low: usize, high: Option<usize>, mut parser: F)
-    -> impl FnMut(&'t str) -> ParseResult<'t, Vec<V>>
-    where F: FnMut(&'t str) -> ParseResult<'t, V>
-{
-    move |text| {
-        let mut result = match (parser)(text) {
-            Ok(first) => first.map_value(|val| vec![val]) ,
-            Err(_) if low == 0 => return Ok(Success {
-                value: Vec::new(),
-                token: "",
-                rest: text,
-            }),
-            Err(fail) => return Err(fail)
-                .map_value(|_: V| Vec::new())
-                .with_parse_context("", text)
-                .source_for(format!("repeat {}{}", low,
-                    if let Some(high) = high {
-                        format!(" to {}", high)
-                    } else {
-                        "".into()
-                    })),
-        };
-
-        let mut count = 1;
-        while count < low {
-            let next = (parser)(result.rest)
-                .with_parse_context(result.token, text)
-                .source_for(format!("repeat {}{}", low,
-                    if let Some(high) = high {
-                        format!(" to {}", high)
-                    } else {
-                        "".into()
-                    }))?;
-
-            result = result.join_with(next, text,
-                |mut vals, val| { vals.push(val); vals });
-            count += 1;
-        }
-
-        loop {
-            let next_res = (parser)(result.rest)
-                .with_parse_context(result.token, text)
-                .source_for(format!("repeat {}{}", low,
-                    if let Some(high) = high {
-                        format!(" to {}", high)
-                    } else {
-                        "".into()
-                    }));
-
-            match next_res {
-                Ok(next) => {
-                    result = result.join_with(next, text,
-                        |mut vals, val| { vals.push(val); vals });
-                    count += 1;
-                }
-                Err(_) => break,
-            }
-
-            if high.map_or(false, |h| count >= h) {
-                break;
-            }
-        }
-
-        Ok(result)
-    }
-}

@@ -15,7 +15,7 @@ Cell in the palette are typically identified by resolving a `CellRef`. There are
 
 + `Position`, parsed as `:X.Y.Z`. Refers to the cell by its assigned page, line, and column numbers.
 
-In the above notation, `[name]` consists of any sequence of characters excluding `:`,`,`, and `*`, while `X`,`Y`, and `Z` refer to a sequence of digits or `_` characters, with an optional base prefix (`0b`, `0o`, or `0x`.) Parsed names will have any whitespace stripped from the ends.
+In the above notation, `[name]` consists of any sequence of characters excluding `:`,`,`,`-`,`.`,`*`, and whitespace, while `X`,`Y`, and `Z` refer to a sequence of digits or `_` characters, with an optional base prefix (`0b`, `0o`, or `0x`.)
 
 
 # Cell selection & Cell selector

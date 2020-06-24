@@ -5,31 +5,45 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Parser helpers.
+//! Cell selection parsing.
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: This module is currently under development.
-#![allow(unused)]
-#![allow(unused_imports)]
-#![allow(missing_docs)]
 
 // Local imports.
-use crate::parse::*;
+use crate::parse::Failure;
+use crate::parse::maybe;
+use crate::parse::InvalidRangeIndexOrder;
+use crate::parse::GroupRangeMismatch;
+use crate::parse::ParseResult;
+use crate::parse::ParseResultExt as _;
+use crate::parse::repeat;
+use crate::parse::repeat_collect;
+use crate::parse::char;
+use crate::parse::prefix;
+use crate::parse::char_matching;
+use crate::parse::whitespace;
+use crate::parse::postfix;
+use crate::parse::circumfix;
+use crate::parse::uint;
+use crate::parse::Success;
 use crate::cell::CellRef;
 use crate::cell::Position;
 use crate::selection::CellSelector;
 use crate::selection::PositionSelector;
 
-// Standard library imports.
-// use std::convert::TryInto;
-// use std::convert::TryFrom;
+/// The CellSelector 'all' selection token.
+pub const REF_ALL_TOKEN: char = '*';
 
-pub(crate) const REF_ALL_TOKEN: char = '*';
-pub(crate) const REF_POS_SEP_TOKEN: char = '.';
-pub(crate) const REF_PREFIX_TOKEN: char = ':';
-pub(crate) const REF_RANGE_TOKEN: char = '-';
-pub(crate) const REF_SEP_TOKEN: char = ',';
+/// The CellSelector position separator token.
+pub const REF_POS_SEP_TOKEN: char = '.';
 
+/// The CellSelector index prefix token.
+pub const REF_PREFIX_TOKEN: char = ':';
 
+/// The CellSelector range separator token.
+pub const REF_RANGE_TOKEN: char = '-';
+
+/// The CellSelection list separator token.
+pub const REF_SEP_TOKEN: char = ',';
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,7 +98,7 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
                 Err(Failure {
                     context: res.token,
                     expected: "valid position range index order".into(),
-                    source: Some(Box::new(RangeIndexOrder {
+                    source: Some(Box::new(InvalidRangeIndexOrder {
                         range: res.token.to_string().into(),
                     })),
                     rest: text,
@@ -115,7 +129,7 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
                 Err(Failure {
                     context: res.token,
                     expected: "valid range index order".into(),
-                    source: Some(Box::new(RangeIndexOrder {
+                    source: Some(Box::new(InvalidRangeIndexOrder {
                         range: res.token.to_string().into(),
                     })),
                     rest: text,
@@ -162,7 +176,7 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
                 Err(Failure {
                     context: res.token,
                     expected: "valid group range index order".into(),
-                    source: Some(Box::new(RangeIndexOrder {
+                    source: Some(Box::new(InvalidRangeIndexOrder {
                         range: res.token.to_string().into(),
                     })),
                     rest: text,
@@ -226,7 +240,8 @@ pub fn position_selector<'t>(text: &'t str)
     }))
 }
 
-
+/// Parses a u16 or an 'all' selector token. Return Some if a u16 was parsed, or
+/// None if 'all' was parsed.
 pub fn u16_or_all<'t>(text: &'t str) -> ParseResult<'t, Option<u16>> {
     if let Ok(all_suc) = char(REF_ALL_TOKEN)(text) {
         Ok(all_suc.map_value(|_| None))
@@ -235,28 +250,17 @@ pub fn u16_or_all<'t>(text: &'t str) -> ParseResult<'t, Option<u16>> {
     }
 }
 
-pub fn range_suffix<'t, F, V>(mut parser: F)
+/// Returns a parser which parses the separator and upper bound of a range using
+/// the given parser.
+pub fn range_suffix<'t, F, V>(parser: F)
     -> impl FnMut(&'t str) -> ParseResult<'t, V>
     where F: FnMut(&'t str) -> ParseResult<'t, V>
 {
-    move |text| {
-        let ws_suc = maybe(whitespace)(text).unwrap();
-
-        let range_suc = char(REF_RANGE_TOKEN)(ws_suc.rest)
-            .with_parse_context(ws_suc.token, text)
-            .source_for("cell selector range separator")?;
-        let range_suc = ws_suc.join(range_suc, text);
-
-        let ws_suc = maybe(whitespace)(range_suc.rest).unwrap();
-        let ws_suc = range_suc.join(ws_suc, text);
-
-        let parser_suc = (parser)(ws_suc.rest)
-            .with_parse_context(ws_suc.token, text)
-            .source_for("cell selector range upper bound")?;
-        let parser_suc = ws_suc.join_with(parser_suc, text, |_, r| r);
-
-        Ok(parser_suc)
-    }
+    prefix(
+        parser, 
+        circumfix(
+            char(REF_RANGE_TOKEN),
+            whitespace))
 }
 
 /// Parses a group all selector.
@@ -365,7 +369,7 @@ pub fn name<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
         REF_RANGE_TOKEN,
     ].contains(&c) && !c.is_whitespace());
 
-    let res = one_or_more(valid_char)(text)
+    let res = repeat(1, None, valid_char)(text)
         .with_parse_context("", text)
         .source_for("cell ref name")?;
 
