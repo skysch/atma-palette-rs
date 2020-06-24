@@ -5,14 +5,12 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Palette operation test suite.
+//! Palette primitive operation test suite.
 ////////////////////////////////////////////////////////////////////////////////
 
 use crate::Palette;
 use crate::cell::Cell;
 use crate::cell::Position;
-// use crate::selection::CellSelector;
-// use crate::selection::PositionSelector;
 use crate::cell::CellRef;
 
 use std::borrow::Cow;

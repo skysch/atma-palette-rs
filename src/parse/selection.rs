@@ -52,9 +52,7 @@ pub const REF_SEP_TOKEN: char = ',';
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Parses a CellSelection.
-pub fn cell_selection<'t>(text: &'t str)
-    -> ParseResult<'t, CellSelection<'t>>
-{
+pub fn cell_selection<'t>(text: &'t str) -> ParseResult<'t, CellSelection<'t>> {
     let init_suc = repeat_collect(1, None,
             postfix(
                 cell_selector,

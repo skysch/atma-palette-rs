@@ -43,7 +43,7 @@ mod palette;
 pub mod parse;
 
 #[cfg(test)]
-mod tests;
+mod test;
 
 // Public modules.
 pub mod cell;
