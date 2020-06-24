@@ -95,15 +95,6 @@ pub enum CellRef<'name> {
 }
 
 impl<'name> CellRef<'name> {
-    /// Returns true if the CellRef is compatable with ranged cell selectors.
-    #[inline]
-    pub(crate) fn ranged_selector(&self) -> bool {
-        match self {
-            CellRef::Name(_) => false,
-            _ => true,
-        }
-    }
-
     /// Converts a `CellRef` to a static lifetime.
     pub fn into_static(self) -> CellRef<'static> {
         use CellRef::*;

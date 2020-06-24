@@ -373,32 +373,32 @@ fn parse_name_match() {
     assert_eq!(name_res.rest(), "");
     assert_eq!(name_res.into_value(), Some("abcd"));
 
-    let name_res = name("   ab   cd   ");
-    assert!(name_res.is_ok());
-    assert_eq!(name_res.rest(), "");
-    assert_eq!(name_res.into_value(), Some("ab   cd"));
-
     let name_res = name("xyz .abcd");
+    assert!(name_res.is_ok());
+    assert_eq!(name_res.rest(), " .abcd");
+    assert_eq!(name_res.into_value(), Some("xyz"));
+
+    let name_res = name("xyz.abcd");
     assert!(name_res.is_ok());
     assert_eq!(name_res.rest(), ".abcd");
     assert_eq!(name_res.into_value(), Some("xyz"));
 
-    let name_res = name("xyz :abcd");
+    let name_res = name("xyz:abcd");
     assert!(name_res.is_ok());
     assert_eq!(name_res.rest(), ":abcd");
     assert_eq!(name_res.into_value(), Some("xyz"));
 
-    let name_res = name("xyz *abcd");
+    let name_res = name("xyz*abcd");
     assert!(name_res.is_ok());
     assert_eq!(name_res.rest(), "*abcd");
     assert_eq!(name_res.into_value(), Some("xyz"));
 
-    let name_res = name("xyz -abcd");
+    let name_res = name("xyz-abcd");
     assert!(name_res.is_ok());
     assert_eq!(name_res.rest(), "-abcd");
     assert_eq!(name_res.into_value(), Some("xyz"));
 
-    let name_res = name("xyz ,abcd");
+    let name_res = name("xyz,abcd");
     assert!(name_res.is_ok());
     assert_eq!(name_res.rest(), ",abcd");
     assert_eq!(name_res.into_value(), Some("xyz"));
@@ -407,6 +407,10 @@ fn parse_name_match() {
 /// Tests `parse::name`.
 #[test]
 fn parse_name_nonmatch() {
+    let name_res = name(" abcd");
+    assert!(name_res.is_err());
+    assert_eq!(name_res.rest(), " abcd");
+
     let name_res = name(".abcd");
     assert!(name_res.is_err());
     assert_eq!(name_res.rest(), ".abcd");
@@ -860,4 +864,18 @@ fn parse_cell_selector_name_match() {
     assert_eq!(cel_sel_res.rest(), ":abcd");
     assert_eq!(cel_sel_res.into_value(),
         Some(CellSelector::Name("xyz".into())));
+}
+
+/// Tests `parse::cell_selection`.
+#[test]
+fn parse_cell_selection_match() {
+    let cel_sel_res = cell_selection("*, :0 , :3-:4, xyz*abcd");
+    assert!(cel_sel_res.is_ok());
+    assert_eq!(cel_sel_res.rest(), "*abcd");
+    assert_eq!(cel_sel_res.into_value(), Some(vec![
+        CellSelector::All,
+        CellSelector::Index(0),
+        CellSelector::IndexRange { low: 3, high: 4 },
+        CellSelector::Name("xyz".into()),
+    ]));
 }

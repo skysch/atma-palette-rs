@@ -40,7 +40,26 @@ pub(crate) const REF_SEP_TOKEN: char = ',';
 pub fn cell_selection<'t>(text: &'t str)
     -> ParseResult<'t, Vec<CellSelector<'t>>>
 {
-    unimplemented!()
+    let init_suc = repeat_collect(1, None,
+            postfix(
+                cell_selector,
+                circumfix(
+                    char(REF_SEP_TOKEN),
+                    whitespace)))
+        (text)
+        .with_parse_context("", text)
+        .source_for("cell selection initial elements")?;
+
+    let tail_suc = maybe(cell_selector)(init_suc.rest)
+        .with_parse_context(init_suc.token, text)
+        .source_for("cell selection tail element")?;
+
+    Ok(init_suc.join_with(tail_suc, text, |mut list, tail| {
+        if let Some(tail) = tail {
+            list.push(tail);
+        }; 
+        list
+    }))
 }
 
 
@@ -344,7 +363,7 @@ pub fn name<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
         REF_POS_SEP_TOKEN,
         REF_PREFIX_TOKEN,
         REF_RANGE_TOKEN,
-    ].contains(&c));
+    ].contains(&c) && !c.is_whitespace());
 
     let res = one_or_more(valid_char)(text)
         .with_parse_context("", text)
