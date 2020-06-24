@@ -565,7 +565,6 @@ fn parse_cell_ref_group_match() {
 // CellSelector
 ////////////////////////////////////////////////////////////////////////////////
 
-
 /// Tests `parse::position`.
 #[test]
 fn parse_position_selector_match() {
@@ -638,4 +637,90 @@ fn parse_position_selector_nonmatch() {
     let pos_sel_res = position_selector(":0xF1.**.3abcd");
     assert!(pos_sel_res.is_err());
     assert_eq!(pos_sel_res.rest(), ":0xF1.**.3abcd");
+}
+
+/// Tests `parse::range_suffix`.
+#[test]
+fn parse_range_suffix_index_match() {
+    let range_suffix_res = range_suffix(index)("-:10abcd");
+    assert!(range_suffix_res.is_ok());
+    assert_eq!(range_suffix_res.rest(), "abcd");
+    assert_eq!(range_suffix_res.into_value(), Some(10u32));
+
+    let range_suffix_res = range_suffix(index)("  -  :0b10abcd");
+    assert!(range_suffix_res.is_ok());
+    assert_eq!(range_suffix_res.rest(), "abcd");
+    assert_eq!(range_suffix_res.into_value(), Some(0b10u32));
+}
+
+/// Tests `parse::range_suffix`.
+#[test]
+fn parse_range_suffix_index_nonmatch() {
+    let range_suffix_res = range_suffix(index)("-::10abcd");
+    assert!(range_suffix_res.is_err());
+    assert_eq!(range_suffix_res.rest(), "-::10abcd");
+
+    let range_suffix_res = range_suffix(index)(":  -:0xH0abcd");
+    assert!(range_suffix_res.is_err());
+    assert_eq!(range_suffix_res.rest(), ":  -:0xH0abcd");
+}
+
+/// Tests `parse::range_suffix`.
+#[test]
+fn parse_range_suffix_position_match() {
+    let range_suffix_res = range_suffix(position)("-:10.2.4abcd");
+    assert!(range_suffix_res.is_ok());
+    assert_eq!(range_suffix_res.rest(), "abcd");
+    assert_eq!(range_suffix_res.into_value(), Some(Position {
+        page: 10,
+        line: 2,
+        column: 4
+    }));
+
+    let range_suffix_res = range_suffix(position)("  - \t :0b10.2.0o4abcd");
+    assert!(range_suffix_res.is_ok());
+    assert_eq!(range_suffix_res.rest(), "abcd");
+    assert_eq!(range_suffix_res.into_value(), Some(Position {
+        page: 0b10,
+        line: 2,
+        column: 0o4
+    }));
+}
+
+/// Tests `parse::range_suffix`.
+#[test]
+fn parse_range_suffix_position_nonmatch() {
+    let range_suffix_res = range_suffix(position)("-::10abcd");
+    assert!(range_suffix_res.is_err());
+    assert_eq!(range_suffix_res.rest(), "-::10abcd");
+
+    let range_suffix_res = range_suffix(position)(":  -:0xH0abcd");
+    assert!(range_suffix_res.is_err());
+    assert_eq!(range_suffix_res.rest(), ":  -:0xH0abcd");
+}
+
+/// Tests `parse::range_suffix`.
+#[test]
+fn parse_range_suffix_group_match() {
+    let range_suffix_res = range_suffix(group)("-xyz:0abcd");
+    assert!(range_suffix_res.is_ok());
+    assert_eq!(range_suffix_res.rest(), "abcd");
+    assert_eq!(range_suffix_res.into_value(), Some(("xyz", 0)));
+
+    let range_suffix_res = range_suffix(group)(" - \t\nxyz:0o077abcd");
+    assert!(range_suffix_res.is_ok());
+    assert_eq!(range_suffix_res.rest(), "abcd");
+    assert_eq!(range_suffix_res.into_value(), Some(("xyz", 0o077)));
+}
+
+/// Tests `parse::range_suffix`.
+#[test]
+fn parse_range_suffix_group_nonmatch() {
+    let range_suffix_res = range_suffix(group)("--:10abcd");
+    assert!(range_suffix_res.is_err());
+    assert_eq!(range_suffix_res.rest(), "--:10abcd");
+
+    let range_suffix_res = range_suffix(group)(":  -:0xH0abcd");
+    assert!(range_suffix_res.is_err());
+    assert_eq!(range_suffix_res.rest(), ":  -:0xH0abcd");
 }

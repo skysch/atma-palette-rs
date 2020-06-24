@@ -28,7 +28,7 @@ use std::convert::TryInto;
 ////////////////////////////////////////////////////////////////////////////////
 // Parser combinators.
 ////////////////////////////////////////////////////////////////////////////////
-/// Returns a parser which will attempts a parse, wrapping the result in `Some`
+/// Returns a parser which will attempt a parse, wrapping the result in `Some`
 /// if it succeeds, otherwise converting the failure into a success with `None`.
 pub fn maybe<'t, F, V>(mut parser: F)
     -> impl FnMut(&'t str) -> ParseResult<'t, Option<V>>

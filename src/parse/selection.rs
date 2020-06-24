@@ -49,60 +49,87 @@ pub fn cell_selection<'t>(text: &'t str)
 ////////////////////////////////////////////////////////////////////////////////
 /// Parses a CellSelector.
 pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
+    // if let Ok(all_suc) = char(REF_ALL_TOKEN)(text) {
+    //     Ok(all_suc.map_value(|_| CellSelector::All))
+    // } else if let Ok(pos_suc) = position(text) {
+
+    // }
+
     unimplemented!()
+
+
 }
 
 /// Parses a PositionSelector.
 pub fn position_selector<'t>(text: &'t str)
     -> ParseResult<'t, PositionSelector>
 {
-    let pre = char(REF_PREFIX_TOKEN)(text)
+    let pre_suc = char(REF_PREFIX_TOKEN)(text)
         .with_parse_context("", text)
-        .source_for("cell selector position selector prefix")?;
+        .source_for("cell ref position selector prefix")?;
     
-    let context = &text[0..(text.len() - pre.rest.len())];
-    let page = uin16_or_all(pre.rest)
-        .with_parse_context(context, text)
-        .source_for("cell selector position selector page")?;
+    let page_suc = u16_or_all(pre_suc.rest)
+        .with_parse_context(pre_suc.token, text)
+        .source_for("cell ref position selector page")?;
+    let page_suc = pre_suc.join_with(page_suc, text, |_, p| p);
     
-    let context = &text[0..(text.len() - pre.rest.len())];
-    let sep1 = char(REF_POS_SEP_TOKEN)(page.rest)
-        .with_parse_context(context, text)
-        .source_for("cell selector position selector separator")?;
+    let sep_suc = char(REF_POS_SEP_TOKEN)(page_suc.rest)
+        .with_parse_context(page_suc.token, text)
+        .source_for("cell ref position selector separator")?;
+    let sep_suc = page_suc.join_with(sep_suc, text, |p, _| p);
     
-    let context = &text[0..(text.len() - pre.rest.len())];
-    let line = uin16_or_all(sep1.rest)
-        .with_parse_context(context, text)
-        .source_for("cell selector position selector line")?;
+    let line_suc = u16_or_all(sep_suc.rest)
+        .with_parse_context(sep_suc.token, text)
+        .source_for("cell ref position selector line")?;
+    let line_suc = sep_suc.join_with(line_suc, text, |p, l| (p, l));
     
-    let context = &text[0..(text.len() - pre.rest.len())];
-    let sep2 = char(REF_POS_SEP_TOKEN)(line.rest)
-        .with_parse_context(context, text)
-        .source_for("cell selector position selector separator")?;
+    let sep_suc = char(REF_POS_SEP_TOKEN)(line_suc.rest)
+        .with_parse_context(line_suc.token, text)
+        .source_for("cell ref position selector separator")?;
+    let sep_suc = line_suc.join_with(sep_suc, text, |(p, l), _| (p, l));
+
+    let column_suc = u16_or_all(sep_suc.rest)
+        .with_parse_context(sep_suc.token, text)
+        .source_for("cell ref position selector column")?;
+    let column_suc = sep_suc.join_with(column_suc, text, |(p, l), c| (p, l, c));
     
-    let context = &text[0..(text.len() - pre.rest.len())];
-    let column = uin16_or_all(sep2.rest)
-        .with_parse_context(context, text)
-        .source_for("cell selector position selector column")?;
-    
-    let context = &text[0..(text.len() - pre.rest.len())];
-    Ok(Success {
-        value: PositionSelector {
-            page: page.value,
-            line: line.value,
-            column: column.value,
-        },
-        token: context,
-        rest: column.rest,
-    })
+    Ok(column_suc.map_value(|(page, line, column)| PositionSelector {
+        page,
+        line,
+        column,
+    }))
 }
 
 
-pub fn uin16_or_all<'t>(text: &'t str) -> ParseResult<'t, Option<u16>> {
+pub fn u16_or_all<'t>(text: &'t str) -> ParseResult<'t, Option<u16>> {
     if let Ok(all_suc) = char(REF_ALL_TOKEN)(text) {
         Ok(all_suc.map_value(|_| None))
     } else {
         uint::<u16>("u16")(text).map_value(Some)
+    }
+}
+
+pub fn range_suffix<'t, F, V>(mut parser: F)
+    -> impl FnMut(&'t str) -> ParseResult<'t, V>
+    where F: FnMut(&'t str) -> ParseResult<'t, V>
+{
+    move |text| {
+        let ws_suc = maybe(whitespace)(text).unwrap();
+
+        let range_suc = char(REF_RANGE_TOKEN)(ws_suc.rest)
+            .with_parse_context(ws_suc.token, text)
+            .source_for("cell selector range separator")?;
+        let range_suc = ws_suc.join(range_suc, text);
+
+        let ws_suc = maybe(whitespace)(range_suc.rest).unwrap();
+        let ws_suc = range_suc.join(ws_suc, text);
+
+        let parser_suc = (parser)(ws_suc.rest)
+            .with_parse_context(ws_suc.token, text)
+            .source_for("cell selector range upper bound")?;
+        let parser_suc = ws_suc.join_with(parser_suc, text, |_, r| r);
+
+        Ok(parser_suc)
     }
 }
 
@@ -112,73 +139,63 @@ pub fn uin16_or_all<'t>(text: &'t str) -> ParseResult<'t, Option<u16>> {
 
 /// Parses a CellRef.
 pub fn cell_ref<'t>(text: &'t str) -> ParseResult<'t, CellRef<'t>> {
-    // Try Position first, as it shares a prefix with Index.
+    
     if let Ok(pos_suc) = position(text) {
         Ok(pos_suc.map_value(|pos| CellRef::Position(pos)))
-    // Try Index second.
+    
     } else if let Ok(idx_suc) = index(text) {
         Ok(idx_suc.map_value(|idx| CellRef::Index(idx)))
+    
+    } else if let Ok(group_suc) = group(text) {
+        Ok(group_suc.map_value(|(group, idx)| CellRef::Group {
+            group: group.into(),
+            idx,
+        }))
+
     } else {
-        // Try name, but parse it as a group if an Index follows.
-        let name_suc = name(text)
+        name(text)
+            .map_value(|name| CellRef::Name(name.into()))
             .with_parse_context("", text)
-            .source_for("cell ref value")?;
-        let name = name_suc.value;
-        
-        if let Ok(idx_suc) = index(name_suc.rest) {
-            let idx = idx_suc.value;
-            let group_suc = name_suc.join(idx_suc, text);
-            Ok(group_suc.map_value(|_| CellRef::Group {
-                group: name.into(),
-                idx,
-            }))
-        } else {
-            Ok(name_suc.map_value(|_| CellRef::Name(name.into())))
-        }
+            .source_for("cell ref value")
     }
 }
 
 /// Parses a Position.
 pub fn position<'t>(text: &'t str) -> ParseResult<'t, Position> {
-    let pre = char(REF_PREFIX_TOKEN)(text)
+    let pre_suc = char(REF_PREFIX_TOKEN)(text)
         .with_parse_context("", text)
         .source_for("cell ref position prefix")?;
     
-    let context = &text[0..(text.len() - pre.rest.len())];
-    let page = uint::<u16>("u16")(pre.rest)
-        .with_parse_context(context, text)
+    let page_suc = uint::<u16>("u16")(pre_suc.rest)
+        .with_parse_context(pre_suc.token, text)
         .source_for("cell ref position page")?;
+    let page_suc = pre_suc.join_with(page_suc, text, |_, p| p);
     
-    let context = &text[0..(text.len() - pre.rest.len())];
-    let sep1 = char(REF_POS_SEP_TOKEN)(page.rest)
-        .with_parse_context(context, text)
+    let sep_suc = char(REF_POS_SEP_TOKEN)(page_suc.rest)
+        .with_parse_context(page_suc.token, text)
         .source_for("cell ref position separator")?;
+    let sep_suc = page_suc.join_with(sep_suc, text, |p, _| p);
     
-    let context = &text[0..(text.len() - pre.rest.len())];
-    let line = uint::<u16>("u16")(sep1.rest)
-        .with_parse_context(context, text)
+    let line_suc = uint::<u16>("u16")(sep_suc.rest)
+        .with_parse_context(sep_suc.token, text)
         .source_for("cell ref position line")?;
+    let line_suc = sep_suc.join_with(line_suc, text, |p, l| (p, l));
     
-    let context = &text[0..(text.len() - pre.rest.len())];
-    let sep2 = char(REF_POS_SEP_TOKEN)(line.rest)
-        .with_parse_context(context, text)
+    let sep_suc = char(REF_POS_SEP_TOKEN)(line_suc.rest)
+        .with_parse_context(line_suc.token, text)
         .source_for("cell ref position separator")?;
-    
-    let context = &text[0..(text.len() - pre.rest.len())];
-    let column = uint::<u16>("u16")(sep2.rest)
-        .with_parse_context(context, text)
+    let sep_suc = line_suc.join_with(sep_suc, text, |(p, l), _| (p, l));
+
+    let column_suc = uint::<u16>("u16")(sep_suc.rest)
+        .with_parse_context(sep_suc.token, text)
         .source_for("cell ref position column")?;
+    let column_suc = sep_suc.join_with(column_suc, text, |(p, l), c| (p, l, c));
     
-    let context = &text[0..(text.len() - pre.rest.len())];
-    Ok(Success {
-        value: Position {
-            page: page.value,
-            line: line.value,
-            column: column.value,
-        },
-        token: context,
-        rest: column.rest,
-    })
+    Ok(column_suc.map_value(|(page, line, column)| Position {
+        page,
+        line,
+        column,
+    }))
 }
 
 /// Parses a Index.
@@ -193,7 +210,7 @@ pub fn index<'t>(text: &'t str) -> ParseResult<'t, u32> {
 }
 
 
-/// Parses a name or group.
+/// Parses a name.
 pub fn name<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
     let valid_char = char_matching(|c| ![
         REF_ALL_TOKEN,
@@ -213,4 +230,17 @@ pub fn name<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
         token: context,
         rest: res.rest,
     })
+}
+
+/// Parses a group name with its index.
+pub fn group<'t>(text: &'t str) -> ParseResult<'t, (&'t str, u32)> {
+    let name_suc = name(text)
+        .with_parse_context("", text)
+        .source_for("cell ref group name")?;
+
+    let index_suc = index(name_suc.rest)
+        .with_parse_context(name_suc.token, text)
+        .source_for("cell ref group index")?;
+
+    Ok(name_suc.join_with(index_suc, text, |group, idx| (group, idx)))
 }
