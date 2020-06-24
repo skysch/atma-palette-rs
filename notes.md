@@ -86,3 +86,14 @@ name
 ## SetExpr
 
 
+# Parser design principles
+## Use `&'t str`, not `&mut &'t str`.
+## Use `std::Result`.
+## If a function takes extra args, return a parser.
+## If a function takes no extra args, it is the parser.
+## Use `FnMut`
+## Use `std::error::Error` for failure source.
+## Do not box/own all parse errors.
+## Impl `PartialEq` on results for testing.
+## Return value, token, rest on success.
+## Return context, expected, source, and rest on failure.

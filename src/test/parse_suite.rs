@@ -22,76 +22,110 @@ use crate::cell::CellRef;
 /// Tests `parse::char`.
 #[test]
 fn parse_char_match() {
-    let char_res = char('a')("abcd");
-    assert!(char_res.is_ok());
-    assert_eq!(char_res.rest(), "bcd");
-    assert_eq!(char_res.into_value(), Some('a'));
+    assert_eq!(
+        char('a')("abcd"),
+        Ok(Success {
+            value: 'a',
+            token: "a",
+            rest: "bcd",
+        }));
 }
 
 /// Tests `parse::char`.
 #[test]
 fn parse_char_nonmatch() {
-    let char_res = char('b')("abcd");
-    assert!(char_res.is_err());
-    assert_eq!(char_res.rest(), "abcd");
+    assert_eq!(
+        char('b')("abcd"),
+        Err(Failure {
+            context: "",
+            rest: "abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 /// Tests `parse::char_in`.
 #[test]
 fn parse_char_in_match() {
-    let char_in_res = char_in("cab")("abcd");
-    assert!(char_in_res.is_ok());
-    assert_eq!(char_in_res.rest(), "bcd");
-    assert_eq!(char_in_res.into_value(), Some('a'));
+    assert_eq!(
+        char_in("cab")("abcd"),
+        Ok(Success {
+            value: 'a',
+            token: "a",
+            rest: "bcd",
+        }));
 }
 
 /// Tests `parse::char_in`.
 #[test]
 fn parse_char_in_nonmatch() {
-    let char_in_res = char_in("bdcbd")("abcd");
-    assert!(char_in_res.is_err());
-    assert_eq!(char_in_res.rest(), "abcd");
+    assert_eq!(
+        char_in("bdcbd")("abcd"),
+        Err(Failure {
+            context: "",
+            rest: "abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 
 /// Tests `parse::char_matching`.
 #[test]
 fn parse_char_matching_match() {
-    let char_matching_res = char_matching(|c| c == 'a')("abcd");
-    assert!(char_matching_res.is_ok());
-    assert_eq!(char_matching_res.rest(), "bcd");
-    assert_eq!(char_matching_res.into_value(), Some('a'));
+    assert_eq!(
+        char_matching(|c| c == 'a')("abcd"),
+        Ok(Success {
+            value: 'a',
+            token: "a",
+            rest: "bcd",
+        }));
 }
 
 /// Tests `parse::char_matching`.
 #[test]
 fn parse_char_matching_nonmatch() {
-    let char_matching_res = char_matching(|c| c == 'b')("abcd");
-    assert!(char_matching_res.is_err());
-    assert_eq!(char_matching_res.rest(), "abcd");
+    assert_eq!(
+        char_matching(|c| c == 'b')("abcd"),
+        Err(Failure {
+            context: "",
+            rest: "abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 
 /// Tests `parse::char_whitespace`.
 #[test]
 fn parse_char_whitespace_match() {
-    let char_whitespace_res = char_whitespace("\tabcd");
-    assert!(char_whitespace_res.is_ok());
-    assert_eq!(char_whitespace_res.rest(), "abcd");
-    assert_eq!(char_whitespace_res.into_value(), Some('\t'));
+    assert_eq!(
+        char_whitespace("\tabcd"),
+        Ok(Success {
+            value: '\t',
+            token: "\t",
+            rest: "abcd",
+        }));
 
-    let char_whitespace_res = char_whitespace(" abcd");
-    assert!(char_whitespace_res.is_ok());
-    assert_eq!(char_whitespace_res.rest(), "abcd");
-    assert_eq!(char_whitespace_res.into_value(), Some(' '));
+    assert_eq!(char_whitespace(" abcd"),
+        Ok(Success {
+            value: ' ',
+            token: " ",
+            rest: "abcd",
+        }));
 }
 
 /// Tests `parse::char_whitespace`.
 #[test]
 fn parse_char_whitespace_nonmatch() {
-    let char_whitespace_res = char_whitespace("abcd");
-    assert!(char_whitespace_res.is_err());
-    assert_eq!(char_whitespace_res.rest(), "abcd");
+    assert_eq!(
+        char_whitespace("abcd"),
+        Err(Failure {
+            context: "",
+            rest: "abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,15 +135,21 @@ fn parse_char_whitespace_nonmatch() {
 /// Tests `parse::whitespace`.
 #[test]
 fn parse_whitespace() {
-    let whitespace_res = whitespace("\t \n \tabcd");
-    assert!(whitespace_res.is_ok());
-    assert_eq!(whitespace_res.rest(), "abcd");
-    assert_eq!(whitespace_res.into_value(), Some("\t \n \t"));
+    assert_eq!(
+        whitespace("\t \n \tabcd"),
+        Ok(Success {
+            value: "\t \n \t",
+            token: "\t \n \t",
+            rest: "abcd",
+        }));
 
-    let whitespace_res = whitespace("abcd");
-    assert!(whitespace_res.is_ok());
-    assert_eq!(whitespace_res.rest(), "abcd");
-    assert_eq!(whitespace_res.into_value(), Some(""));
+    assert_eq!(
+        whitespace("abcd"),
+        Ok(Success {
+            value: "",
+            token: "",
+            rest: "abcd",
+        }));
 }
 
 
@@ -120,35 +160,50 @@ fn parse_whitespace() {
 /// Tests `maybe` on `parse::char`.
 #[test]
 fn parse_maybe_char_match() {
-    let char_res = maybe(char('a'))("abcd");
-    assert!(char_res.is_ok());
-    assert_eq!(char_res.rest(), "bcd");
-    assert_eq!(char_res.into_value(), Some(Some('a')));
+    assert_eq!(
+        maybe(char('a'))("abcd"),
+        Ok(Success {
+            value: Some('a'),
+            token: "a",
+            rest: "bcd",
+        }));
 }
 
 /// Tests `maybe` on `parse::char`.
 #[test]
 fn parse_maybe_char_nonmatch() {
-    let char_res = maybe(char('b'))("abcd");
-    assert!(char_res.is_ok());
-    assert_eq!(char_res.rest(), "abcd");
+    assert_eq!(
+        maybe(char('b'))("abcd"),
+        Ok(Success {
+            value: None,
+            token: "",
+            rest: "abcd",
+        }));
 }
 
 /// Tests `repeat` on `parse::char`.
 #[test]
 fn parse_repeat_char_match() {
-    let char_res = repeat(3, Some(5), char('a'))("aaaabcd");
-    assert!(char_res.is_ok());
-    assert_eq!(char_res.rest(), "bcd");
-    assert_eq!(char_res.into_value(), Some(4));
+    assert_eq!(
+        repeat(3, Some(5), char('a'))("aaaabcd"),
+        Ok(Success {
+            value: 4,
+            token: "aaaa",
+            rest: "bcd",
+        }));
 }
 
 /// Tests `repeat` on `parse::char`.
 #[test]
 fn parse_repeat_char_nonmatch() {
-    let char_res = repeat(3, Some(5), char('a'))("aabcd");
-    assert!(char_res.is_err());
-    assert_eq!(char_res.rest(), "aabcd");
+    assert_eq!(
+        repeat(3, Some(5), char('a'))("aabcd"),
+        Err(Failure {
+            context: "aa",
+            rest: "aabcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,52 +213,78 @@ fn parse_repeat_char_nonmatch() {
 /// Tests `parse::radix_prefix`.
 #[test]
 fn parse_radix_prefix_match() {
-    let radix_prefix_res = radix_prefix("0babcd");
-    assert!(radix_prefix_res.is_ok());
-    assert_eq!(radix_prefix_res.rest(), "abcd");
-    assert_eq!(radix_prefix_res.into_value(), Some("0b"));
+    assert_eq!(
+        radix_prefix("0b1234abcd"),
+        Ok(Success {
+            value: "0b",
+            token: "0b",
+            rest: "1234abcd",
+        }));
 
-    let radix_prefix_res = radix_prefix("0oabcd");
-    assert!(radix_prefix_res.is_ok());
-    assert_eq!(radix_prefix_res.rest(), "abcd");
-    assert_eq!(radix_prefix_res.into_value(), Some("0o"));
+    assert_eq!(
+        radix_prefix("0o1234abcd"),
+        Ok(Success {
+            value: "0o",
+            token: "0o",
+            rest: "1234abcd",
+        }));
 
-    let radix_prefix_res = radix_prefix("0xabcd");
-    assert!(radix_prefix_res.is_ok());
-    assert_eq!(radix_prefix_res.rest(), "abcd");
-    assert_eq!(radix_prefix_res.into_value(), Some("0x"));
+    assert_eq!(
+        radix_prefix("0x1234abcd"),
+        Ok(Success {
+            value: "0x",
+            token: "0x",
+            rest: "1234abcd",
+        }));
 }
 
 /// Tests `parse::radix_prefix`.
 #[test]
 fn parse_radix_prefix_nonmatch() {
-    let radix_prefix_res = radix_prefix("0abcd");
-    assert!(radix_prefix_res.is_err());
-    assert_eq!(radix_prefix_res.rest(), "0abcd");
+    assert_eq!(
+        radix_prefix("1234abcd"),
+        Err(Failure {
+            context: "",
+            rest: "1234abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
 }
 
 /// Tests `parse::uint` for a `u8` value.
 #[test]
 fn parse_uint_u8_match() {
-    let uint_u8_res = uint::<u8>("u8")("0abcd");
-    assert!(uint_u8_res.is_ok());
-    assert_eq!(uint_u8_res.rest(), "abcd");
-    assert_eq!(uint_u8_res.into_value(), Some(0u8));
+    assert_eq!(
+        uint::<u8>("u8")("0abcd"),
+        Ok(Success {
+            value: 0u8,
+            token: "0",
+            rest: "abcd",
+        }));
 
-    let uint_u8_res = uint::<u8>("u8")("0b10abcd");
-    assert!(uint_u8_res.is_ok());
-    assert_eq!(uint_u8_res.rest(), "abcd");
-    assert_eq!(uint_u8_res.into_value(), Some(0b10u8));
+    assert_eq!(
+        uint::<u8>("u8")("0b10abcd"),
+        Ok(Success {
+            value: 0b10u8,
+            token: "0b10",
+            rest: "abcd",
+        }));
 
-    let uint_u8_res = uint::<u8>("u8")("0o70abcd");
-    assert!(uint_u8_res.is_ok());
-    assert_eq!(uint_u8_res.rest(), "abcd");
-    assert_eq!(uint_u8_res.into_value(), Some(0o70u8));
+    assert_eq!(
+        uint::<u8>("u8")("0o70abcd"),
+        Ok(Success {
+            value: 0o70u8,
+            token: "0o70",
+            rest: "abcd",
+        }));
 
-    let uint_u8_res = uint::<u8>("u8")("0xF0 abcd");
-    assert!(uint_u8_res.is_ok());
-    assert_eq!(uint_u8_res.rest(), " abcd");
-    assert_eq!(uint_u8_res.into_value(), Some(0xF0u8));
+    assert_eq!(
+        uint::<u8>("u8")("0xFf abcd"),
+        Ok(Success {
+            value: 0xFfu8,
+            token: "0xFf",
+            rest: " abcd",
+        }));
 }
 
 /// Tests `parse::uint` for a `u8` value.

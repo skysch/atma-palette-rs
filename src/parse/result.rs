@@ -295,8 +295,6 @@ impl<'t> std::error::Error for Failure<'t> {
 impl<'t> PartialEq for Failure<'t> {
     fn eq(&self, other: &Self) -> bool {
         self.context == other.context &&
-        self.expected == other.expected &&
-        self.source.is_some() == other.source.is_some() &&
         self.rest == other.rest
     }
 }

@@ -11,7 +11,6 @@
 // Local imports.
 use crate::parse::Failure;
 use crate::parse::maybe;
-use crate::parse::ParseIntegerOverflow;
 use crate::parse::ParseResult;
 use crate::parse::ParseResultExt as _;
 use crate::parse::repeat;
@@ -20,6 +19,7 @@ use crate::parse::Success;
 // Standard library imports.
 use std::convert::TryFrom;
 use std::convert::TryInto as _;
+use std::borrow::Cow;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Char parsing.
@@ -140,11 +140,9 @@ pub fn radix_prefix<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
 /// prefix.
 pub fn uint<'t, T>(int_type: &'static str)
     -> impl FnMut(&'t str) -> ParseResult<'t, T>
-    where T: TryFrom<u32>
+    where T: TryFrom<u64>
 {
     move |text| {
-        // TODO: Fix this to work for u64, u128 values.
-        
         let radix_prefix = maybe(radix_prefix)(text).unwrap();
         let radix: u32 = match radix_prefix.value {
             Some("0b") => 2,
@@ -166,16 +164,16 @@ pub fn uint<'t, T>(int_type: &'static str)
         let digits_span = radix_prefix.rest.len() - digits.rest.len();
         let digits_text = &radix_prefix.rest[0..digits_span];
 
-        let mut res: u32 = 0;
+        let mut res: u64 = 0;
         let mut chars = digits_text.chars();
         while let Some(c) = chars.next() {
             if c == '_' { continue; }
 
-            // TODO: Consider parsing all hex digits and emitting an error if any
-            // remain. This should make error handling nicer.
-            let val = c.to_digit(radix).unwrap();
+            // TODO: Consider parsing all hex digits and emitting an error if
+            // any remain. This should make error handling nicer.
+            let val = u64::from(c.to_digit(radix).unwrap());
             
-            match res.checked_mul(radix) {
+            match res.checked_mul(u64::from(radix)) {
                 Some(x) => res = x,
                 None => return Err(Failure {
                     context,
@@ -183,6 +181,7 @@ pub fn uint<'t, T>(int_type: &'static str)
                     source: Some(Box::new(ParseIntegerOverflow {
                         int_type: int_type.into(),
                         int_text: context.to_string().into(),
+                        value: u64::from(res),
                     })),
                     rest: text,
                 }),
@@ -195,6 +194,7 @@ pub fn uint<'t, T>(int_type: &'static str)
                     source: Some(Box::new(ParseIntegerOverflow {
                         int_type: int_type.into(),
                         int_text: context.to_string().into(),
+                        value: u64::from(res) + u64::from(val),
                     })),
                     rest: text,
                 }),
@@ -213,9 +213,35 @@ pub fn uint<'t, T>(int_type: &'static str)
                 source: Some(Box::new(ParseIntegerOverflow {
                     int_type: int_type.into(),
                     int_text: context.to_string().into(),
+                    value: u64::from(res),
                 })),
                 rest: text,
             }),
         }
     }
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+// ParseIntegerOverflow
+////////////////////////////////////////////////////////////////////////////////
+/// An overflow error occurred while parsing an integer.
+#[derive(Debug, Clone)]
+pub struct ParseIntegerOverflow {
+    /// The integer type.
+    pub int_type: Cow<'static, str>,
+    /// The integer text.
+    pub int_text: Cow<'static, str>,
+    /// The parsed value.
+    pub value: u64,
+}
+
+
+impl std::fmt::Display for ParseIntegerOverflow {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "integer value {} ('{}' does not fit in type {}",
+            self.value, self.int_text, self.int_type)
+    }
+}
+
+impl std::error::Error for ParseIntegerOverflow {}
