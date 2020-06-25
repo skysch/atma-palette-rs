@@ -13,9 +13,9 @@
 use crate::basic::BasicPalette;
 use crate::cell::Cell;
 use crate::cell::CellRef;
-use crate::cell::Position;
+// use crate::cell::Position;
 use crate::error::Error;
-use crate::expr::Expr;
+// use crate::expr::Expr;
 use crate::history::History;
 use crate::operation::Operation;
 
@@ -26,8 +26,8 @@ use ron::ser::PrettyConfig;
 use ron::ser::to_string_pretty;
 
 // Standard library imports.
-use std::borrow::Cow;
-use std::convert::TryInto;
+// use std::borrow::Cow;
+// use std::convert::TryInto;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Read;

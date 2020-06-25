@@ -161,11 +161,7 @@ impl BasicPalette {
     pub fn cell<'name>(&self, cell_ref: CellRef<'name>)
         -> Result<&Cell, Error>
     {
-        let idx = BasicPalette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 
         self.cells
             .get(&idx)
@@ -179,11 +175,7 @@ impl BasicPalette {
     pub fn cell_mut<'name>(&mut self, cell_ref: CellRef<'name>)
         -> Result<&mut Cell, Error>
     {
-        let idx = BasicPalette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 
         self.cells
             .get_mut(&idx)
@@ -192,7 +184,18 @@ impl BasicPalette {
             })
     }
     
-    fn resolve_ref_to_index<'name>(
+    /// Resolves a `CellRef` to its index in the palette.
+    pub fn resolve_ref_to_index<'name>(&self, cell_ref: &CellRef<'name>)
+        -> Result<u32, Error>
+    {
+        BasicPalette::resolve_ref_to_index_using(
+            &self.names,
+            &self.positions,
+            &self.groups,
+            cell_ref)
+    }
+
+    fn resolve_ref_to_index_using<'name>(
         names: &BTreeMap<Cow<'static, str>, u32>,
         positions: &BTreeMap<Position, u32>,
         groups: &BTreeMap<Cow<'static, str>, Vec<u32>>,
@@ -232,6 +235,42 @@ impl BasicPalette {
         // TODO: On wrap, do index compression.
         self.next_index += 1;
         idx
+    }
+
+    /// Returns the full range of occupied indices in the palette, or None if
+    /// the palette is empty.
+    pub fn occupied_index_range(&self) -> Option<(u32, u32)>
+    {
+        let mut keys = self.cells.keys();
+        match (keys.next(), keys.next_back()) {
+            (Some(first), Some(last)) => Some((*first, *last)),
+            (Some(first), None)       => Some((*first, *first)),
+            (None, _)                 => None,
+        }
+    }
+
+    /// Returns the full range of occupied positions in the palette, or None if
+    /// the palette is empty.
+    pub fn occupied_position_range(&self)
+        -> Option<(Position, Position)>
+    {
+        let mut keys = self.positions.keys();
+        match (keys.next(), keys.next_back()) {
+            (Some(first), Some(last)) => Some((*first, *last)),
+            (Some(first), None)       => Some((*first, *first)),
+            (None, _)                 => None,
+        }
+    }
+
+    /// Returns the full range of occupied indexes for a group in the palette,
+    /// or None if the palette is empty.
+    pub fn occupied_group_range(&self, group: &str)
+        -> Option<(u32, u32)>
+    {
+        self.groups
+            .get(group)
+            .map(|elems| (0, elems.len().try_into()
+                .expect("to many elements in group")))
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -397,11 +436,7 @@ impl BasicPalette {
     pub fn remove_cell<'name>(&mut self, cell_ref: CellRef<'name>)
         -> Result<Vec<Operation>, Error> 
     {
-        let idx = BasicPalette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
         
         match self.cells.remove(&idx) {
             // Cell was removed.
@@ -423,11 +458,7 @@ impl BasicPalette {
         where T: Into<Cow<'static, str>>
     {
         let name = name.into();
-        let idx = BasicPalette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 
         match self.names.insert(name.clone(), idx) {
             Some(old_idx) => Ok(vec![
@@ -454,11 +485,7 @@ impl BasicPalette {
         where T: Into<Cow<'static, str>>
     {
         let name = name.into();
-        let idx = BasicPalette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
         
         match self.names.get(&name) {
             Some(cur_idx) if *cur_idx == idx => {
@@ -478,11 +505,7 @@ impl BasicPalette {
     pub fn clear_names<'name>(&mut self, cell_ref: CellRef<'name>)
         -> Result<Vec<Operation>, Error>
     {
-        let idx = BasicPalette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 
         // TODO: Use BTreeMap::drain_filter when it becomes stable.
         let mut to_remove = Vec::with_capacity(1);
@@ -510,11 +533,7 @@ impl BasicPalette {
         position: Position)
         -> Result<Vec<Operation>, Error>
     {
-        let idx = BasicPalette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 
         match self.positions.insert(position.clone(), idx) {
             Some(old_idx) => Ok(vec![
@@ -539,11 +558,7 @@ impl BasicPalette {
         position: Position)
         -> Result<Vec<Operation>, Error>
     {
-        let idx = BasicPalette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
         
         match self.positions.get(&position) {
             Some(cur_idx) if *cur_idx == idx => {
@@ -563,11 +578,7 @@ impl BasicPalette {
     pub fn clear_positions<'name>(&mut self, cell_ref: CellRef<'name>)
         -> Result<Vec<Operation>, Error>
     {
-        let idx = BasicPalette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 
         // TODO: Use BTreeMap::drain_filter when it becomes stable.
         let mut to_remove = Vec::with_capacity(1);
@@ -598,11 +609,7 @@ impl BasicPalette {
         where T: Into<Cow<'static, str>>
     {
         let group = group.into();
-        let idx = BasicPalette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 
         let members = self.groups.entry(group.clone()).or_default();
         let members_len: u32 = members.len()
@@ -643,11 +650,7 @@ impl BasicPalette {
         where T: Into<Cow<'static, str>>
     {
         let group = group.into();
-        let idx = BasicPalette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
         
         let res = match self.groups.get_mut(&group) {
             Some(members) => match members.iter().position(|x| *x == idx) {
@@ -679,11 +682,7 @@ impl BasicPalette {
     pub fn clear_groups<'name>(&mut self, cell_ref: CellRef<'name>)
         -> Result<Vec<Operation>, Error>
     {
-        let idx = BasicPalette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 
         // TODO: Consider using BTreeMap::drain_filter when it becomes stable.
         let mut empty_groups = Vec::new();
@@ -716,11 +715,7 @@ impl BasicPalette {
     pub fn set_expr<'name>(&mut self, cell_ref: CellRef<'name>, expr: Expr)
         -> Result<Vec<Operation>, Error>
     {
-        let idx = BasicPalette::resolve_ref_to_index(
-            &self.names,
-            &self.positions,
-            &self.groups,
-            &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 
         let cell = self.cells.get_mut(&idx)
             .expect("retreive resolved cell");
