@@ -109,7 +109,7 @@ fn failure_join_failure() {
 
 /// Tests `parse::char`.
 #[test]
-fn parse_char_match() {
+fn char_match() {
     assert_eq!(
         char('a')("abcd"),
         Ok(Success {
@@ -121,7 +121,7 @@ fn parse_char_match() {
 
 /// Tests `parse::char`.
 #[test]
-fn parse_char_nonmatch() {
+fn char_nonmatch() {
     assert_eq!(
         char('b')("abcd"),
         Err(Failure {
@@ -134,7 +134,7 @@ fn parse_char_nonmatch() {
 
 /// Tests `parse::char_in`.
 #[test]
-fn parse_char_in_match() {
+fn char_in_match() {
     assert_eq!(
         char_in("cab")("abcd"),
         Ok(Success {
@@ -146,7 +146,7 @@ fn parse_char_in_match() {
 
 /// Tests `parse::char_in`.
 #[test]
-fn parse_char_in_nonmatch() {
+fn char_in_nonmatch() {
     assert_eq!(
         char_in("bdcbd")("abcd"),
         Err(Failure {
@@ -160,7 +160,7 @@ fn parse_char_in_nonmatch() {
 
 /// Tests `parse::char_matching`.
 #[test]
-fn parse_char_matching_match() {
+fn char_matching_match() {
     assert_eq!(
         char_matching(|c| c == 'a')("abcd"),
         Ok(Success {
@@ -172,7 +172,7 @@ fn parse_char_matching_match() {
 
 /// Tests `parse::char_matching`.
 #[test]
-fn parse_char_matching_nonmatch() {
+fn char_matching_nonmatch() {
     assert_eq!(
         char_matching(|c| c == 'b')("abcd"),
         Err(Failure {
@@ -186,7 +186,7 @@ fn parse_char_matching_nonmatch() {
 
 /// Tests `parse::char_whitespace`.
 #[test]
-fn parse_char_whitespace_match() {
+fn char_whitespace_match() {
     assert_eq!(
         char_whitespace("\tabcd"),
         Ok(Success {
@@ -205,7 +205,7 @@ fn parse_char_whitespace_match() {
 
 /// Tests `parse::char_whitespace`.
 #[test]
-fn parse_char_whitespace_nonmatch() {
+fn char_whitespace_nonmatch() {
     assert_eq!(
         char_whitespace("abcd"),
         Err(Failure {
@@ -222,7 +222,7 @@ fn parse_char_whitespace_nonmatch() {
 
 /// Tests `parse::whitespace`.
 #[test]
-fn parse_whitespace_match() {
+fn whitespace_match() {
     assert_eq!(
         whitespace("\t \n \tabcd"),
         Ok(Success {
@@ -242,7 +242,7 @@ fn parse_whitespace_match() {
 
 /// Tests `parse::whitespace`.
 #[test]
-fn parse_whitespace_nonmatch() {
+fn whitespace_nonmatch() {
     assert_eq!(
         whitespace("abcd"),
         Err(Failure {
@@ -255,7 +255,7 @@ fn parse_whitespace_nonmatch() {
 
 /// Tests `parse::lit`.
 #[test]
-fn parse_lit_match() {
+fn lit_match() {
     assert_eq!(
         lit("")("abcd"),
         Ok(Success {
@@ -275,7 +275,7 @@ fn parse_lit_match() {
 
 /// Tests `parse::lit`.
 #[test]
-fn parse_lit_nonmatch() {
+fn lit_nonmatch() {
     assert_eq!(
         lit("xyz")("abcd"),
         Err(Failure {
@@ -292,7 +292,7 @@ fn parse_lit_nonmatch() {
 
 /// Tests `maybe` on `parse::char`.
 #[test]
-fn parse_maybe_char_match() {
+fn maybe_char_match() {
     assert_eq!(
         maybe(char('a'))("abcd"),
         Ok(Success {
@@ -304,7 +304,7 @@ fn parse_maybe_char_match() {
 
 /// Tests `maybe` on `parse::char`.
 #[test]
-fn parse_maybe_char_nonmatch() {
+fn maybe_char_nonmatch() {
     assert_eq!(
         maybe(char('b'))("abcd"),
         Ok(Success {
@@ -316,7 +316,7 @@ fn parse_maybe_char_nonmatch() {
 
 /// Tests `repeat` on `parse::char`.
 #[test]
-fn parse_repeat_char_match() {
+fn repeat_char_match() {
     assert_eq!(
         repeat(3, Some(5), char('a'))("aaaabcd"),
         Ok(Success {
@@ -328,7 +328,7 @@ fn parse_repeat_char_match() {
 
 /// Tests `repeat` on `parse::char`.
 #[test]
-fn parse_repeat_char_nonmatch() {
+fn repeat_char_nonmatch() {
     assert_eq!(
         repeat(3, Some(5), char('a'))("aabcd"),
         Err(Failure {
@@ -345,7 +345,7 @@ fn parse_repeat_char_nonmatch() {
 
 /// Tests `parse::prefix_radix_token`.
 #[test]
-fn parse_prefix_radix_token_match() {
+fn prefix_radix_token_match() {
     assert_eq!(
         prefix_radix_token("0b1234abcd"),
         Ok(Success {
@@ -373,7 +373,7 @@ fn parse_prefix_radix_token_match() {
 
 /// Tests `parse::prefix_radix_token`.
 #[test]
-fn parse_prefix_radix_token_nonmatch() {
+fn prefix_radix_token_nonmatch() {
     assert_eq!(
         prefix_radix_token("1234abcd"),
         Err(Failure {
@@ -387,7 +387,7 @@ fn parse_prefix_radix_token_nonmatch() {
 
 /// Tests `parse::value_radix` for a `u8` value.
 #[test]
-fn parse_uint_value_u8_match() {
+fn uint_value_u8_match() {
     assert_eq!(
         uint_value::<u8>("u8", 2)("1010abcd"),
         Ok(Success {
@@ -424,7 +424,7 @@ fn parse_uint_value_u8_match() {
 
 /// Tests `parse::uint` for a `u8` value.
 #[test]
-fn parse_uint_u8_match() {
+fn uint_u8_match() {
     assert_eq!(
         uint::<u8>("u8")("0abcd"),
         Ok(Success {
@@ -460,7 +460,7 @@ fn parse_uint_u8_match() {
 
 /// Tests `parse::uint` for a `u8` value.
 #[test]
-fn parse_uint_u8_nonmatch() {
+fn uint_u8_nonmatch() {
     assert_eq!(
         uint::<u8>("u8")("abcd"),
         Err(Failure {
@@ -509,7 +509,7 @@ fn parse_uint_u8_nonmatch() {
 
 /// Tests `parse::uint` for a `u16` value.
 #[test]
-fn parse_uint_u16_match() {
+fn uint_u16_match() {
     assert_eq!(
         uint::<u16>("u16")("0abcd"),
         Ok(Success {
@@ -545,7 +545,7 @@ fn parse_uint_u16_match() {
 
 /// Tests `parse::uint` for a `u16` value.
 #[test]
-fn parse_uint_u16_nonmatch() {
+fn uint_u16_nonmatch() {
     assert_eq!(
         uint::<u16>("u16")("abcd"),
         Err(Failure {
@@ -594,7 +594,7 @@ fn parse_uint_u16_nonmatch() {
 
 /// Tests `parse::uint` for a `u32` value.
 #[test]
-fn parse_uint_u32_match() {
+fn uint_u32_match() {
     assert_eq!(
         uint::<u32>("u32")("0abcd"),
         Ok(Success {
@@ -630,7 +630,7 @@ fn parse_uint_u32_match() {
 
 /// Tests `parse::uint` for a `u32` value.
 #[test]
-fn parse_uint_u32_nonmatch() {
+fn uint_u32_nonmatch() {
     assert_eq!(
         uint::<u32>("u32")("abcd"),
         Err(Failure {
@@ -679,7 +679,7 @@ fn parse_uint_u32_nonmatch() {
 
 /// Tests `parse::uint` for a `u64` value.
 #[test]
-fn parse_uint_u64_match() {
+fn uint_u64_match() {
     assert_eq!(
         uint::<u64>("u64")("0abcd"),
         Ok(Success {
@@ -715,7 +715,7 @@ fn parse_uint_u64_match() {
 
 /// Tests `parse::uint` for a `u64` value.
 #[test]
-fn parse_uint_u64_nonmatch() {
+fn uint_u64_nonmatch() {
     assert_eq!(
         uint::<u64>("u64")("abcd"),
         Err(Failure {
@@ -769,7 +769,7 @@ fn parse_uint_u64_nonmatch() {
 
 /// Tests `parse::name`.
 #[test]
-fn parse_name_match() {
+fn name_match() {
     assert_eq!(
         name("xyz"),
         Ok(Success {
@@ -829,7 +829,7 @@ fn parse_name_match() {
 
 /// Tests `parse::name`.
 #[test]
-fn parse_name_nonmatch() {
+fn name_nonmatch() {
     assert_eq!(
         name(" xyz"),
         Err(Failure {
@@ -888,7 +888,7 @@ fn parse_name_nonmatch() {
 
 /// Tests `parse::index`.
 #[test]
-fn parse_index_match() {
+fn index_match() {
     assert_eq!(
         index(":0abcd"),
         Ok(Success {
@@ -932,7 +932,7 @@ fn parse_index_match() {
 
 /// Tests `parse::index`.
 #[test]
-fn parse_index_nonmatch() {
+fn index_nonmatch() {
     assert_eq!(
         index(":abcd"),
         Err(Failure {
@@ -981,7 +981,7 @@ fn parse_index_nonmatch() {
 
 /// Tests `parse::position`.
 #[test]
-fn parse_position_match() {
+fn position_match() {
     assert_eq!(
         position(":1.2.3abcd"),
         Ok(Success {
@@ -1001,7 +1001,7 @@ fn parse_position_match() {
 
 /// Tests `parse::position`.
 #[test]
-fn parse_position_nonmatch() {
+fn position_nonmatch() {
     assert_eq!(
         position(":1 .2.3abcd"),
         Err(Failure {
@@ -1032,7 +1032,7 @@ fn parse_position_nonmatch() {
 
 /// Tests `parse::cell_ref`.
 #[test]
-fn parse_cell_ref_index_match() {
+fn cell_ref_index_match() {
     assert_eq!(
         cell_ref(":0abcd"),
         Ok(Success {
@@ -1044,7 +1044,7 @@ fn parse_cell_ref_index_match() {
 
 /// Tests `parse::cell_ref`.
 #[test]
-fn parse_cell_ref_position_match() {
+fn cell_ref_position_match() {
     assert_eq!(
         cell_ref(":1.2.3abcd"),
         Ok(Success {
@@ -1056,7 +1056,7 @@ fn parse_cell_ref_position_match() {
 
 /// Tests `parse::cell_ref`.
 #[test]
-fn parse_cell_ref_name_match() {
+fn cell_ref_name_match() {
     assert_eq!(
         cell_ref("xyz abcd"),
         Ok(Success {
@@ -1068,7 +1068,7 @@ fn parse_cell_ref_name_match() {
 
 /// Tests `parse::cell_ref`.
 #[test]
-fn parse_cell_ref_group_match() {
+fn cell_ref_group_match() {
     assert_eq!(
         cell_ref("xyz:12 abcd"),
         Ok(Success {
@@ -1084,7 +1084,7 @@ fn parse_cell_ref_group_match() {
 
 /// Tests `parse::position`.
 #[test]
-fn parse_position_selector_match() {
+fn position_selector_match() {
     assert_eq!(
         position_selector(":1.2.3abcd"),
         Ok(Success {
@@ -1148,7 +1148,7 @@ fn parse_position_selector_match() {
 
 /// Tests `parse::position`.
 #[test]
-fn parse_position_selector_nonmatch() {
+fn position_selector_nonmatch() {
     assert_eq!(
         position_selector(":1.2.abcd"),
         Err(Failure {
@@ -1179,7 +1179,7 @@ fn parse_position_selector_nonmatch() {
 
 /// Tests `parse::range_suffix`.
 #[test]
-fn parse_range_suffix_index_match() {
+fn range_suffix_index_match() {
     assert_eq!(
         range_suffix(index)("-:10abcd"),
         Ok(Success {
@@ -1199,7 +1199,7 @@ fn parse_range_suffix_index_match() {
 
 /// Tests `parse::range_suffix`.
 #[test]
-fn parse_range_suffix_index_nonmatch() {
+fn range_suffix_index_nonmatch() {
     assert_eq!(
         range_suffix(index)("-:0x1FFFFFFFF abcd"),
         Err(Failure {
@@ -1230,7 +1230,7 @@ fn parse_range_suffix_index_nonmatch() {
 
 /// Tests `parse::range_suffix`.
 #[test]
-fn parse_range_suffix_position_match() {
+fn range_suffix_position_match() {
     assert_eq!(
         range_suffix(position)("-:1.2.3abcd"),
         Ok(Success {
@@ -1250,7 +1250,7 @@ fn parse_range_suffix_position_match() {
 
 /// Tests `parse::range_suffix`.
 #[test]
-fn parse_range_suffix_position_nonmatch() {
+fn range_suffix_position_nonmatch() {
     assert_eq!(
         range_suffix(position)("- -: 10abcd"),
         Err(Failure {
@@ -1272,7 +1272,7 @@ fn parse_range_suffix_position_nonmatch() {
 
 /// Tests `parse::range_suffix`.
 #[test]
-fn parse_range_suffix_group_match() {
+fn range_suffix_group_match() {
     assert_eq!(
         range_suffix(group)("- xyz:0abcd"),
         Ok(Success {
@@ -1292,7 +1292,7 @@ fn parse_range_suffix_group_match() {
 
 /// Tests `parse::range_suffix`.
 #[test]
-fn parse_range_suffix_group_nonmatch() {
+fn range_suffix_group_nonmatch() {
     assert_eq!(
         range_suffix(group)("- -xyz:0abcd"),
         Err(Failure {
@@ -1315,7 +1315,7 @@ fn parse_range_suffix_group_nonmatch() {
 
 /// Tests `parse::cell_selector`.
 #[test]
-fn parse_cell_selector_all_match() {
+fn cell_selector_all_match() {
     assert_eq!(
         cell_selector("*abcd"),
         Ok(Success {
@@ -1327,7 +1327,7 @@ fn parse_cell_selector_all_match() {
 
 /// Tests `parse::cell_selector`.
 #[test]
-fn parse_cell_selector_index_match() {
+fn cell_selector_index_match() {
     assert_eq!(
         cell_selector(":1abcd"),
         Ok(Success {
@@ -1339,7 +1339,7 @@ fn parse_cell_selector_index_match() {
 
 /// Tests `parse::cell_selector`.
 #[test]
-fn parse_cell_selector_index_range_match() {
+fn cell_selector_index_range_match() {
     assert_eq!(
         cell_selector(":1-:2abcd"),
         Ok(Success {
@@ -1359,7 +1359,7 @@ fn parse_cell_selector_index_range_match() {
 
 /// Tests `parse::cell_selector`.
 #[test]
-fn parse_cell_selector_index_range_nonmatch() {
+fn cell_selector_index_range_nonmatch() {
     assert_eq!(
         cell_selector(":1-:0abcd"),
         Err(Failure {
@@ -1372,7 +1372,7 @@ fn parse_cell_selector_index_range_nonmatch() {
 
 /// Tests `parse::cell_selector`.
 #[test]
-fn parse_cell_selector_position_match() {
+fn cell_selector_position_match() {
     assert_eq!(
         cell_selector(":1.2.3abcd"),
         Ok(Success {
@@ -1388,7 +1388,7 @@ fn parse_cell_selector_position_match() {
 
 /// Tests `parse::cell_selector`.
 #[test]
-fn parse_cell_selector_position_range_match() {
+fn cell_selector_position_range_match() {
     assert_eq!(
         cell_selector(":1.2.3-:4.5.6abcd"),
         Ok(Success {
@@ -1415,7 +1415,7 @@ fn parse_cell_selector_position_range_match() {
 
 /// Tests `parse::cell_selector`.
 #[test]
-fn parse_cell_selector_position_range_nonmatch() {
+fn cell_selector_position_range_nonmatch() {
     assert_eq!(
         cell_selector(":1.2.3-:0.5.6abcd"),
         Err(Failure {
@@ -1428,7 +1428,7 @@ fn parse_cell_selector_position_range_nonmatch() {
 
 /// Tests `parse::cell_selector`.
 #[test]
-fn parse_cell_selector_position_selector_match() {
+fn cell_selector_position_selector_match() {
     assert_eq!(
         cell_selector(":1.2.*abcd"),
         Ok(Success {
@@ -1457,7 +1457,7 @@ fn parse_cell_selector_position_selector_match() {
 
 /// Tests `parse::cell_selector`.
 #[test]
-fn parse_cell_selector_group_match() {
+fn cell_selector_group_match() {
     assert_eq!(
         cell_selector("xyz:2abcd"),
         Ok(Success {
@@ -1469,7 +1469,7 @@ fn parse_cell_selector_group_match() {
 
 /// Tests `parse::cell_selector`.
 #[test]
-fn parse_cell_selector_group_range_match() {
+fn cell_selector_group_range_match() {
     assert_eq!(
         cell_selector("xyz:2-xyz:4abcd"),
         Ok(Success {
@@ -1493,7 +1493,7 @@ fn parse_cell_selector_group_range_match() {
 
 /// Tests `parse::cell_selector`.
 #[test]
-fn parse_cell_selector_group_range_nonmatch() {
+fn cell_selector_group_range_nonmatch() {
     assert_eq!(
         cell_selector("xyz:2-xyzt:4abcd"),
         Err(Failure {
@@ -1515,7 +1515,7 @@ fn parse_cell_selector_group_range_nonmatch() {
 
 /// Tests `parse::cell_selector`.
 #[test]
-fn parse_cell_selector_group_all_match() {
+fn cell_selector_group_all_match() {
     assert_eq!(
         cell_selector("xyz:*abcd"),
         Ok(Success {
@@ -1527,7 +1527,7 @@ fn parse_cell_selector_group_all_match() {
 
 /// Tests `parse::cell_selector`.
 #[test]
-fn parse_cell_selector_name_match() {
+fn cell_selector_name_match() {
     assert_eq!(
         cell_selector("xyz abcd"),
         Ok(Success {
@@ -1539,7 +1539,7 @@ fn parse_cell_selector_name_match() {
 
 /// Tests `parse::cell_selection`.
 #[test]
-fn parse_cell_selection_match() {
+fn cell_selection_match() {
     assert_eq!(
         cell_selection("*, :0 , :3-:4, xyz*abcd"),
         Ok(Success {
