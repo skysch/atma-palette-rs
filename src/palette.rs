@@ -41,6 +41,7 @@ use std::path::Path;
 #[derive(Serialize, Deserialize)]
 pub struct Palette {
     basic: BasicPalette,
+    history: History,
 }
 
 
@@ -49,6 +50,7 @@ impl Palette {
     pub fn new() -> Self {
         Palette {
             basic: BasicPalette::new(),
+            history: History::new(),
         }
     }
 
@@ -134,6 +136,38 @@ impl Palette {
         file.write_all(s.as_bytes())?;
         Ok(())
     }
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Operations
+    ////////////////////////////////////////////////////////////////////////////
+
+    /// Applies a sequence of `Operation`s to the palette.
+    ///
+    /// ### Parameters
+    /// + `op`: The operation to apply.
+    pub fn apply_operations(&mut self, ops: &[Operation]) -> Result<(), Error> {
+        self.basic.apply_operations(ops, Some(&mut self.history))
+    }
+
+    /// Unapplies the latest set of applied operations.
+    ///
+    /// Returns the number of undo operations successfully performed. This may
+    /// be fewer than the number provided if there are fewer undo operations
+    /// recorded than requested.
+    pub fn undo(&mut self, count: usize) -> usize {
+        self.basic.undo(&mut self.history, count)
+    }
+
+    /// Reapplies the latest set of undone operations.
+    ///
+    /// Returns the number of redo operations successfully performed. This may
+    /// be fewer than the number provided if there are fewer redo operations
+    /// recorded than requested.
+    pub fn redo(&mut self, count: usize) -> usize {
+        self.basic.redo(&mut self.history, count)
+    }
+
 
     ////////////////////////////////////////////////////////////////////////////
     // Accessors
