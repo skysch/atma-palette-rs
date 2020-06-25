@@ -124,7 +124,7 @@ pub fn whitespace<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
 }
 
 /// Parses the given text literal.
-pub fn lit<'t>(expect: &'t str)
+pub fn literal<'t>(expect: &'t str)
     -> impl FnMut(&'t str) -> ParseResult<'t, &'t str>
 {
     move |text| {

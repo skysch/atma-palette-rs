@@ -253,11 +253,11 @@ fn whitespace_nonmatch() {
         }));
 }
 
-/// Tests `parse::lit`.
+/// Tests `parse::literal`.
 #[test]
-fn lit_match() {
+fn literal_match() {
     assert_eq!(
-        lit("")("abcd"),
+        literal("")("abcd"),
         Ok(Success {
             value: "",
             token: "",
@@ -265,7 +265,7 @@ fn lit_match() {
         }));
 
     assert_eq!(
-        lit("abc")("abcd"),
+        literal("abc")("abcd"),
         Ok(Success {
             value: "abc",
             token: "abc",
@@ -273,11 +273,11 @@ fn lit_match() {
         }));
 }
 
-/// Tests `parse::lit`.
+/// Tests `parse::literal`.
 #[test]
-fn lit_nonmatch() {
+fn literal_nonmatch() {
     assert_eq!(
-        lit("xyz")("abcd"),
+        literal("xyz")("abcd"),
         Err(Failure {
             context: "",
             rest: "abcd",
