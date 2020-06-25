@@ -52,6 +52,7 @@ pub mod error;
 pub mod expr;
 pub mod operation;
 pub mod history;
+pub mod basic;
 
 // Exports.
 /// Color encodings.

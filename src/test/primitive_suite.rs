@@ -5,20 +5,20 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Palette primitive operation test suite.
+//! BasicPalette primitive operation test suite.
 ////////////////////////////////////////////////////////////////////////////////
 
-use crate::Palette;
+use crate::basic::BasicPalette;
 use crate::cell::Cell;
 use crate::cell::Position;
 use crate::cell::CellRef;
 
 use std::borrow::Cow;
 
-/// Tests `Palette::insert_cell` followed by `Palette::remove_cell`.
+/// Tests `BasicPalette::insert_cell` followed by `BasicPalette::remove_cell`.
 #[test]
 fn cell_insert_remove_method_inverse() {
-    let mut pal = Palette::new();
+    let mut pal = BasicPalette::new();
     let _ = pal.insert_cell(None, &Cell::default());
     assert!(pal.cell(CellRef::Index(0)).is_ok());
     let _ = pal.remove_cell(CellRef::Index(0));
@@ -26,10 +26,10 @@ fn cell_insert_remove_method_inverse() {
 }
 
 
-/// Tests `Palette::assign_name` followed by `Palette::unassign_name`.
+/// Tests `BasicPalette::assign_name` followed by `BasicPalette::unassign_name`.
 #[test]
 fn cell_assign_unassign_name_method_inverse() {
-    let mut pal = Palette::new();
+    let mut pal = BasicPalette::new();
     let _ = pal.insert_cell(None, &Cell::default());
 
     let name: Cow<'_, _> = "TestName".into();
@@ -42,10 +42,10 @@ fn cell_assign_unassign_name_method_inverse() {
 }
 
 
-/// Tests `Palette::assign_name` followed by `Palette::clear_names`.
+/// Tests `BasicPalette::assign_name` followed by `BasicPalette::clear_names`.
 #[test]
 fn cell_assign_clear_name_method_inverse() {
-    let mut pal = Palette::new();
+    let mut pal = BasicPalette::new();
     let _ = pal.insert_cell(None, &Cell::default());
 
     let name1: Cow<'_, _> = "TestName1".into();
@@ -62,10 +62,10 @@ fn cell_assign_clear_name_method_inverse() {
 }
 
 
-/// Tests `Palette::assign_position` followed by `Palette::unassign_position`.
+/// Tests `BasicPalette::assign_position` followed by `BasicPalette::unassign_position`.
 #[test]
 fn cell_assign_unassign_position_method_inverse() {
-    let mut pal = Palette::new();
+    let mut pal = BasicPalette::new();
     let _ = pal.insert_cell(None, &Cell::default());
 
     let position = Position { page: 0, line: 10, column: 0 };
@@ -78,10 +78,10 @@ fn cell_assign_unassign_position_method_inverse() {
 }
 
 
-/// Tests `Palette::assign_position` followed by `Palette::clear_positions`.
+/// Tests `BasicPalette::assign_position` followed by `BasicPalette::clear_positions`.
 #[test]
 fn cell_assign_clear_position_method_inverse() {
-    let mut pal = Palette::new();
+    let mut pal = BasicPalette::new();
     let _ = pal.insert_cell(None, &Cell::default());
 
     let position1 = Position { page: 0, line: 10, column: 0 };
@@ -97,10 +97,10 @@ fn cell_assign_clear_position_method_inverse() {
     assert!(pal.cell(CellRef::Position(position2.clone())).is_err());
 }
 
-/// Tests `Palette::assign_group` followed by `Palette::unassign_group`.
+/// Tests `BasicPalette::assign_group` followed by `BasicPalette::unassign_group`.
 #[test]
 fn cell_assign_unassign_group_method_inverse() {
-    let mut pal = Palette::new();
+    let mut pal = BasicPalette::new();
     let _ = pal.insert_cell(None, &Cell::default());
 
     let group: Cow<'_, _> = "TestGroup".into();
@@ -115,10 +115,10 @@ fn cell_assign_unassign_group_method_inverse() {
 }
 
 
-/// Tests `Palette::assign_group` followed by `Palette::clear_groups`.
+/// Tests `BasicPalette::assign_group` followed by `BasicPalette::clear_groups`.
 #[test]
 fn cell_assign_clear_group_method_inverse() {
-    let mut pal = Palette::new();
+    let mut pal = BasicPalette::new();
     let _ = pal.insert_cell(None, &Cell::default());
 
     let group1: Cow<'_, _> = "TestGroup1".into();
