@@ -21,6 +21,21 @@ use std::convert::TryFrom;
 use std::convert::TryInto as _;
 use std::borrow::Cow;
 
+
+////////////////////////////////////////////////////////////////////////////////
+// Constants.
+////////////////////////////////////////////////////////////////////////////////
+
+/// Integer radix prefix for binary numbers.
+pub const INT_RADIX_PREFIX_BIN: &'static str = "0b";
+
+/// Integer radix prefix for octal numbers.
+pub const INT_RADIX_PREFIX_OCT: &'static str = "0o";
+
+/// Integer radix prefix for hexadecimal numbers.
+pub const INT_RADIX_PREFIX_HEX: &'static str = "0x";
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Char parsing.
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,12 +128,38 @@ pub fn whitespace<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
 // Integer parseing.
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Returns a parser which parses an unsigned integer with optional radix
+/// prefix.
+pub fn uint<'t, T>(int_type: &'static str)
+    -> impl FnMut(&'t str) -> ParseResult<'t, T>
+    where T: TryFrom<u64>
+{
+    move |text| {
+        let radix_suc = maybe(prefix_radix_token)(text).unwrap();
+        let radix: u32 = match radix_suc.value {
+            Some(INT_RADIX_PREFIX_BIN) => 2,
+            Some(INT_RADIX_PREFIX_OCT) => 8,
+            Some(INT_RADIX_PREFIX_HEX) => 16,
+            None => 10,
+            // NOTE: This is safe as long as `prefix_radix_token` never succeeds
+            // with another string.
+            Some(_) => unsafe { std::hint::unreachable_unchecked() },
+        };
+
+        let value_suc = uint_value(int_type, radix)(radix_suc.rest)
+            .source_for(format!("parse {} value", int_type))
+            .with_join_context(&radix_suc, text)?;
+
+        Ok(radix_suc.join_with(value_suc, text, |_, r| r))
+    }
+}
+
 /// Parses an integer radix prefix.
 pub fn prefix_radix_token<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
-    if  text.starts_with("0b") || 
-        text.starts_with("0o") ||
-        text.starts_with("0x") 
-        // NOTE: changing these matches results in UB in uint unless the
+    if  text.starts_with(INT_RADIX_PREFIX_BIN) || 
+        text.starts_with(INT_RADIX_PREFIX_OCT) ||
+        text.starts_with(INT_RADIX_PREFIX_HEX) 
+        // NOTE: Changes to these matches will result in UB in `uint` unless the
         // corresponding case is also handled there.
     {
         Ok(Success { 
@@ -133,32 +174,6 @@ pub fn prefix_radix_token<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
             source: None,
             rest: text,
         })
-    }
-}
-
-/// Returns a parser which parses an unsigned integer with optional radix
-/// prefix.
-pub fn uint<'t, T>(int_type: &'static str)
-    -> impl FnMut(&'t str) -> ParseResult<'t, T>
-    where T: TryFrom<u64>
-{
-    move |text| {
-        let radix_suc = maybe(prefix_radix_token)(text).unwrap();
-        let radix: u32 = match radix_suc.value {
-            Some("0b") => 2,
-            Some("0o") => 8,
-            Some("0x") => 16,
-            None => 10,
-            // NOTE: This is safe as long as prefix_radix_token never matches
-            // with another prefix.
-            _ => unsafe { std::hint::unreachable_unchecked() },
-        };
-
-        let value_suc = uint_value(int_type, radix)(radix_suc.rest)
-            .source_for(format!("parse {} value", int_type))
-            .with_join_context(&radix_suc, text)?;
-
-        Ok(radix_suc.join_with(value_suc, text, |_, r| r))
     }
 }
 

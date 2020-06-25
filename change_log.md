@@ -20,3 +20,6 @@ Implemented changes not yet published.
 + Implemented palette serialization and deserialization.
 + Implemented basic palette operations.
 + Implemented undo/redo history and methods.
++ Implemented selection parsing.
++ Implemented parsing test suite.
++ Implemented primitive operations test suite.
