@@ -123,6 +123,27 @@ pub fn whitespace<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
         .source_for("whitespace")
 }
 
+/// Parses the given text literal.
+pub fn lit<'t>(expect: &'t str)
+    -> impl FnMut(&'t str) -> ParseResult<'t, &'t str>
+{
+    move |text| {
+        if  text.starts_with(expect) {
+            Ok(Success { 
+                value: &text[..expect.len()],
+                token: &text[..expect.len()],
+                rest: &text[expect.len()..],
+            })
+        } else {
+            Err(Failure { 
+                context: "",
+                expected: expect.to_owned().into(),
+                source: None,
+                rest: text,
+            })
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Integer parseing.
@@ -163,8 +184,8 @@ pub fn prefix_radix_token<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
         // corresponding case is also handled there.
     {
         Ok(Success { 
-            value: &text[0..2],
-            token: &text[0..2],
+            value: &text[..2],
+            token: &text[..2],
             rest: &text[2..],
         })
     } else {

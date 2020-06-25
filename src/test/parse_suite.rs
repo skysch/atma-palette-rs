@@ -253,6 +253,39 @@ fn parse_whitespace_nonmatch() {
         }));
 }
 
+/// Tests `parse::lit`.
+#[test]
+fn parse_lit_match() {
+    assert_eq!(
+        lit("")("abcd"),
+        Ok(Success {
+            value: "",
+            token: "",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        lit("abc")("abcd"),
+        Ok(Success {
+            value: "abc",
+            token: "abc",
+            rest: "d",
+        }));
+}
+
+/// Tests `parse::lit`.
+#[test]
+fn parse_lit_nonmatch() {
+    assert_eq!(
+        lit("xyz")("abcd"),
+        Err(Failure {
+            context: "",
+            rest: "abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Combinators
 ////////////////////////////////////////////////////////////////////////////////
