@@ -273,6 +273,28 @@ impl BasicPalette {
                 .expect("to many elements in group")))
     }
 
+    /// Returns the next occopied cell index following the given index.
+    pub fn next_occupied_index_after(&self, idx: &u32)
+        -> Option<&u32>
+    {
+        use std::ops::Bound::*;
+        self.cells
+            .range((Excluded(idx), Unbounded))
+            .next()
+            .map(|(i, _)| i)
+    }
+
+    /// Returns the next occopied cell position (and index) following the given
+    /// position.
+    pub fn next_occupied_position_after(&self, pos: &Position)
+        -> Option<(&Position, &u32)>
+    {
+        use std::ops::Bound::*;
+        self.positions
+            .range((Excluded(pos), Unbounded))
+            .next()
+    }
+
     ////////////////////////////////////////////////////////////////////////////
     // Composite operation interface
     ////////////////////////////////////////////////////////////////////////////

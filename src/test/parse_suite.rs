@@ -310,11 +310,11 @@ fn parse_repeat_char_nonmatch() {
 // integers
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Tests `parse::radix_prefix`.
+/// Tests `parse::prefix_radix_token`.
 #[test]
-fn parse_radix_prefix_match() {
+fn parse_prefix_radix_token_match() {
     assert_eq!(
-        radix_prefix("0b1234abcd"),
+        prefix_radix_token("0b1234abcd"),
         Ok(Success {
             value: "0b",
             token: "0b",
@@ -322,7 +322,7 @@ fn parse_radix_prefix_match() {
         }));
 
     assert_eq!(
-        radix_prefix("0o1234abcd"),
+        prefix_radix_token("0o1234abcd"),
         Ok(Success {
             value: "0o",
             token: "0o",
@@ -330,7 +330,7 @@ fn parse_radix_prefix_match() {
         }));
 
     assert_eq!(
-        radix_prefix("0x1234abcd"),
+        prefix_radix_token("0x1234abcd"),
         Ok(Success {
             value: "0x",
             token: "0x",
@@ -338,11 +338,11 @@ fn parse_radix_prefix_match() {
         }));
 }
 
-/// Tests `parse::radix_prefix`.
+/// Tests `parse::prefix_radix_token`.
 #[test]
-fn parse_radix_prefix_nonmatch() {
+fn parse_prefix_radix_token_nonmatch() {
     assert_eq!(
-        radix_prefix("1234abcd"),
+        prefix_radix_token("1234abcd"),
         Err(Failure {
             context: "",
             rest: "1234abcd",
@@ -350,6 +350,44 @@ fn parse_radix_prefix_nonmatch() {
             expected: "".into(), source: None,
         }));
 }
+
+
+/// Tests `parse::value_radix` for a `u8` value.
+#[test]
+fn parse_uint_value_u8_match() {
+    assert_eq!(
+        uint_value::<u8>("u8", 2)("1010abcd"),
+        Ok(Success {
+            value: 0b1010u8,
+            token: "1010",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        uint_value::<u8>("u8", 8)("170abcd"),
+        Ok(Success {
+            value: 0o170u8,
+            token: "170",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        uint_value::<u8>("u8", 10)("190abcd"),
+        Ok(Success {
+            value: 190u8,
+            token: "190",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        uint_value::<u8>("u8", 16)("AF abcd"),
+        Ok(Success {
+            value: 0xAFu8,
+            token: "AF",
+            rest: " abcd",
+        }));
+}
+
 
 /// Tests `parse::uint` for a `u8` value.
 #[test]

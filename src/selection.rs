@@ -9,6 +9,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
+use crate::basic::BasicPalette;
 use crate::cell::Position;
 use crate::cell::CellRef;
 
@@ -355,6 +356,156 @@ impl<'name> TryFrom<(CellRef<'name>, CellRef<'name>)> for CellSelector<'name> {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// CellSelectorIter
+////////////////////////////////////////////////////////////////////////////////
+/// An iterator over the valid palette indices selected by a CellSelector.
+#[derive(Debug)]
+pub struct CellSelectorIndexIter<'t, 'p> {
+    basic: &'p BasicPalette,
+    selector: Option<CellSelector<'t>>,
+    pos_selector: PositionSelector,
+} 
+
+impl<'t, 'p> std::iter::FusedIterator for CellSelectorIndexIter<'t, 'p> {}
+
+impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
+    type Item = u32;
+    fn next(&mut self) -> Option<Self::Item> {
+        use CellSelector::*;
+        match self.selector.take() {
+            None => None,
+            
+            Some(All) => match self.basic.occupied_index_range() {
+                Some((low, high)) if low == high => {
+                    self.selector = None;
+                    Some(low)
+                },
+                Some((low, high)) => {
+                    let res = low;
+                    let low = low + 1;
+                    self.selector = if low == high {
+                        Some(Index(high))
+                    } else {
+                        Some(IndexRange { low, high })
+                    };
+                    Some(res)
+                },
+                None => { self.selector = None; None },
+            },
+            
+            Some(Group { group, idx }) => {
+                self.selector = None;
+                self.basic
+                    .resolve_ref_to_index(&CellRef::Group { group, idx })
+                    .ok()
+            },
+            
+            Some(GroupAll(group)) => match self.basic
+                .occupied_group_range(&group) 
+            {
+                Some((low, high)) if low == high => {
+                    self.selector = None;
+                    self.basic
+                        .resolve_ref_to_index(&CellRef::Group { 
+                            group,
+                            idx: low,
+                        })
+                        .ok()
+                },
+                Some((low, high)) => {
+                    let idx = low;
+                    let low = low + 1;
+                    self.selector = if low == high {
+                        Some(Group { group, idx: high })
+                    } else {
+                        Some(GroupRange { group, low, high })
+                    };
+                    Some(idx)
+                },
+                None => { self.selector = None; None },
+            }
+            
+            Some(GroupRange { group, low, high }) => {
+                let mut idx = low;
+                loop {
+                    // TODO: Avoid cloning the group here by adding a
+                    // resolve_group_to_index method.
+                    match self.basic
+                        .resolve_ref_to_index(&CellRef::Group { 
+                            group: group.clone(),
+                            idx,
+                        })
+                        .ok()
+                    {
+                        Some(idx) if idx == high => {
+                            self.selector = None;
+                            return Some(idx);
+                        },
+                        Some(idx) => {
+                            self.selector = Some(GroupRange { 
+                                group,
+                                low: idx,
+                                high,
+                            });
+                            return Some(idx);
+                        },
+                        None if idx > high => {
+                            self.selector = None;
+                            return None;
+                        },
+                        None => { idx += 1; },
+                    }
+                }
+            },
+            
+            Some(Index(idx)) => {
+                self.selector = None;
+                self.basic
+                    .resolve_ref_to_index(&CellRef::Index(idx))
+                    .ok()
+            },
+            
+            Some(IndexRange { low, high }) => match self.basic
+                .next_occupied_index_after(&low) 
+            {
+                Some(idx) if *idx > high => {
+                    self.selector = None;
+                    None
+                },
+                Some(idx) if *idx == high => {
+                    self.selector = None;
+                    Some(*idx)
+                },
+                Some(idx) => {
+                    match self.basic.next_occupied_index_after(idx) {
+                        Some(next) => {
+                            self.selector = Some(IndexRange { 
+                                low: *next,
+                                high,
+                            });
+                        },
+                        None => { self.selector = None; }
+                    }
+                    Some(*idx)
+                },
+                None => { self.selector = None; None },
+            },
+            
+            Some(Name(name)) => {
+                self.selector = None;
+                self.basic
+                    .resolve_ref_to_index(&CellRef::Name(name))
+                    .ok()
+            },
+            
+            Some(PositionRange { low, high }) => unimplemented!(),
+
+            Some(_) => unreachable!(),
+        }
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // PositionSelector
@@ -369,6 +520,57 @@ pub struct PositionSelector {
     pub line: Option<u16>,
     /// The column number of the cell, or None if all columns are selected.
     pub column: Option<u16>,
+}
+
+impl PositionSelector {
+    /// Returns true if the given position is selected.
+    pub fn selects_position(&self, other: &Position) -> bool {
+        self.page.map(|p| p == other.page).unwrap_or(true) &&
+        self.line.map(|l| l == other.line).unwrap_or(true) &&
+        self.column.map(|c| c == other.column).unwrap_or(true)
+    }
+
+    /// Returns the bounds of the selectable positions.
+    pub fn bounds(&self) -> (Position, Position) {
+        let mut low = Position { page: 0, line: 0, column: 0 };
+        let mut high = Position { 
+            page: u16::MAX,
+            line: u16::MAX,
+            column: u16::MAX,
+        };
+
+        match (self.page, self.line, self.column) {
+            (Some(p), Some(l), Some(c)) => {
+                low.page = p; high.page = p;
+                low.line = l; high.line = l;
+                low.column = c; high.column = c;
+            }
+            (Some(p), Some(l), None) => {
+                low.page = p; high.page = p;
+                low.line = l; high.line = l;
+            },
+            (Some(p), None, Some(c)) => {
+                low.page = p; high.page = p;
+                low.column = c; high.column = c;
+            },
+            (None, Some(l), Some(c)) => {
+                low.line = l; high.line = l;
+                low.column = c; high.column = c;
+            },
+            (Some(p), None, None) => {
+                low.page = p; high.page = p;
+            },
+            (None, Some(l), None) => {
+                low.line = l; high.line = l;
+            },
+            (None, None, Some(c)) => {
+                low.column = c; high.column = c;
+            },
+            (None, None, None) => (),
+        }
+
+        (low, high)
+    }
 }
 
 impl std::fmt::Display for PositionSelector {

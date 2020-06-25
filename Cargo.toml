@@ -1,10 +1,18 @@
 [package]
 name = "atma-palette"
-version = "0.0.45"
+version = "0.0.46"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT or Apache-2.0"
 # maintenance = { status = "experiemental" }
+repository = "https://github.com/skysch/atma-palette-rs"
+description = "Atma structured color palette library"
+readme = "readme.md"
+keywords = ["color", "palette"]
+categories = []
+documentation = ""
+homepage = ""
+exclude = ["*.sublime-project", "*.sublime-workspace"]
 
 [lib]
 name = "atma_palette"

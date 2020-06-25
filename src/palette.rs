@@ -37,7 +37,6 @@ use std::path::Path;
 
 /// The main Atma Palette object.
 #[derive(Debug, Clone)]
-#[cfg_attr(test, derive(PartialEq))]
 #[derive(Serialize, Deserialize)]
 pub struct Palette {
     basic: BasicPalette,
@@ -193,5 +192,14 @@ impl Palette {
 impl Default for Palette {
     fn default() -> Self {
         Palette::new()
+    }
+}
+
+
+#[cfg(test)]
+impl PartialEq for Palette {
+    fn eq(&self, other: &Self) -> bool {
+        self.basic == other.basic
+        // NOTE: This comparison ignores the command history.
     }
 }
