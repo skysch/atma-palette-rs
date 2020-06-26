@@ -51,7 +51,6 @@ pub mod error;
 pub mod expr;
 pub mod history;
 pub mod operation;
-pub mod selection;
 pub mod utility;
 
 // Exports.

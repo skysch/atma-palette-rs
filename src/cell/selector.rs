@@ -5,7 +5,7 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Palette cell selections.
+//! Palette cell selectors for selecting ranges of cells.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
@@ -20,10 +20,12 @@ use serde::Deserialize;
 
 // Standard library imports.
 use std::borrow::Cow;
-use std::collections::BTreeSet;
 use std::convert::TryFrom;
-use std::iter::FromIterator;
 
+
+////////////////////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////////////////////
 
 /// The CellSelector 'all' selection token.
 pub const REF_ALL_TOKEN: char = '*';
@@ -40,116 +42,7 @@ pub const REF_RANGE_TOKEN: char = '-';
 /// The CellSelection list separator token.
 pub const REF_SEP_TOKEN: char = ',';
 
-////////////////////////////////////////////////////////////////////////////////
-// CellSelection
-////////////////////////////////////////////////////////////////////////////////
-/// A reference to a set of `Cell`s in a palette.
-///
-/// The lifetime of the CellSelector is the lifetime of any names. The same
-/// `CellSelection` may be resolved for a palette multiple times yielding
-/// different results if the palette is modified intermediately.
-#[derive(Debug, Clone)]
-#[cfg_attr(test, derive(PartialEq))]
-#[derive(Serialize, Deserialize)]
-pub struct CellSelection<'name>(Vec<CellSelector<'name>>);
 
-impl<'name> CellSelection<'name> {
-    /// Moves all `CellSelector`s in `other` into `self`, leaving `other` empty.
-    pub fn append(&mut self, other: &mut Self) {
-        self.0.append(&mut other.0)
-    }
-
-    /// Pushes a `CellSelector` into the selection.
-    pub fn push(&mut self, selector: CellSelector<'name>) {
-        self.0.push(selector);
-    }
-
-    /// Returns an iterator of `CellSelector`s.
-    pub fn iter(&self) -> impl Iterator<Item=&CellSelector<'name>> {
-        self.0.iter()
-    }
-}
-
-impl<'name> From<Vec<CellSelector<'name>>> for CellSelection<'name> {
-    fn from(selectors: Vec<CellSelector<'name>>) -> Self {
-        CellSelection(selectors)
-    }
-}
-
-impl<'name> FromIterator<CellSelector<'name>> for CellSelection<'name> {
-    fn from_iter<I: IntoIterator<Item=CellSelector<'name>>>(iter: I)
-        -> CellSelection<'name> 
-    {
-        CellSelection(Vec::from_iter(iter))
-    }
-}
-
-impl<'name> IntoIterator for CellSelection<'name> {
-    type Item = CellSelector<'name>;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// CellIndexSelection
-////////////////////////////////////////////////////////////////////////////////
-/// A resolved `CellSelection`, holding a set of indices for `Cell`s in a
-/// palette.
-///
-/// The lifetime of the CellSelector is the lifetime of any names. The set of
-/// `Cell`s referenced is fixed, and edits to the palette may invalidate the
-/// selection.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Serialize, Deserialize)]
-pub struct CellIndexSelection(BTreeSet<u32>);
-
-impl CellIndexSelection {
-    /// Moves all indices in `other` into `self`, leaving `other` empty.
-    pub fn append(&mut self, other: &mut Self) {
-        self.0.append(&mut other.0)
-    }
-
-    /// Inserts a cell index into the selection. Returns true if the element is
-    /// index is new.
-    pub fn insert(&mut self, idx: u32) -> bool {
-        self.0.insert(idx)
-    }
-
-    /// Inserts cell indices into the selection from an iterator. Returns the
-    /// number of new indices inserted.
-    pub fn insert_all<I>(&mut self, indices: I) -> usize 
-        where I: IntoIterator<Item=u32>
-    {
-        let mut count = 0;
-        for idx in indices.into_iter() {
-            if self.0.insert(idx) { count += 1; }
-        }
-        count
-    }
-
-    /// Returns an iterator oof cell indexes.
-    pub fn iter(&self) -> impl Iterator<Item=&u32> {
-        self.0.iter()
-    }
-}
-
-impl FromIterator<u32> for CellIndexSelection {
-    fn from_iter<I: IntoIterator<Item=u32>>(iter: I) -> CellIndexSelection {
-        CellIndexSelection(BTreeSet::from_iter(iter))
-    }
-}
-
-impl IntoIterator for CellIndexSelection {
-    type Item = u32;
-    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // CellSelector
@@ -316,6 +209,13 @@ impl<'name> CellSelector<'name> {
                     .and_then(|(l, h)| intersect((*low, *high), (l, h)))
                     .map(|(low, high)| IndexRange { low, high }),
 
+                Name(name) => basic
+                    .resolve_name_if_occupied(&name)
+                    .map(Index),
+
+
+
+
 
                 _ => unimplemented!(),
             }
@@ -409,9 +309,7 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
         use CellSelector::*;
         match self.selector.take() {
             None => None,
-            
-            // Assigned indexes are always occupied cells, so we don't need to
-            // check their validity in these selectors.
+
             Some(Index(idx)) => {
                 self.selector = None;
                 if self.basic.is_occupied_index(&idx) {
@@ -421,35 +319,37 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
                 }
             },
             
-            Some(IndexRange { low, high }) => if self
-                .basic.is_occupied_index(&low)
+            Some(IndexRange { low, high }) => match self.basic
+                .next_occupied_index_after(&low)
             {
-                self.selector = Some(IndexRange { low: low + 1, high });
-                Some(low)
-            } else {
-                match self.basic.next_occupied_index_after(&low) {
-                    None                      => { self.selector = None; None },
-                    Some(idx) if *idx > high  => { self.selector = None; None },
-                    Some(idx) if *idx == high => {
-                        self.selector = None; 
-                        Some(high) 
-                    },
-                    Some(idx) => {
-                        self.selector = Some(IndexRange { low: *idx, high });
-                        Some(*idx)
-                    },
-                }
+                _ if self.basic.is_occupied_index(&low) => {
+                    self.selector = Some(IndexRange { low: low + 1, high });
+                    Some(low)
+                },
+                None                      => { self.selector = None; None },
+                Some(idx) if *idx > high  => { self.selector = None; None },
+                Some(idx) if *idx == high => {
+                    self.selector = None; 
+                    Some(high) 
+                },
+                Some(idx) => {
+                    self.selector = Some(IndexRange { low: *idx, high });
+                    Some(*idx)
+                },
             },
+            
+
+
+
+
+
             
             // Some(Group { group, idx }) => 
             
             // Some(GroupAll(group)) => 
             
             // Some(GroupRange { group, low, high }) => 
-            
 
-            // Some(Name(name)) => 
-            
             // Some(PositionRange { low, high }) => 
 
             Some(_) => unreachable!(),

@@ -17,7 +17,7 @@ use crate::expr::Expr;
 use crate::cell::Cell;
 use crate::cell::Position;
 use crate::cell::CellRef;
-use crate::selection::CellSelector;
+use crate::cell::CellSelector;
 use crate::parse::cell_selection;
 
 

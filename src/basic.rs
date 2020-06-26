@@ -357,6 +357,32 @@ impl BasicPalette {
             .is_some()
     }
 
+    /// Returns true if the given name is assigned in the palette.
+    pub fn is_assigned_name(&self, name: &str) -> bool {
+        self.names
+            .get(name)
+            .is_some()
+    }
+
+    /// Returns true if the given name is occupied in the palette.
+    pub fn is_occupied_name(&self, name: &str) -> bool {
+        self.names
+            .get(name)
+            .and_then(|idx| self.cells.get(idx))
+            .is_some()
+    }
+
+    /// Returns the index associated with the given name if it is occupied.
+    pub fn resolve_name_if_occupied(&self, name: &str) -> Option<u32> {
+        self.names
+            .get(name)
+            .and_then(|idx| if self.cells.contains_key(idx) {
+                Some(*idx)
+            } else {
+                None
+            })
+    }
+
     ////////////////////////////////////////////////////////////////////////////
     // Composite operation interface
     ////////////////////////////////////////////////////////////////////////////
