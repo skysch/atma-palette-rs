@@ -39,20 +39,20 @@
 #![warn(while_true)]
 
 // Internal modules.
-mod palette;
-pub mod parse;
-
 #[cfg(test)]
 mod test;
 
 // Public modules.
+pub mod basic;
 pub mod cell;
-pub mod selection;
+pub mod palette;
+pub mod parse;
 pub mod error;
 pub mod expr;
-pub mod operation;
 pub mod history;
-pub mod basic;
+pub mod operation;
+pub mod selection;
+pub mod utility;
 
 // Exports.
 /// Color encodings.

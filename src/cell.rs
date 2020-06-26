@@ -47,6 +47,14 @@ impl Cell {
         }
     }
 
+    /// Constructs a new `Cell` containing the given `Expr`.
+    pub fn new_with_expr(expr: Expr) -> Self {
+        Cell {
+            expr,
+            cached: None,
+        }
+    }
+
     /// Returns a reference to the cell's color expression.
     pub fn expr(&self) -> &Expr {
         &self.expr
@@ -137,6 +145,19 @@ pub struct Position {
     pub line: u16,
     /// The column number of the cell.
     pub column: u16,
+}
+
+impl Position {
+    /// Returns the next position after the given one.
+    pub fn next(&self) -> Position {
+        
+        let (column, over) = self.column.overflowing_add(1);
+        let (line, over) = self.line.overflowing_add(if over { 1 } else { 0 });
+        let page = self.page.checked_add(if over { 1 } else { 0 })
+            .expect("position page overflow");
+
+        Position { page, line, column }
+    }
 }
 
 impl std::fmt::Display for Position {

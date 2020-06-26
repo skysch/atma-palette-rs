@@ -27,6 +27,7 @@ use ron::ser::to_string_pretty;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::convert::TryInto;
+use std::convert::TryFrom;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Read;
@@ -249,31 +250,7 @@ impl BasicPalette {
         }
     }
 
-    /// Returns the full range of occupied positions in the palette, or None if
-    /// the palette is empty.
-    pub fn occupied_position_range(&self)
-        -> Option<(Position, Position)>
-    {
-        let mut keys = self.positions.keys();
-        match (keys.next(), keys.next_back()) {
-            (Some(first), Some(last)) => Some((*first, *last)),
-            (Some(first), None)       => Some((*first, *first)),
-            (None, _)                 => None,
-        }
-    }
-
-    /// Returns the full range of occupied indexes for a group in the palette,
-    /// or None if the palette is empty.
-    pub fn occupied_group_range(&self, group: &str)
-        -> Option<(u32, u32)>
-    {
-        self.groups
-            .get(group)
-            .map(|elems| (0, elems.len().try_into()
-                .expect("to many elements in group")))
-    }
-
-    /// Returns the next occopied cell index following the given index.
+    /// Returns the next occupied cell index following the given index.
     pub fn next_occupied_index_after(&self, idx: &u32)
         -> Option<&u32>
     {
@@ -284,15 +261,100 @@ impl BasicPalette {
             .map(|(i, _)| i)
     }
 
-    /// Returns the next occopied cell position (and index) following the given
-    /// position.
-    pub fn next_occupied_position_after(&self, pos: &Position)
+    /// Returns true if the given index is occupied in the palette.
+    pub fn is_occupied_index(&self, idx: &u32) -> bool {
+        self.cells.get(idx).is_some()
+    }
+
+    /// Returns the full range of assigned positions in the palette, or None if
+    /// no positions are assigned is empty.
+    pub fn assigned_position_range(&self)
+        -> Option<(Position, Position)>
+    {
+        let mut keys = self.positions.keys();
+        match (keys.next(), keys.next_back()) {
+            (Some(first), Some(last)) => Some((*first, *last)),
+            (Some(first), None)       => Some((*first, *first)),
+            (None, _)                 => None,
+        }
+    }
+
+    /// Returns the next assigned position (and index) following the given
+    /// position. The index may be invalid.
+    pub fn next_assigned_position_after(&self, pos: &Position)
         -> Option<(&Position, &u32)>
     {
         use std::ops::Bound::*;
         self.positions
             .range((Excluded(pos), Unbounded))
             .next()
+    }
+
+    /// Returns the next occupied position (and index) following the given
+    /// position. The index may be invalid.
+    pub fn next_occupied_position_after(&self, pos: &Position)
+        -> Option<(&Position, &u32)>
+    {
+        use std::ops::Bound::*;
+        let mut cur_pos = pos.clone();
+        loop {
+            let next = self.positions
+                .range((Excluded(cur_pos), Unbounded))
+                .next();
+            match next
+                .map(|(_, idx)| self.cells.get(idx).is_some())
+            {
+                Some(true) => return next,
+                Some(false) => { cur_pos = next.unwrap().0.clone(); }
+                None => return None,
+            }
+        }
+    }
+
+    /// Returns true if the given position is assigned in the palette.
+    pub fn is_assigned_position(&self, pos: &Position) -> bool {
+        self.positions
+            .get(pos)
+            .is_some()
+    }
+
+    /// Returns true if the given position is occupied in the palette.
+    pub fn is_occupied_position(&self, pos: &Position) -> bool {
+        self.positions
+            .get(pos)
+            .and_then(|idx| self.cells.get(idx))
+            .is_some()
+    }
+
+    /// Returns the full range of assigned indexes for a group in the palette,
+    /// or None if the group is empty.
+    pub fn assigned_group_range(&self, group: &str)
+        -> Option<(u32, u32)>
+    {
+        self.groups
+            .get(group)
+            .filter(|e| !e.is_empty())
+            .map(|elems| (0, (elems.len() - 1).try_into()
+                .expect("to many elements in group")))
+    }
+
+    /// Returns true if the given position is assigned in the palette.
+    pub fn is_assigned_group(&self, group: &str, idx: u32) -> bool {
+        self.groups
+            .get(group)
+            .map(|elems| usize::try_from(idx).unwrap() < elems.len())
+            .unwrap_or(false)
+    }
+
+
+    /// Returns true if the given position is occupied in the palette.
+    pub fn is_occupied_group(&self, group: &str, idx: u32) -> bool {
+        self.groups
+            .get(group)
+            .and_then(|elems| elems
+                .get(usize::try_from(idx).unwrap())
+                .and_then(|cell_idx| self.cells.get(cell_idx)))
+            .is_some()
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -652,8 +714,8 @@ impl BasicPalette {
             ])
         } else {
             if members_len == 0 {
-            // Remove the empty group that we probably just added.
-            let _ = self.groups.remove(&group);
+                // Remove the empty group that we probably just added.
+                let _ = self.groups.remove(&group);
             }
             Err(Error::GroupIndexOutOfBounds {
                 group,

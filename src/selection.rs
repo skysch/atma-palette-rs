@@ -12,6 +12,7 @@
 use crate::basic::BasicPalette;
 use crate::cell::Position;
 use crate::cell::CellRef;
+use crate::utility::inclusive_range_intersect as intersect;
 
 // External library imports.
 use serde::Serialize;
@@ -292,6 +293,39 @@ impl<'name> CellSelector<'name> {
             })
         }
     }
+
+    /// Returns an index iterator for the selector within the given palette.
+    pub fn index_iter<'p>(&self, basic: &'p BasicPalette)
+        -> CellSelectorIndexIter<'name, 'p>
+    {
+        let mut pos_selector = PositionSelector::all();
+        let selector = {
+            use CellSelector::*;
+            match self {
+                All => basic.occupied_index_range()
+                    .map(|(low, high)| if low == high { 
+                            Index(low)
+                        } else {
+                            IndexRange { low, high }
+                        }),
+
+                Index(idx) => Some(Index(*idx))
+                    .filter(|_| basic.is_occupied_index(idx)),
+
+                IndexRange { low, high } => basic.occupied_index_range()
+                    .and_then(|(l, h)| intersect((*low, *high), (l, h)))
+                    .map(|(low, high)| IndexRange { low, high }),
+
+
+                _ => unimplemented!(),
+            }
+        };
+        CellSelectorIndexIter {
+            basic,
+            selector,
+            pos_selector,
+        }
+    }
 }
 
 
@@ -376,130 +410,47 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
         match self.selector.take() {
             None => None,
             
-            Some(All) => match self.basic.occupied_index_range() {
-                Some((low, high)) if low == high => {
-                    self.selector = None;
-                    Some(low)
-                },
-                Some((low, high)) => {
-                    let res = low;
-                    let low = low + 1;
-                    self.selector = if low == high {
-                        Some(Index(high))
-                    } else {
-                        Some(IndexRange { low, high })
-                    };
-                    Some(res)
-                },
-                None => { self.selector = None; None },
-            },
-            
-            Some(Group { group, idx }) => {
+            // Assigned indexes are always occupied cells, so we don't need to
+            // check their validity in these selectors.
+            Some(Index(idx)) => {
                 self.selector = None;
-                self.basic
-                    .resolve_ref_to_index(&CellRef::Group { group, idx })
-                    .ok()
-            },
-            
-            Some(GroupAll(group)) => match self.basic
-                .occupied_group_range(&group) 
-            {
-                Some((low, high)) if low == high => {
-                    self.selector = None;
-                    self.basic
-                        .resolve_ref_to_index(&CellRef::Group { 
-                            group,
-                            idx: low,
-                        })
-                        .ok()
-                },
-                Some((low, high)) => {
-                    let idx = low;
-                    let low = low + 1;
-                    self.selector = if low == high {
-                        Some(Group { group, idx: high })
-                    } else {
-                        Some(GroupRange { group, low, high })
-                    };
+                if self.basic.is_occupied_index(&idx) {
                     Some(idx)
-                },
-                None => { self.selector = None; None },
-            }
-            
-            Some(GroupRange { group, low, high }) => {
-                let mut idx = low;
-                loop {
-                    // TODO: Avoid cloning the group here by adding a
-                    // resolve_group_to_index method.
-                    match self.basic
-                        .resolve_ref_to_index(&CellRef::Group { 
-                            group: group.clone(),
-                            idx,
-                        })
-                        .ok()
-                    {
-                        Some(idx) if idx == high => {
-                            self.selector = None;
-                            return Some(idx);
-                        },
-                        Some(idx) => {
-                            self.selector = Some(GroupRange { 
-                                group,
-                                low: idx,
-                                high,
-                            });
-                            return Some(idx);
-                        },
-                        None if idx > high => {
-                            self.selector = None;
-                            return None;
-                        },
-                        None => { idx += 1; },
-                    }
+                } else {
+                    None
                 }
             },
             
-            Some(Index(idx)) => {
-                self.selector = None;
-                self.basic
-                    .resolve_ref_to_index(&CellRef::Index(idx))
-                    .ok()
-            },
-            
-            Some(IndexRange { low, high }) => match self.basic
-                .next_occupied_index_after(&low) 
+            Some(IndexRange { low, high }) => if self
+                .basic.is_occupied_index(&low)
             {
-                Some(idx) if *idx > high => {
-                    self.selector = None;
-                    None
-                },
-                Some(idx) if *idx == high => {
-                    self.selector = None;
-                    Some(*idx)
-                },
-                Some(idx) => {
-                    match self.basic.next_occupied_index_after(idx) {
-                        Some(next) => {
-                            self.selector = Some(IndexRange { 
-                                low: *next,
-                                high,
-                            });
-                        },
-                        None => { self.selector = None; }
-                    }
-                    Some(*idx)
-                },
-                None => { self.selector = None; None },
+                self.selector = Some(IndexRange { low: low + 1, high });
+                Some(low)
+            } else {
+                match self.basic.next_occupied_index_after(&low) {
+                    None                      => { self.selector = None; None },
+                    Some(idx) if *idx > high  => { self.selector = None; None },
+                    Some(idx) if *idx == high => {
+                        self.selector = None; 
+                        Some(high) 
+                    },
+                    Some(idx) => {
+                        self.selector = Some(IndexRange { low: *idx, high });
+                        Some(*idx)
+                    },
+                }
             },
             
-            Some(Name(name)) => {
-                self.selector = None;
-                self.basic
-                    .resolve_ref_to_index(&CellRef::Name(name))
-                    .ok()
-            },
+            // Some(Group { group, idx }) => 
             
-            Some(PositionRange { low, high }) => unimplemented!(),
+            // Some(GroupAll(group)) => 
+            
+            // Some(GroupRange { group, low, high }) => 
+            
+
+            // Some(Name(name)) => 
+            
+            // Some(PositionRange { low, high }) => 
 
             Some(_) => unreachable!(),
         }
@@ -523,6 +474,15 @@ pub struct PositionSelector {
 }
 
 impl PositionSelector {
+    /// Returns the PositionSelector which selects all positions.
+    pub fn all() -> Self {
+        PositionSelector {
+            page: None,
+            line: None,
+            column: None,
+        }
+    }
+
     /// Returns true if the given position is selected.
     pub fn selects_position(&self, other: &Position) -> bool {
         self.page.map(|p| p == other.page).unwrap_or(true) &&

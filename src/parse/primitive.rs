@@ -128,7 +128,7 @@ pub fn literal<'t>(expect: &'t str)
     -> impl FnMut(&'t str) -> ParseResult<'t, &'t str>
 {
     move |text| {
-        if  text.starts_with(expect) {
+        if text.starts_with(expect) {
             Ok(Success { 
                 value: &text[..expect.len()],
                 token: &text[..expect.len()],
@@ -177,11 +177,11 @@ pub fn uint<'t, T>(int_type: &'static str)
 
 /// Parses an integer radix prefix.
 pub fn prefix_radix_token<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
-    if  text.starts_with(INT_RADIX_PREFIX_BIN) || 
-        text.starts_with(INT_RADIX_PREFIX_OCT) ||
-        text.starts_with(INT_RADIX_PREFIX_HEX) 
-        // NOTE: Changes to these matches will result in UB in `uint` unless the
-        // corresponding case is also handled there.
+    if text.starts_with(INT_RADIX_PREFIX_BIN) || 
+       text.starts_with(INT_RADIX_PREFIX_OCT) ||
+       text.starts_with(INT_RADIX_PREFIX_HEX) 
+       // NOTE: Changes to these matches will result in UB in `uint` unless the
+       // corresponding case is also handled there.
     {
         Ok(Success { 
             value: &text[..2],
@@ -219,39 +219,34 @@ pub fn uint_value<'t, T>(int_type: &'static str, radix: u32)
             // any remain. This should make error handling nicer.
             let val = u64::from(c.to_digit(radix).unwrap());
             
-            match res.checked_mul(u64::from(radix)) {
-                Some(x) => res = x,
-                None => return Err(Failure {
-                    context: digits_suc.token,
-                    expected: format!("{} value", int_type).into(),
-                    source: Some(Box::new(ParseIntegerOverflow {
-                        int_type: int_type.into(),
-                        int_text: digits_suc.token.to_string().into(),
-                        value: u128::from(res),
-                    })),
-                    rest: text,
-                }),
-            }
-            match res.checked_add(val) {
-                Some(x) => res = x,
-                None => return Err(Failure {
-                    context: digits_suc.token,
-                    expected: format!("{} value", int_type).into(),
-                    source: Some(Box::new(ParseIntegerOverflow {
-                        int_type: int_type.into(),
-                        int_text: digits_suc.token.to_string().into(),
-                        value: u128::from(res) + u128::from(val),
-                    })),
-                    rest: text,
-                }),
-            }
+            res = res.checked_mul(u64::from(radix)).ok_or_else(|| Failure {
+                context: digits_suc.token,
+                expected: format!("overflow of {} value", int_type).into(),
+                source: Some(Box::new(ParseIntegerOverflow {
+                    int_type: int_type.into(),
+                    int_text: digits_suc.token.to_string().into(),
+                    value: u128::from(res),
+                })),
+                rest: text,
+            })?;
+
+            res = res.checked_add(val).ok_or_else(|| Failure {
+                context: digits_suc.token,
+                expected: format!("overflow of {} value", int_type).into(),
+                source: Some(Box::new(ParseIntegerOverflow {
+                    int_type: int_type.into(),
+                    int_text: digits_suc.token.to_string().into(),
+                    value: u128::from(res) + u128::from(val),
+                })),
+                rest: text,
+            })?;
         }
         
         match res.try_into() {
             Ok(res) => Ok(digits_suc.map_value(|_| res)),
             Err(_) => Err(Failure {
                 context: digits_suc.token,
-                expected: format!("{} value", int_type).into(),
+                expected: format!("overflow of {} value", int_type).into(),
                 source: Some(Box::new(ParseIntegerOverflow {
                     int_type: int_type.into(),
                     int_text: digits_suc.token.to_string().into(),

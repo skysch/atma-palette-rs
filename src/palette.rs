@@ -8,7 +8,6 @@
 //! Main Palette definition.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // Local imports.
 use crate::basic::BasicPalette;
 use crate::cell::Cell;
@@ -34,12 +33,16 @@ use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 
-
+////////////////////////////////////////////////////////////////////////////////
+// Palette
+////////////////////////////////////////////////////////////////////////////////
 /// The main Atma Palette object.
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct Palette {
+    /// The internal palette data.
     basic: BasicPalette,
+    /// The command history for the palette.
     history: History,
 }
 
