@@ -364,14 +364,18 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
                 .next_occupied_index_after(&low)
             {
                 Some(idx) if self.basic.is_occupied_index(&low) => {
-                    self.selector = Some(IndexRange { low: *idx, high });
+                    if *idx == high {
+                        self.selector = Some(Index(*idx));
+                    } else {
+                        self.selector = Some(IndexRange { low: *idx, high });
+                    }
                     Some(low)
                 },
                 None                      => { self.selector = None; None },
                 Some(idx) if *idx > high  => { self.selector = None; None },
                 Some(idx) if *idx == high => {
                     self.selector = None; 
-                    Some(high) 
+                    Some(high)
                 },
                 Some(idx) => {
                     self.selector = Some(IndexRange { low: *idx, high });
@@ -382,12 +386,18 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
             Some(GroupRange { group, low, high }) => match self.basic
                 .next_occupied_group_index_after(&group, low)
             {
-                Some(idx)if self.basic.is_occupied_group(&group, low) => {
-                    self.selector = Some(GroupRange {
-                        group,
-                        low: idx,
-                        high,
-                    });
+                Some(idx) if self.basic.is_occupied_group(&group, low) => {
+                    if idx == high {
+                        self.selector = self.basic
+                            .resolve_group_if_occupied(&group, high)
+                            .map(Index) ;
+                    } else {
+                        self.selector = Some(GroupRange {
+                            group,
+                            low: idx,
+                            high,
+                        });
+                    }
                     Some(low)
                 },
                 None                     => { self.selector = None; None },
@@ -408,13 +418,19 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
                 Some((pos, _)) if self.basic.is_occupied_position(&low) && 
                     self.pos_selector.contains(&low) => 
                 {
+                    if pos == &high {
+                        self.selector = self.basic
+                            .resolve_position_if_occupied(&high)
+                            .map(Index)
+                    } else {
+                        self.selector = Some(PositionRange {
+                            low: *pos,
+                            high,
+                        });
+                    }
                     let idx = self.basic
                         .resolve_position_if_occupied(&low)
                         .unwrap();
-                    self.selector = Some(PositionRange {
-                        low: *pos,
-                        high,
-                    });
                     Some(idx)
                 },
                 None                          => { self.selector = None; None },

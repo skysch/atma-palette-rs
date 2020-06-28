@@ -11,14 +11,12 @@
 
 // Local imports.
 use crate::basic::BasicPalette;
-use crate::color::Color;
 use crate::color::Rgb;
 use crate::expr::Expr;
 use crate::cell::Cell;
 use crate::cell::Position;
 use crate::cell::CellRef;
 use crate::cell::CellSelector;
-use crate::parse::cell_selection;
 
 
 fn test_palette() -> BasicPalette {
@@ -204,32 +202,34 @@ fn palette_group_bounds() {
 // CellSelector resolution
 ////////////////////////////////////////////////////////////////////////////////
 #[test]
-fn cell_selector_index_iter_all() {
+fn cell_selector_resolve_all() {
     let pal = test_palette();
     let selector = CellSelector::All;
 
-    let res: Vec<_> = selector.index_iter(&pal).collect();
+    let res: Vec<_> = selector.resolve(&pal).collect();
 
-    assert_eq!(res.len(), 100);
+    // assert_eq!(res.len(), 100);
+    assert_eq!(res[0], 100u32);
+    assert_eq!(res[99], 199u32);
 }
 
 #[test]
-fn cell_selector_index_iter_index() {
+fn cell_selector_resolve_index() {
     let pal = test_palette();
     let selector = CellSelector::Index(123u32);
 
-    let res: Vec<_> = selector.index_iter(&pal).collect();
+    let res: Vec<_> = selector.resolve(&pal).collect();
 
     assert_eq!(res.len(), 1);
     assert_eq!(res[0], 123u32);
 }
 
 #[test]
-fn cell_selector_index_iter_index_range() {
+fn cell_selector_resolve_index_range() {
     let pal = test_palette();
     let selector = CellSelector::IndexRange { low: 180, high: 210 };
 
-    let res: Vec<_> = selector.index_iter(&pal).collect();
+    let res: Vec<_> = selector.resolve(&pal).collect();
 
     assert_eq!(res.len(), 20);
     assert_eq!(res[0], 180u32);
