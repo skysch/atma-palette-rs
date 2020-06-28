@@ -17,6 +17,11 @@ Cell in the palette are typically identified by resolving a `CellRef`. There are
 
 In the above notation, `[name]` consists of any sequence of characters excluding `:`,`,`,`-`,`.`,`*`, and whitespace, while `X`,`Y`, and `Z` refer to a sequence of digits or `_` characters, with an optional base prefix (`0b`, `0o`, or `0x`.)
 
+# Resolving cell references: Assigned vs Occupied.
+
+Names, positions, and groups are only meaningful if they've been assigned to an index. However, the index may or may not be associated with a cell in the palette. If they are, it is called an occupied index. Index references are always occupied if they are assigned, so there is no difference there. However, an index which is unassigned is still useful (to assign it), wheras names, positions, and groups are not useful if they are unassigned.
+
+
 
 # Cell selection & Cell selector
 
@@ -97,3 +102,6 @@ name
 ## Impl `PartialEq` on results for testing.
 ## Return value, token, rest on success.
 ## Return context, expected, source, and rest on failure.
+
+
+

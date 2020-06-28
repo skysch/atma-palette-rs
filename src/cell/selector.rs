@@ -43,7 +43,6 @@ pub const REF_RANGE_TOKEN: char = '-';
 pub const REF_SEP_TOKEN: char = ',';
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // CellSelector
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,15 +186,26 @@ impl<'name> CellSelector<'name> {
         }
     }
 
+    /// Returns an ordered iterator over the selected, occupied indices within
+    /// the given palette.
+    pub fn resolve<'p>(&self, basic: &'p BasicPalette)
+        -> impl Iterator<Item=u32>
+    {
+        self.index_iter(basic)
+            .collect::<std::collections::BTreeSet<u32>>()
+            .into_iter()
+    }
+
     /// Returns an index iterator for the selector within the given palette.
-    pub fn index_iter<'p>(&self, basic: &'p BasicPalette)
+    fn index_iter<'p>(&self, basic: &'p BasicPalette)
         -> CellSelectorIndexIter<'name, 'p>
     {
         let mut pos_selector = PositionSelector::all();
         let selector = {
             use CellSelector::*;
             match self {
-                All => basic.occupied_index_range()
+                All => basic
+                    .occupied_index_range()
                     .map(|(low, high)| if low == high { 
                             Index(low)
                         } else {
@@ -205,7 +215,8 @@ impl<'name> CellSelector<'name> {
                 Index(idx) => Some(Index(*idx))
                     .filter(|_| basic.is_occupied_index(idx)),
 
-                IndexRange { low, high } => basic.occupied_index_range()
+                IndexRange { low, high } => basic
+                    .occupied_index_range()
                     .and_then(|(l, h)| intersect((*low, *high), (l, h)))
                     .map(|(low, high)| IndexRange { low, high }),
 
@@ -213,11 +224,41 @@ impl<'name> CellSelector<'name> {
                     .resolve_name_if_occupied(&name)
                     .map(Index),
 
+                Group { group, idx } => basic
+                    .resolve_group_if_occupied(group, *idx)
+                    .map(Index),
+                
+                GroupAll(group) => basic
+                    .assigned_group_range(group)
+                    .map(|(low, high)| GroupRange {
+                        group: group.clone(),
+                        low,
+                        high,
+                    }),
+                
+                GroupRange { group, low, high } => basic
+                    .assigned_group_range(group)
+                    .and_then(|(l, h)| intersect((*low, *high), (l, h)))
+                    .map(|(low, high)| GroupRange {
+                        group: group.clone(),
+                        low,
+                        high,
+                    }),
 
+                PositionRange { low, high } => basic
+                    .assigned_position_range()
+                    .and_then(|(l, h)| intersect((*low, *high), (l, h)))
+                    .map(|(low, high)| PositionRange { low, high }),
 
-
-
-                _ => unimplemented!(),
+                PositionSelector(position_selector) => {
+                    pos_selector = position_selector.clone();
+                    basic.assigned_position_range()
+                        .and_then(|(l, h)| {
+                            let (low, high) = position_selector.bounds();
+                            intersect((low, high), (l, h))
+                        })
+                        .map(|(low, high)| PositionRange { low, high })
+                }
             }
         };
         CellSelectorIndexIter {
@@ -295,7 +336,7 @@ impl<'name> TryFrom<(CellRef<'name>, CellRef<'name>)> for CellSelector<'name> {
 ////////////////////////////////////////////////////////////////////////////////
 /// An iterator over the valid palette indices selected by a CellSelector.
 #[derive(Debug)]
-pub struct CellSelectorIndexIter<'t, 'p> {
+struct CellSelectorIndexIter<'t, 'p> {
     basic: &'p BasicPalette,
     selector: Option<CellSelector<'t>>,
     pos_selector: PositionSelector,
@@ -322,8 +363,8 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
             Some(IndexRange { low, high }) => match self.basic
                 .next_occupied_index_after(&low)
             {
-                _ if self.basic.is_occupied_index(&low) => {
-                    self.selector = Some(IndexRange { low: low + 1, high });
+                Some(idx) if self.basic.is_occupied_index(&low) => {
+                    self.selector = Some(IndexRange { low: *idx, high });
                     Some(low)
                 },
                 None                      => { self.selector = None; None },
@@ -336,22 +377,93 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
                     self.selector = Some(IndexRange { low: *idx, high });
                     Some(*idx)
                 },
+            },            
+            
+            Some(GroupRange { group, low, high }) => match self.basic
+                .next_occupied_group_index_after(&group, low)
+            {
+                Some(idx)if self.basic.is_occupied_group(&group, low) => {
+                    self.selector = Some(GroupRange {
+                        group,
+                        low: idx,
+                        high,
+                    });
+                    Some(low)
+                },
+                None                     => { self.selector = None; None },
+                Some(idx) if idx > high  => { self.selector = None; None },
+                Some(idx) if idx == high => {
+                    self.selector = None; 
+                    Some(high)
+                },
+                Some(idx) => {
+                    self.selector = Some(GroupRange { group, low: idx, high });
+                    Some(idx)
+                },
             },
-            
 
+            Some(PositionRange { low, high }) => match self.basic
+                .next_occupied_position_after(&low)
+            {
+                Some((pos, _)) if self.basic.is_occupied_position(&low) && 
+                    self.pos_selector.contains(&low) => 
+                {
+                    let idx = self.basic
+                        .resolve_position_if_occupied(&low)
+                        .unwrap();
+                    self.selector = Some(PositionRange {
+                        low: *pos,
+                        high,
+                    });
+                    Some(idx)
+                },
+                None                          => { self.selector = None; None },
+                Some((pos, _)) if pos > &high => { self.selector = None; None },
+                Some((pos, idx)) if pos == &high => {
+                    self.selector = None; 
+                    if self.pos_selector.contains(&pos) {
+                        Some(*idx)
+                    } else {
+                        None
+                    }
+                },
+                Some((pos, idx)) => {
+                    if self.pos_selector.contains(&pos) {
+                        self.selector = Some(PositionRange { 
+                            low: *pos,
+                            high,
+                        });
+                        return Some(*idx)
+                    }
+                    let mut cur_pos = pos;
+                    loop {
+                        match self.basic.next_occupied_position_after(&cur_pos)
+                        {
+                            Some((pos, idx)) if self
+                                .pos_selector.contains(&pos) => 
+                            {
+                                self.selector = Some(PositionRange { 
+                                    low: *pos,
+                                    high,
+                                });
+                                return Some(*idx)
+                            },
+                            Some((pos, _)) => { cur_pos = pos; },
+                            None => {
+                                self.selector = None; 
+                                return None;
+                            }
+                        }
+                    }
+                },
+            },
 
-
-
-
-            
-            // Some(Group { group, idx }) => 
-            
-            // Some(GroupAll(group)) => 
-            
-            // Some(GroupRange { group, low, high }) => 
-
-            // Some(PositionRange { low, high }) => 
-
+            // Other variants can be mapped out during construction:
+            // * All should be handled by IndexRange.
+            // * Name should be handled by Index.
+            // * Group should be handled by Index.
+            // * GroupAll should be handled by GroupRange.
+            // * PositionSelector should be handled by PositionRange.
             Some(_) => unreachable!(),
         }
     }
@@ -384,7 +496,7 @@ impl PositionSelector {
     }
 
     /// Returns true if the given position is selected.
-    pub fn selects_position(&self, other: &Position) -> bool {
+    pub fn contains(&self, other: &Position) -> bool {
         self.page.map(|p| p == other.page).unwrap_or(true) &&
         self.line.map(|l| l == other.line).unwrap_or(true) &&
         self.column.map(|c| c == other.column).unwrap_or(true)

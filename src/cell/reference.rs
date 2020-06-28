@@ -96,7 +96,7 @@ pub struct Position {
 
 impl Position {
     /// Returns the next position after the given one.
-    pub fn next(&self) -> Position {
+    pub fn succ(&self) -> Position {
         
         let (column, over) = self.column.overflowing_add(1);
         let (line, over) = self.line.overflowing_add(if over { 1 } else { 0 });

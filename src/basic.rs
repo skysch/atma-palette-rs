@@ -240,8 +240,7 @@ impl BasicPalette {
 
     /// Returns the full range of occupied indices in the palette, or None if
     /// the palette is empty.
-    pub fn occupied_index_range(&self) -> Option<(u32, u32)>
-    {
+    pub fn occupied_index_range(&self) -> Option<(u32, u32)> {
         let mut keys = self.cells.keys();
         match (keys.next(), keys.next_back()) {
             (Some(first), Some(last)) => Some((*first, *last)),
@@ -251,9 +250,7 @@ impl BasicPalette {
     }
 
     /// Returns the next occupied cell index following the given index.
-    pub fn next_occupied_index_after(&self, idx: &u32)
-        -> Option<&u32>
-    {
+    pub fn next_occupied_index_after(&self, idx: &u32) -> Option<&u32> {
         use std::ops::Bound::*;
         self.cells
             .range((Excluded(idx), Unbounded))
@@ -266,11 +263,54 @@ impl BasicPalette {
         self.cells.get(idx).is_some()
     }
 
+    /// Returns the full range of assigned indexes for a group in the palette,
+    /// or None if the group is empty.
+    pub fn assigned_group_range(&self, group: &str) -> Option<(u32, u32)> {
+        self.groups
+            .get(group)
+            .filter(|e| !e.is_empty())
+            .map(|elems| (0, (elems.len() - 1).try_into()
+                .expect("to many elements in group")))
+    }
+
+    /// Returns true if the given group index is assigned in the palette.
+    pub fn is_assigned_group(&self, group: &str, idx: u32) -> bool {
+        self.groups
+            .get(group)
+            .map(|elems| usize::try_from(idx).unwrap() < elems.len())
+            .unwrap_or(false)
+    }
+
+
+    /// Returns true if the given group index is occupied in the palette.
+    pub fn is_occupied_group(&self, group: &str, idx: u32) -> bool {
+        self.groups
+            .get(group)
+            .and_then(|elems| elems
+                .get(usize::try_from(idx).unwrap())
+                .and_then(|cell_idx| self.cells.get(cell_idx)))
+            .is_some()
+    }
+
+    /// Returns the next occupied cell index following the given index.
+    pub fn next_occupied_group_index_after(&self, group: &str, idx: u32)
+        -> Option<u32>
+    {
+        self.groups
+            .get(group)
+            .and_then(|elems| {
+                for cur_idx in idx..u32::try_from(elems.len()).unwrap() {
+                    if self.cells.get(&cur_idx).is_some() {
+                        return Some(cur_idx);
+                    }
+                }
+                None
+            })
+    }
+
     /// Returns the full range of assigned positions in the palette, or None if
     /// no positions are assigned is empty.
-    pub fn assigned_position_range(&self)
-        -> Option<(Position, Position)>
-    {
+    pub fn assigned_position_range(&self) -> Option<(Position, Position)> {
         let mut keys = self.positions.keys();
         match (keys.next(), keys.next_back()) {
             (Some(first), Some(last)) => Some((*first, *last)),
@@ -326,37 +366,6 @@ impl BasicPalette {
             .is_some()
     }
 
-    /// Returns the full range of assigned indexes for a group in the palette,
-    /// or None if the group is empty.
-    pub fn assigned_group_range(&self, group: &str)
-        -> Option<(u32, u32)>
-    {
-        self.groups
-            .get(group)
-            .filter(|e| !e.is_empty())
-            .map(|elems| (0, (elems.len() - 1).try_into()
-                .expect("to many elements in group")))
-    }
-
-    /// Returns true if the given position is assigned in the palette.
-    pub fn is_assigned_group(&self, group: &str, idx: u32) -> bool {
-        self.groups
-            .get(group)
-            .map(|elems| usize::try_from(idx).unwrap() < elems.len())
-            .unwrap_or(false)
-    }
-
-
-    /// Returns true if the given position is occupied in the palette.
-    pub fn is_occupied_group(&self, group: &str, idx: u32) -> bool {
-        self.groups
-            .get(group)
-            .and_then(|elems| elems
-                .get(usize::try_from(idx).unwrap())
-                .and_then(|cell_idx| self.cells.get(cell_idx)))
-            .is_some()
-    }
-
     /// Returns true if the given name is assigned in the palette.
     pub fn is_assigned_name(&self, name: &str) -> bool {
         self.names
@@ -376,6 +385,33 @@ impl BasicPalette {
     pub fn resolve_name_if_occupied(&self, name: &str) -> Option<u32> {
         self.names
             .get(name)
+            .and_then(|idx| if self.cells.contains_key(idx) {
+                Some(*idx)
+            } else {
+                None
+            })
+    }
+
+    /// Returns the index associated with the given position if it is occupied.
+    pub fn resolve_position_if_occupied(&self, position: &Position)
+        -> Option<u32>
+    {
+        self.positions
+            .get(position)
+            .and_then(|idx| if self.cells.contains_key(idx) {
+                Some(*idx)
+            } else {
+                None
+            })
+    }
+
+    /// Returns the index associated with the given group if it is occupied.
+    pub fn resolve_group_if_occupied(&self, group: &str, idx: u32)
+        -> Option<u32>
+    {
+        self.groups
+            .get(group)
+            .and_then(|elems| elems.get(usize::try_from(idx).unwrap()))
             .and_then(|idx| if self.cells.contains_key(idx) {
                 Some(*idx)
             } else {
