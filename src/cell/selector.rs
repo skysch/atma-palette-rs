@@ -10,9 +10,10 @@
 
 // Local imports.
 use crate::basic::BasicPalette;
-use crate::cell::Position;
 use crate::cell::CellRef;
-use crate::utility::inclusive_range_intersect as intersect;
+use crate::cell::Position;
+use crate::utility::Split;
+
 
 // External library imports.
 use serde::Serialize;
@@ -204,21 +205,21 @@ impl<'name> CellSelector<'name> {
         let selector = {
             use CellSelector::*;
             match self {
-                All => basic
-                    .occupied_index_range()
-                    .map(|(low, high)| if low == high { 
-                            Index(low)
-                        } else {
-                            IndexRange { low, high }
-                        }),
-
+                All => match basic.occupied_index_range() {
+                    Split::Two(low, high) => Some(IndexRange { low, high }),
+                    Split::One(idx)       => Some(Index(idx)),
+                    Split::Zero           => None,
+                },
                 Index(idx) => Some(Index(*idx))
                     .filter(|_| basic.is_occupied_index(idx)),
 
-                IndexRange { low, high } => basic
-                    .occupied_index_range()
-                    .and_then(|(l, h)| intersect((*low, *high), (l, h)))
-                    .map(|(low, high)| IndexRange { low, high }),
+                IndexRange { low, high } => match basic
+                    .occupied_index_subrange(*low, *high)
+                {
+                    Split::Two(low, high) => Some(IndexRange { low, high }),
+                    Split::One(idx)       => Some(Index(idx)),
+                    Split::Zero           => None,
+                },
 
                 Name(name) => basic
                     .resolve_name_if_occupied(&name)
@@ -228,37 +229,61 @@ impl<'name> CellSelector<'name> {
                     .resolve_group_if_occupied(group, *idx)
                     .map(Index),
                 
-                GroupAll(group) => basic
-                    .assigned_group_range(group)
-                    .map(|(low, high)| GroupRange {
+                GroupAll(group) => match basic.assigned_group_range(group) {
+                    Split::Two(low, high) => Some(GroupRange {
                         group: group.clone(),
                         low,
                         high,
                     }),
+                    Split::One(idx)       => Some(Group {
+                        group: group.clone(),
+                        idx
+                    }),
+                    Split::Zero           => None,
+                },
                 
-                GroupRange { group, low, high } => basic
-                    .assigned_group_range(group)
-                    .and_then(|(l, h)| intersect((*low, *high), (l, h)))
-                    .map(|(low, high)| GroupRange {
+                GroupRange { group, low, high } => match basic
+                    .assigned_group_subrange(group, *low, *high)
+                {
+                    Split::Two(low, high) => Some(GroupRange {
                         group: group.clone(),
                         low,
                         high,
                     }),
+                    Split::One(idx)       => Some(Group {
+                        group: group.clone(),
+                        idx
+                    }),
+                    Split::Zero           => None,
+                },
 
-                PositionRange { low, high } => basic
-                    .assigned_position_range()
-                    .and_then(|(l, h)| intersect((*low, *high), (l, h)))
-                    .map(|(low, high)| PositionRange { low, high }),
+                PositionRange { low, high } => match basic
+                    .assigned_position_subrange(*low, *high)
+                {
+                    Split::Two(low, high) => Some(PositionRange {
+                        low,
+                        high,
+                    }),
+                    Split::One(pos)       => basic
+                        .resolve_position_if_occupied(&pos)
+                        .map(Index),
+                    Split::Zero           => None,
+                },
 
                 PositionSelector(position_selector) => {
                     pos_selector = position_selector.clone();
-                    basic.assigned_position_range()
-                        .and_then(|(l, h)| {
-                            let (low, high) = position_selector.bounds();
-                            intersect((low, high), (l, h))
-                        })
-                        .map(|(low, high)| PositionRange { low, high })
-                }
+                    let (low, high) = position_selector.bounds();
+                    match basic.assigned_position_subrange(low, high) {
+                        Split::Two(low, high) => Some(PositionRange {
+                            low,
+                            high,
+                        }),
+                        Split::One(pos)       => basic
+                            .resolve_position_if_occupied(&pos)
+                            .map(Index),
+                        Split::Zero           => None,
+                    }
+                },
             }
         };
         CellSelectorIndexIter {
@@ -353,126 +378,153 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
 
             Some(Index(idx)) => {
                 self.selector = None;
-                if self.basic.is_occupied_index(&idx) {
-                    Some(idx)
-                } else {
-                    None
-                }
+                Some(idx)
+                    .filter(|l| self.basic.is_occupied_index(l))
             },
             
-            Some(IndexRange { low, high }) => match self.basic
-                .next_occupied_index_after(&low)
-            {
-                Some(idx) if self.basic.is_occupied_index(&low) => {
-                    if *idx == high {
-                        self.selector = Some(Index(*idx));
-                    } else {
-                        self.selector = Some(IndexRange { low: *idx, high });
-                    }
-                    Some(low)
-                },
-                None                      => { self.selector = None; None },
-                Some(idx) if *idx > high  => { self.selector = None; None },
-                Some(idx) if *idx == high => {
-                    self.selector = None; 
-                    Some(high)
-                },
-                Some(idx) => {
-                    self.selector = Some(IndexRange { low: *idx, high });
-                    Some(*idx)
-                },
-            },            
-            
-            Some(GroupRange { group, low, high }) => match self.basic
-                .next_occupied_group_index_after(&group, low)
-            {
-                Some(idx) if self.basic.is_occupied_group(&group, low) => {
-                    if idx == high {
-                        self.selector = self.basic
-                            .resolve_group_if_occupied(&group, high)
-                            .map(Index) ;
-                    } else {
-                        self.selector = Some(GroupRange {
-                            group,
-                            low: idx,
-                            high,
-                        });
-                    }
-                    Some(low)
-                },
-                None                     => { self.selector = None; None },
-                Some(idx) if idx > high  => { self.selector = None; None },
-                Some(idx) if idx == high => {
-                    self.selector = None; 
-                    Some(high)
-                },
-                Some(idx) => {
-                    self.selector = Some(GroupRange { group, low: idx, high });
-                    Some(idx)
-                },
+            Some(IndexRange { low, high }) => {
+                let mut low = low;
+                let mut res = None;
+
+                while res.is_none() {
+                    res = Some(low)
+                        .filter(|l| self.basic.is_occupied_index(l));
+                    low += 1;
+                    self.selector = match self.basic
+                        .occupied_index_subrange(low, high)
+                    {
+                        Split::Two(low, high) => Some(IndexRange { low, high }),
+                        Split::One(idx)       => Some(Index(idx)),
+                        Split::Zero           => None,
+                    };
+                    if self.selector.is_none() { break; }
+                }
+                res
             },
 
-            Some(PositionRange { low, high }) => match self.basic
-                .next_occupied_position_after(&low)
-            {
-                Some((pos, _)) if self.basic.is_occupied_position(&low) && 
-                    self.pos_selector.contains(&low) => 
-                {
-                    if pos == &high {
-                        self.selector = self.basic
-                            .resolve_position_if_occupied(&high)
-                            .map(Index)
-                    } else {
-                        self.selector = Some(PositionRange {
-                            low: *pos,
+
+            // Some(GroupRange { group, low, high }) => match self.basic
+            //     .next_occupied_group_index_after(&group, low)
+            // {
+            //     Some(idx) if self
+            //         .basic.is_occupied_group(&group, low) => 
+            //     {
+            //         if idx == high {
+            //             self.selector = self.basic
+            //                 .resolve_group_if_occupied(&group, high)
+            //                 .map(Index) ;
+            //         } else {
+            //             self.selector = dbg!(Some(GroupRange {
+            //                 group,
+            //                 low: idx,
+            //                 high,
+            //             }));
+            //         }
+            //         Some(low)
+            //     },
+            //     None                     => { self.selector = None; None },
+            //     Some(idx) if idx > high  => { self.selector = None; None },
+            //     Some(idx) if idx == high => {
+            //         self.selector = None; 
+            //         Some(high)
+            //     },
+            //     Some(idx) => {
+            //         self.selector = Some(GroupRange { group, low: idx, high });
+            //         Some(idx)
+            //     },
+            // },
+            Some(GroupRange { group, low, high }) => {
+                let mut low = low;
+                let mut res = None;
+
+                while res.is_none() {
+                    res = self.basic.resolve_group_if_occupied(&group, low);
+                    low += 1;
+                    self.selector = match self.basic
+                        .assigned_group_subrange(&group, low, high)
+                    {
+                        Split::Two(low, high) => Some(GroupRange {
+                            group: group.clone(),
+                            low,
                             high,
-                        });
-                    }
-                    let idx = self.basic
-                        .resolve_position_if_occupied(&low)
-                        .unwrap();
-                    Some(idx)
-                },
-                None                          => { self.selector = None; None },
-                Some((pos, _)) if pos > &high => { self.selector = None; None },
-                Some((pos, idx)) if pos == &high => {
-                    self.selector = None; 
-                    if self.pos_selector.contains(&pos) {
-                        Some(*idx)
-                    } else {
-                        None
-                    }
-                },
-                Some((pos, idx)) => {
-                    if self.pos_selector.contains(&pos) {
-                        self.selector = Some(PositionRange { 
-                            low: *pos,
-                            high,
-                        });
-                        return Some(*idx)
-                    }
-                    let mut cur_pos = pos;
-                    loop {
-                        match self.basic.next_occupied_position_after(&cur_pos)
-                        {
-                            Some((pos, idx)) if self
-                                .pos_selector.contains(&pos) => 
-                            {
-                                self.selector = Some(PositionRange { 
-                                    low: *pos,
-                                    high,
-                                });
-                                return Some(*idx)
-                            },
-                            Some((pos, _)) => { cur_pos = pos; },
-                            None => {
-                                self.selector = None; 
-                                return None;
-                            }
-                        }
-                    }
-                },
+                        }),
+                        Split::One(idx)       => self.basic
+                            .resolve_group_if_occupied(&group, idx)
+                            .map(Index),
+                        Split::Zero           => None,
+                    };
+                    if self.selector.is_none() { break; }
+                }
+                res
             },
+
+            // Some(PositionRange { low, high }) => match self.basic
+            //     .next_occupied_position_after(&low)
+            // {
+            //     Some((pos, _)) if self.basic.is_occupied_position(&low) && 
+            //         self.pos_selector.contains(&low) => 
+            //     {
+            //         if pos == &high {
+            //             self.selector = self.basic
+            //                 .resolve_position_if_occupied(&high)
+            //                 .map(Index)
+            //         } else {
+            //             self.selector = Some(PositionRange {
+            //                 low: *pos,
+            //                 high,
+            //             });
+            //         }
+            //         let idx = self.basic
+            //             .resolve_position_if_occupied(&low)
+            //             .unwrap();
+            //         Some(idx)
+            //     },
+            //     None                          => { self.selector = None; None },
+            //     Some((pos, _)) if pos > &high => { self.selector = None; None },
+            //     Some((pos, idx)) if pos == &high => {
+            //         self.selector = None; 
+            //         if self.pos_selector.contains(&pos) {
+            //             Some(*idx)
+            //         } else {
+            //             None
+            //         }
+            //     },
+            //     Some((pos, idx)) => {
+            //         if self.pos_selector.contains(&pos) {
+            //             self.selector = Some(PositionRange { 
+            //                 low: *pos,
+            //                 high,
+            //             });
+            //             return Some(*idx)
+            //         }
+            //         let mut cur_pos = pos;
+            //         loop {
+            //             match self.basic.next_occupied_position_after(&cur_pos)
+            //             {
+            //                 Some((pos, idx)) if self
+            //                     .pos_selector.contains(&pos) => 
+            //                 {
+            //                     if pos == &high {
+            //                         self.selector = self.basic
+            //                             .resolve_position_if_occupied(&high)
+            //                             .map(Index)
+            //                     } else {
+            //                         self.selector = Some(PositionRange { 
+            //                             low: *pos,
+            //                             high,
+            //                         });
+            //                     }
+            //                     return Some(*idx)
+            //                 },
+            //                 Some((pos, _)) => { cur_pos = pos; },
+            //                 None => {
+            //                     self.selector = None; 
+            //                     return None;
+            //                 }
+            //             }
+            //         }
+            //     },
+            // },
 
             // Other variants can be mapped out during construction:
             // * All should be handled by IndexRange.

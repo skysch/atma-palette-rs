@@ -67,136 +67,6 @@ fn test_palette() -> BasicPalette {
     palette
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Palette data bounds
-////////////////////////////////////////////////////////////////////////////////
-
-#[test]
-fn palette_index_bounds_a() {
-    let pal = test_palette();
-    assert_eq!(
-        pal.occupied_index_range(),
-        Some((100, 199)));
-
-    assert_eq!(
-        pal.next_occupied_index_after(&5),
-        Some(&100));
-    assert_eq!(
-        pal.next_occupied_index_after(&99),
-        Some(&100));
-    assert_eq!(
-        pal.next_occupied_index_after(&150),
-        Some(&151));
-    assert_eq!(
-        pal.next_occupied_index_after(&198),
-        Some(&199));
-    assert_eq!(
-        pal.next_occupied_index_after(&199),
-        None);
-}
-
-#[test]
-fn palette_index_bounds_fresh() {
-    let mut pal = BasicPalette::new();
-
-    assert_eq!(
-        pal.occupied_index_range(),
-        None);
-
-    pal.insert_cell(Some(88), &Cell::new());
-    assert_eq!(
-        pal.occupied_index_range(),
-        Some((88, 88)));    
-}
-
-#[test]
-fn palette_position_bounds() {
-    let pal = test_palette();
-
-    assert_eq!(
-        pal.assigned_position_range(),
-        Some((
-            Position { page: 1, line: 0, column: 0 },
-            Position { page: 4, line: 9, column: 9 } )));
-
-
-    assert_eq!(
-        pal.next_assigned_position_after(
-            &Position { page: 0, line: 0, column: 0 }),
-        Some((&Position { page: 1, line: 0, column: 0 }, &100)));
-
-    assert_eq!(
-        pal.next_assigned_position_after(
-            &Position { page: 0, line: 0xFFFF, column: 0xFFFF }),
-        Some((&Position { page: 1, line: 0, column: 0 }, &100)));
-
-    assert_eq!(
-        pal.next_assigned_position_after(
-            &Position { page: 1, line: 0, column: 0 }),
-        Some((&Position { page: 1, line: 0, column: 1 }, &101)));
-
-    assert_eq!(
-        pal.next_assigned_position_after(
-            &Position { page: 1, line: 0, column: 20 }),
-        Some((&Position { page: 1, line: 1, column: 0 }, &110)));
-
-    assert_eq!(
-        pal.next_assigned_position_after(
-            &Position { page: 1, line: 20, column: 20 }),
-        Some((&Position { page: 2, line: 0, column: 0 }, &200)));
-
-    assert_eq!(
-        pal.next_assigned_position_after(
-            &Position { page: 4, line: 9, column: 8 }),
-        Some((&Position { page: 4, line: 9, column: 9 }, &499)));
-
-    assert_eq!(
-        pal.next_assigned_position_after(
-            &Position { page: 4, line: 9, column: 9 }),
-        None);
-}
-#[test]
-fn palette_position_bounds_fresh() {
-    let mut pal = BasicPalette::new();
-
-    assert_eq!(
-        pal.assigned_position_range(),
-        None);
-
-    pal.insert_cell(Some(88), &Cell::new());
-    pal.assign_position(CellRef::Index(88), Position {
-                    page: 100, line: 15, column: 4 });
-    assert_eq!(
-        pal.assigned_position_range(),
-        Some((
-            Position { page: 100, line: 15, column: 4 }, 
-            Position { page: 100, line: 15, column: 4 })));    
-}
-
-#[test]
-fn palette_group_bounds() {
-    let pal = test_palette();
-
-    assert_eq!(
-        pal.assigned_group_range("GroupA"),
-        Some((0, 9)));
-
-    assert_eq!(
-        pal.assigned_group_range("GroupB"),
-        Some((0, 14)));
-
-    assert_eq!(
-        pal.assigned_group_range("GroupC"),
-        Some((0, 19)));
-
-    assert_eq!(
-        pal.assigned_group_range("GroupD"),
-        Some((0, 0)));
-
-    assert_eq!(
-        pal.assigned_group_range("GroupE"),
-        None);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // CellSelector resolution
@@ -234,4 +104,63 @@ fn cell_selector_resolve_index_range() {
     assert_eq!(res.len(), 20);
     assert_eq!(res[0], 180u32);
     assert_eq!(res[19], 199u32);
+}
+
+#[test]
+fn cell_selector_resolve_name() {
+    let pal = test_palette();
+
+    let selector = CellSelector::Name("a".into());
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 1);
+    assert_eq!(res[0], 100u32);
+
+    let selector = CellSelector::Name("b".into());
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 1);
+    assert_eq!(res[0], 110u32);
+
+    let selector = CellSelector::Name("z".into());
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 0);
+}
+
+
+#[test]
+fn cell_selector_resolve_group() {
+    let pal = test_palette();
+
+    let selector = CellSelector::Group { group: "GroupA".into(), idx: 9};
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 1);
+    assert_eq!(res[0], 109u32);
+
+
+    let selector = CellSelector::Group { group: "GroupA".into(), idx: 10};
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 0);
+}
+
+
+#[test]
+fn cell_selector_resolve_group_all() {
+    let pal = test_palette();
+
+    let selector = CellSelector::GroupAll("GroupA".into());
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 10);
+    assert_eq!(res[0], 100u32);
+    assert_eq!(res[9], 109u32);
+
+    let selector = CellSelector::GroupAll("GroupB".into());
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 15);
+    assert_eq!(res[0], 120u32);
+    assert_eq!(res[14], 134u32);
+
+    let selector = CellSelector::GroupAll("GroupC".into());
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 20);
+    assert_eq!(res[0], 150u32);
+    assert_eq!(res[19], 169u32);
 }

@@ -27,11 +27,9 @@ Names, positions, and groups are only meaningful if they've been assigned to an 
 
 ## All
 *
-
 ## Index
 :0
 :0-:1
-
 ## Position
 :0.0.0
 :0.0.0-:0.0.1
@@ -41,11 +39,9 @@ Names, positions, and groups are only meaningful if they've been assigned to an 
 :0.*.*
 :*.0.*
 :*.*.0
-
 ## Group
 group:0-group:1
 group:*
-
 ## Name
 name
 
