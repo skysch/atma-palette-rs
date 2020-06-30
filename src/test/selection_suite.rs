@@ -125,7 +125,6 @@ fn cell_selector_resolve_name() {
     assert_eq!(res.len(), 0);
 }
 
-
 #[test]
 fn cell_selector_resolve_group() {
     let pal = test_palette();
@@ -140,7 +139,6 @@ fn cell_selector_resolve_group() {
     let res: Vec<_> = selector.resolve(&pal).collect();
     assert_eq!(res.len(), 0);
 }
-
 
 #[test]
 fn cell_selector_resolve_group_all() {
@@ -163,4 +161,29 @@ fn cell_selector_resolve_group_all() {
     assert_eq!(res.len(), 20);
     assert_eq!(res[0], 150u32);
     assert_eq!(res[19], 169u32);
+}
+
+#[test]
+fn cell_selector_resolve_group_range() {
+    let pal = test_palette();
+
+    let selector = CellSelector::GroupRange {
+        group: "GroupA".into(),
+        low: 3,
+        high: 6,
+    };
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 4);
+    assert_eq!(res[0], 103u32);
+    assert_eq!(res[3], 106u32);
+
+    let selector = CellSelector::GroupRange {
+        group: "GroupB".into(),
+        low: 10,
+        high: 20,
+    };
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 5);
+    assert_eq!(res[0], 130u32);
+    assert_eq!(res[4], 134u32);
 }

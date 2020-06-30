@@ -46,12 +46,6 @@ pub(crate) enum Split<T> {
     Two(T, T),
 }
 
-impl<T> Default for Split<T> {
-    fn default() -> Self {
-        Split::Zero
-    }
-}
-
 impl<T> Iterator for Split<T> {
     type Item = T;
 
@@ -68,6 +62,39 @@ impl<T> Iterator for Split<T> {
     }
 }
 
+impl<T> DoubleEndedIterator for Split<T> {
+    fn next_back(&mut self) -> Option<T> {
+        let mut res = None;
+        replace_with(self, |curr|
+            match curr {
+                Split::Zero      => { res = None;    Split::Zero },
+                Split::One(v)    => { res = Some(v); Split::Zero },
+                Split::Two(a, b) => { res = Some(b); Split::One(a) },
+            }
+        );
+        res
+    }
+}
+
+impl<T> ExactSizeIterator for Split<T> {
+    fn len(&self) -> usize {
+        match self {
+            Split::Zero      => 0,
+            Split::One(_)    => 1,
+            Split::Two(_, _) => 2,
+        }
+    }
+}
+
+impl<T> std::iter::FusedIterator for Split<T> {}
+
+
+impl<T> Default for Split<T> {
+    fn default() -> Self {
+        Split::Zero
+    }
+}
+
 impl<T> From<T> for Split<T> {
     fn from(value: T) -> Self {
         Split::One(value)
@@ -79,6 +106,37 @@ impl<T> From<(T, T)> for Split<T> {
         Split::Two(value.0, value.1)
     }
 }
+
+impl<T> From<Option<T>> for Split<T> {
+    fn from(value: Option<T>) -> Self {
+        match value {
+            None        => Split::Zero,
+            Some(value) => Split::One(value),
+        }
+    }
+}
+
+impl<T> From<Option<(T, T)>> for Split<T> {
+    fn from(value: Option<(T, T)>) -> Self {
+        match value {
+            None         => Split::Zero,
+            Some((a, b)) => Split::Two(a, b),
+        }
+    }
+}
+
+impl<T> From<(Option<T>, Option<T>)> for Split<T> {
+    fn from(value: (Option<T>, Option<T>)) -> Self {
+        match (value.0, value.1) {
+            (None,    None)    => Split::Zero,
+            (Some(a), None)    => Split::One(a),
+            (None,    Some(b)) => Split::One(b),
+            (Some(a), Some(b)) => Split::Two(a, b),
+        }
+    }
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // replace_with
