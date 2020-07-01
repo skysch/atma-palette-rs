@@ -120,20 +120,11 @@ impl<'name> IntoIterator for CellSelection<'name> {
 /// selection.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
+// TODO: Implement this using a data structure which handles unions of disjoint
+// intervals.
 pub struct CellIndexSelection(BTreeSet<u32>);
 
 impl CellIndexSelection {
-    /// Moves all indices in `other` into `self`, leaving `other` empty.
-    pub fn append(&mut self, other: &mut Self) {
-        self.0.append(&mut other.0)
-    }
-
-    /// Inserts a cell index into the selection. Returns true if the element is
-    /// index is new.
-    pub fn insert(&mut self, idx: u32) -> bool {
-        self.0.insert(idx)
-    }
-
     /// Inserts cell indices into the selection from an iterator. Returns the
     /// number of new indices inserted.
     pub fn insert_all<I>(&mut self, indices: I) -> usize 

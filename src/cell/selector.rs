@@ -12,7 +12,7 @@
 use crate::basic::BasicPalette;
 use crate::cell::CellRef;
 use crate::cell::Position;
-use crate::utility::Split;
+use crate::utility::Few;
 
 
 // External library imports.
@@ -220,9 +220,9 @@ impl<'name> CellSelector<'name> {
             use CellSelector::*;
             match self {
                 All => match basic.occupied_index_range() {
-                    Split::Two(low, high) => Some(IndexRange { low, high }),
-                    Split::One(idx)       => Some(Index(idx)),
-                    Split::Zero           => None,
+                    Few::Two(low, high) => Some(IndexRange { low, high }),
+                    Few::One(idx)       => Some(Index(idx)),
+                    Few::Zero           => None,
                 },
                 Index(idx) => Some(Index(*idx))
                     .filter(|_| basic.is_occupied_index(idx)),
@@ -230,9 +230,9 @@ impl<'name> CellSelector<'name> {
                 IndexRange { low, high } => match basic
                     .occupied_index_subrange(*low, *high)
                 {
-                    Split::Two(low, high) => Some(IndexRange { low, high }),
-                    Split::One(idx)       => Some(Index(idx)),
-                    Split::Zero           => None,
+                    Few::Two(low, high) => Some(IndexRange { low, high }),
+                    Few::One(idx)       => Some(Index(idx)),
+                    Few::Zero           => None,
                 },
 
                 Name(name) => basic
@@ -244,56 +244,56 @@ impl<'name> CellSelector<'name> {
                     .map(Index),
                 
                 GroupAll(group) => match basic.assigned_group_range(group) {
-                    Split::Two(low, high) => Some(GroupRange {
+                    Few::Two(low, high) => Some(GroupRange {
                         group: group.clone(),
                         low,
                         high,
                     }),
-                    Split::One(idx)       => basic
+                    Few::One(idx)       => basic
                         .resolve_group_if_occupied(group, idx)
                         .map(Index),
-                    Split::Zero           => None,
+                    Few::Zero           => None,
                 },
                 
                 GroupRange { group, low, high } => match basic
                     .assigned_group_subrange(group, *low, *high)
                 {
-                    Split::Two(low, high) => Some(GroupRange {
+                    Few::Two(low, high) => Some(GroupRange {
                         group: group.clone(),
                         low,
                         high,
                     }),
-                    Split::One(idx)       => basic
+                    Few::One(idx)       => basic
                         .resolve_group_if_occupied(group, idx)
                         .map(Index),
-                    Split::Zero           => None,
+                    Few::Zero           => None,
                 },
 
                 PositionRange { low, high } => match basic
                     .assigned_position_subrange(*low, *high)
                 {
-                    Split::Two(low, high) => Some(PositionRange {
+                    Few::Two(low, high) => Some(PositionRange {
                         low,
                         high,
                     }),
-                    Split::One(pos)       => basic
+                    Few::One(pos)       => basic
                         .resolve_position_if_occupied(&pos)
                         .map(Index),
-                    Split::Zero           => None,
+                    Few::Zero           => None,
                 },
 
                 PositionSelector(position_selector) => {
                     pos_selector = position_selector.clone();
                     let (low, high) = position_selector.bounds();
                     match basic.assigned_position_subrange(low, high) {
-                        Split::Two(low, high) => Some(PositionRange {
+                        Few::Two(low, high) => Some(PositionRange {
                             low,
                             high,
                         }),
-                        Split::One(pos)       => basic
+                        Few::One(pos)       => basic
                             .resolve_position_if_occupied(&pos)
                             .map(Index),
-                        Split::Zero           => None,
+                        Few::Zero           => None,
                     }
                 },
             }
@@ -405,15 +405,15 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
                     self.selector = match self.basic
                         .occupied_index_subrange(low, high)
                     {
-                        Split::Two(l, h) => {
+                        Few::Two(l, h) => {
                             low = l;
                             Some(IndexRange {
                                 low: l,
                                 high: h,
                             })
                         },
-                        Split::One(idx)       => Some(Index(idx)),
-                        Split::Zero           => None,
+                        Few::One(idx)       => Some(Index(idx)),
+                        Few::Zero           => None,
                     };
                     if self.selector.is_none() { break; }
                 }
@@ -430,7 +430,7 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
                     self.selector = match self.basic
                         .assigned_group_subrange(&group, low, high)
                     {
-                        Split::Two(l, h) => {
+                        Few::Two(l, h) => {
                             low = l;
                             Some(GroupRange {
                                 group: group.clone(),
@@ -438,10 +438,10 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
                                 high: h,
                             })
                         },
-                        Split::One(idx)       => self.basic
+                        Few::One(idx)       => self.basic
                             .resolve_group_if_occupied(&group, idx)
                             .map(Index),
-                        Split::Zero           => None,
+                        Few::Zero           => None,
                     };
                     if self.selector.is_none() { break; }
                 }
@@ -460,18 +460,18 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
                     self.selector = match self.basic
                         .assigned_position_subrange(low, high)
                     {
-                        Split::Two(l, h) => {
+                        Few::Two(l, h) => {
                             low = l; // Skip unassigned positions.
                             Some(PositionRange {
                                 low: l,
                                 high: h,
                             })
                         },
-                        Split::One(pos)       => self.basic
+                        Few::One(pos)       => self.basic
                             .resolve_position_if_occupied(&pos)
                             .filter(|_| self.pos_selector.contains(&pos))
                             .map(Index),
-                        Split::Zero           => None,
+                        Few::Zero           => None,
                     };
                     if self.selector.is_none() { break; }
                 }

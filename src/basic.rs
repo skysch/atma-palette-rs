@@ -16,7 +16,7 @@ use crate::error::Error;
 use crate::expr::Expr;
 use crate::history::History;
 use crate::operation::Operation;
-use crate::utility::Split;
+use crate::utility::Few;
 use crate::utility::split_intersect;
 
 // External library imports.
@@ -252,25 +252,25 @@ impl BasicPalette {
 
     /// Returns the full range of occupied indices in the palette, or None if
     /// the palette is empty.
-    pub(crate) fn occupied_index_range(&self) -> Split<u32> {
+    pub(crate) fn occupied_index_range(&self) -> Few<u32> {
         let mut keys = self.cells.keys();
         match (keys.next(), keys.next_back()) {
-            (Some(first), Some(last)) => Split::Two(*first, *last),
-            (Some(first), None)       => Split::One(*first),
-            (None, _)                 => Split::Zero,
+            (Some(first), Some(last)) => Few::Two(*first, *last),
+            (Some(first), None)       => Few::One(*first),
+            (None, _)                 => Few::Zero,
         }
     }
 
     pub(crate) fn occupied_index_subrange(&self, low: u32, high: u32)
-        -> Split<u32>
+        -> Few<u32>
     {
-        if low > high { return Split::Zero }
+        if low > high { return Few::Zero }
         
         let mut range = self.cells.range(low..=high).map(|(k, _v)| k);
         match (range.next(), range.next_back()) {
-            (Some(first), Some(last)) => Split::Two(*first, *last),
-            (Some(first), None)       => Split::One(*first),
-            (None, _)                 => Split::Zero,
+            (Some(first), Some(last)) => Few::Two(*first, *last),
+            (Some(first), None)       => Few::One(*first),
+            (None, _)                 => Few::Zero,
         }
     }
 
@@ -323,12 +323,12 @@ impl BasicPalette {
 
     /// Returns the full range of assigned indexes for a group in the palette,
     /// or None if the group is empty.
-    pub(crate) fn assigned_group_range(&self, group: &str) -> Split<u32> {
+    pub(crate) fn assigned_group_range(&self, group: &str) -> Few<u32> {
         match self.groups.get(group) {
-            None                            => Split::Zero,
-            Some(elems) if elems.is_empty() => Split::Zero,
-            Some(elems) if elems.len() == 1 => Split::One(0),
-            Some(elems)                     => Split::Two(0,
+            None                            => Few::Zero,
+            Some(elems) if elems.is_empty() => Few::Zero,
+            Some(elems) if elems.len() == 1 => Few::One(0),
+            Some(elems)                     => Few::Two(0,
                 (elems.len() - 1)
                     .try_into()
                     .expect("to many elements in group")),
@@ -340,11 +340,11 @@ impl BasicPalette {
         group: &str,
         low: u32,
         high: u32)
-        -> Split<u32>
+        -> Few<u32>
     {
         match self.groups.get(group) {
-            None                            => Split::Zero,
-            Some(elems) if elems.is_empty() => Split::Zero,
+            None                            => Few::Zero,
+            Some(elems) if elems.is_empty() => Few::Zero,
             Some(elems)                     => {
                 let max: u32 = (elems.len() - 1)
                     .try_into()
@@ -387,27 +387,27 @@ impl BasicPalette {
     /// Returns the full range of assigned positions in the palette, or None if
     /// no positions are assigned is empty.
     #[allow(unused)]
-    pub(crate) fn assigned_position_range(&self) -> Split<Position>  {
+    pub(crate) fn assigned_position_range(&self) -> Few<Position>  {
         let mut keys = self.positions.keys();
         match (keys.next(), keys.next_back()) {
-            (Some(first), Some(last)) => Split::Two(*first, *last),
-            (Some(first), None)       => Split::One(*first),
-            (None, _)                 => Split::Zero,
+            (Some(first), Some(last)) => Few::Two(*first, *last),
+            (Some(first), None)       => Few::One(*first),
+            (None, _)                 => Few::Zero,
         }
     }
 
     pub(crate) fn assigned_position_subrange(&self,
         low: Position,
         high: Position)
-        -> Split<Position>
+        -> Few<Position>
     {
-        if low > high { return Split::Zero }
+        if low > high { return Few::Zero }
         
         let mut range = self.positions.range(low..=high).map(|(k, _v)| k);
         match (range.next(), range.next_back()) {
-            (Some(first), Some(last)) => Split::Two(*first, *last),
-            (Some(first), None)       => Split::One(*first),
-            (None, _)                 => Split::Zero,
+            (Some(first), Some(last)) => Few::Two(*first, *last),
+            (Some(first), None)       => Few::One(*first),
+            (None, _)                 => Few::Zero,
         }
     }
 
