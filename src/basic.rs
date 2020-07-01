@@ -321,7 +321,6 @@ impl BasicPalette {
             .is_some()
     }
 
-
     /// Returns the full range of assigned indexes for a group in the palette,
     /// or None if the group is empty.
     pub(crate) fn assigned_group_range(&self, group: &str) -> Split<u32> {
@@ -336,8 +335,6 @@ impl BasicPalette {
         }
     }
 
-    /// Returns the full range of assigned indexes for a group in the palette,
-    /// or None if the group is empty.
     pub(crate) fn assigned_group_subrange(
         &self,
         group: &str,
@@ -389,6 +386,7 @@ impl BasicPalette {
 
     /// Returns the full range of assigned positions in the palette, or None if
     /// no positions are assigned is empty.
+    #[allow(unused)]
     pub(crate) fn assigned_position_range(&self) -> Split<Position>  {
         let mut keys = self.positions.keys();
         match (keys.next(), keys.next_back()) {
@@ -397,7 +395,6 @@ impl BasicPalette {
             (None, _)                 => Split::Zero,
         }
     }
-
 
     pub(crate) fn assigned_position_subrange(&self,
         low: Position,
@@ -426,6 +423,7 @@ impl BasicPalette {
                 None
             })
     }
+
 
     ////////////////////////////////////////////////////////////////////////////
     // Composite operation interface

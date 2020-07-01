@@ -17,6 +17,7 @@ use crate::cell::Cell;
 use crate::cell::Position;
 use crate::cell::CellRef;
 use crate::cell::CellSelector;
+use crate::cell::PositionSelector;
 
 
 fn test_palette() -> BasicPalette {
@@ -186,4 +187,64 @@ fn cell_selector_resolve_group_range() {
     assert_eq!(res.len(), 5);
     assert_eq!(res[0], 130u32);
     assert_eq!(res[4], 134u32);
+}
+
+#[test]
+fn cell_selector_resolve_position_range() {
+    let pal = test_palette();
+
+    let selector = CellSelector::PositionRange {
+        low: Position { page: 0, line: 0, column: 0 },
+        high: Position { page: 2, line: 0, column: 0 },
+    };
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 100);
+    assert_eq!(res[0], 100u32);
+    assert_eq!(res[99], 199u32);
+
+
+    let selector = CellSelector::PositionRange {
+        low: Position { page: 1, line: 1, column: 1 },
+        high: Position { page: 1, line: 1, column: 1 },
+    };
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 1);
+    assert_eq!(res[0], 111u32);
+}
+
+#[test]
+fn cell_selector_resolve_position_selector() {
+    let pal = test_palette();
+
+    let selector = CellSelector::PositionSelector(PositionSelector {
+        page: Some(1),
+        line: Some(1),
+        column: Some(1),
+    });
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 1);
+    assert_eq!(res[0], 111u32);
+
+    let selector = CellSelector::PositionSelector(PositionSelector {
+        page: Some(1),
+        line: Some(1),
+        column: None,
+    });
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 10);
+    assert_eq!(res[0], 110u32);
+    assert_eq!(res[9], 119u32);
+
+
+    let selector = CellSelector::PositionSelector(PositionSelector {
+        page: Some(1),
+        line: None,
+        column: Some(4),
+    });
+    let res: Vec<_> = selector.resolve(&pal).collect();
+    assert_eq!(res.len(), 10);
+    assert_eq!(res[0], 104u32);
+    assert_eq!(res[1], 114u32);
+    assert_eq!(res[2], 124u32);
+    assert_eq!(res[9], 194u32);
 }
