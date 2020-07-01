@@ -17,6 +17,7 @@ use crate::cell::Cell;
 use crate::cell::Position;
 use crate::cell::CellRef;
 use crate::cell::CellSelector;
+use crate::cell::CellSelection;
 use crate::cell::PositionSelector;
 
 
@@ -247,4 +248,19 @@ fn cell_selector_resolve_position_selector() {
     assert_eq!(res[1], 114u32);
     assert_eq!(res[2], 124u32);
     assert_eq!(res[9], 194u32);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// CellSelection resolution
+////////////////////////////////////////////////////////////////////////////////
+#[test]
+fn cell_selection_resolve() {
+    let pal = test_palette();
+
+    let selection = CellSelection::parse(":100-:105, :1.6.6, GroupD:*").unwrap();
+    let res: Vec<_> = selection.resolve(&pal).into_iter().collect();
+    assert_eq!(res.len(), 8);
+
+
+    
 }

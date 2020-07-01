@@ -10,6 +10,10 @@
 
 // Local imports.
 use crate::cell::CellSelector;
+use crate::basic::BasicPalette;
+use crate::parse::cell_selection;
+use crate::parse::ParseResultExt as _;
+use crate::error::Error;
 
 // External library imports.
 use serde::Serialize;
@@ -34,6 +38,32 @@ use std::iter::FromIterator;
 pub struct CellSelection<'name>(Vec<CellSelector<'name>>);
 
 impl<'name> CellSelection<'name> {
+    /// Parses a CellSelection from the given string.
+    pub fn parse(input: &'name str) -> Result<Self, Error> {
+        cell_selection(input)
+            .expect_end_of_text()
+            .map_err(Error::from)
+            .map(|success| success.value)
+    }
+
+    /// Resolves the CellSelection into a CellIndexSelection containing all of
+    /// the selected and occupied cells for the given palette.
+    pub fn resolve(&self, basic: &BasicPalette) -> CellIndexSelection {
+        // Do quick check for an all selectors.
+        for selector in &self.0[..] {
+            if selector.is_all_selector() {
+                return CellIndexSelection(
+                    CellSelector::All.resolve(basic).into_iter().collect());
+            }
+        }
+
+        let mut index_selection = CellIndexSelection(BTreeSet::new());
+        for selector in &self.0[..] {
+            let _ = index_selection.insert_all(selector.resolve(basic));
+        }
+        index_selection
+    }
+
     /// Moves all `CellSelector`s in `other` into `self`, leaving `other` empty.
     pub fn append(&mut self, other: &mut Self) {
         self.0.append(&mut other.0)

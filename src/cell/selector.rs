@@ -105,6 +105,20 @@ pub enum CellSelector<'name> {
 }
 
 impl<'name> CellSelector<'name> {
+    /// Returns true if the selector will trivially select the entire palette
+    /// without needing to be resolved.
+    pub fn is_all_selector(&self) -> bool {
+        match self {
+            CellSelector::All => true,
+            CellSelector::PositionSelector(PositionSelector {
+                page: None,
+                line: None,
+                column: None,
+            }) => true,
+            _ => false,
+        }
+    }
+
     /// Converts a `CellSelector` to a static lifetime.
     pub fn into_static(self) -> CellSelector<'static> {
         use CellSelector::*;
@@ -235,10 +249,9 @@ impl<'name> CellSelector<'name> {
                         low,
                         high,
                     }),
-                    Split::One(idx)       => Some(Group {
-                        group: group.clone(),
-                        idx
-                    }),
+                    Split::One(idx)       => basic
+                        .resolve_group_if_occupied(group, idx)
+                        .map(Index),
                     Split::Zero           => None,
                 },
                 
@@ -250,10 +263,9 @@ impl<'name> CellSelector<'name> {
                         low,
                         high,
                     }),
-                    Split::One(idx)       => Some(Group {
-                        group: group.clone(),
-                        idx
-                    }),
+                    Split::One(idx)       => basic
+                        .resolve_group_if_occupied(group, idx)
+                        .map(Index),
                     Split::Zero           => None,
                 },
 
@@ -393,7 +405,13 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
                     self.selector = match self.basic
                         .occupied_index_subrange(low, high)
                     {
-                        Split::Two(low, high) => Some(IndexRange { low, high }),
+                        Split::Two(l, h) => {
+                            low = l;
+                            Some(IndexRange {
+                                low: l,
+                                high: h,
+                            })
+                        },
                         Split::One(idx)       => Some(Index(idx)),
                         Split::Zero           => None,
                     };
@@ -412,11 +430,14 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
                     self.selector = match self.basic
                         .assigned_group_subrange(&group, low, high)
                     {
-                        Split::Two(low, high) => Some(GroupRange {
-                            group: group.clone(),
-                            low,
-                            high,
-                        }),
+                        Split::Two(l, h) => {
+                            low = l;
+                            Some(GroupRange {
+                                group: group.clone(),
+                                low: l,
+                                high: h,
+                            })
+                        },
                         Split::One(idx)       => self.basic
                             .resolve_group_if_occupied(&group, idx)
                             .map(Index),
@@ -439,10 +460,13 @@ impl<'t, 'p> Iterator for CellSelectorIndexIter<'t, 'p> {
                     self.selector = match self.basic
                         .assigned_position_subrange(low, high)
                     {
-                        Split::Two(low, high) => Some(PositionRange {
-                            low,
-                            high,
-                        }),
+                        Split::Two(l, h) => {
+                            low = l; // Skip unassigned positions.
+                            Some(PositionRange {
+                                low: l,
+                                high: h,
+                            })
+                        },
                         Split::One(pos)       => self.basic
                             .resolve_position_if_occupied(&pos)
                             .filter(|_| self.pos_selector.contains(&pos))

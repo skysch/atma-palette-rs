@@ -10,6 +10,8 @@
 
 // Local imports.
 use crate::cell::CellRef;
+use crate::parse::FailureOwned;
+use crate::parse::Failure;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -61,8 +63,12 @@ pub enum Error {
     },
 
     /// A parse error occurred.
-    ParseError,
-
+    ParseError {
+        /// The error message.
+        msg: Option<String>,
+        /// The error source.
+        source: FailureOwned,
+    },
 }
 
 impl std::fmt::Display for Error {
@@ -70,12 +76,12 @@ impl std::fmt::Display for Error {
         use Error::*;
         match self {
             RonError { msg, source } => match msg {
-                Some(msg) => write!(f, "{}", msg),
+                Some(msg) => write!(f, "{}\n{}", msg, source),
                 None => write!(f, "{}", source),
             },
             
             IoError { msg, source } => match msg {
-                Some(msg) => write!(f, "{}", msg),
+                Some(msg) => write!(f, "{}\n{}", msg, source),
                 None => write!(f, "{}", source),
             },
 
@@ -94,7 +100,10 @@ impl std::fmt::Display for Error {
                     cell_ref)
             },
 
-            ParseError => write!(f, "parse error"),
+            ParseError { msg, source } => match msg {
+                Some(msg) => write!(f, "{}\n{}", msg, source),
+                None => write!(f, "{}", source),
+            },
         }
     }
 }
@@ -105,6 +114,7 @@ impl std::error::Error for Error {
         match self {
             RonError { source, .. } => Some(source),
             IoError { source, .. } => Some(source),
+            ParseError { source, .. } => Some(source),
             _ => None,
         }
     }
@@ -117,9 +127,20 @@ impl From<ron::error::Error> for Error {
     }
 }
 
-
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
         Error::IoError { msg: None, source: err }
+    }
+}
+
+impl From<FailureOwned> for Error {
+    fn from(err: FailureOwned) -> Self {
+        Error::ParseError { msg: None, source: err }
+    }
+}
+
+impl<'t> From<Failure<'t>> for Error {
+    fn from(err: Failure<'t>) -> Self {
+        err.to_owned().into()
     }
 }
