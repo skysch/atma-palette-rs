@@ -1,6 +1,6 @@
 [package]
 name = "atma-palette"
-version = "0.0.60"
+version = "0.0.61"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT or Apache-2.0"
@@ -22,7 +22,7 @@ default = []
 
 # Required dependencies
 [dependencies]
-few = { version = "*" }
+few = { version = "0.1" }
 log = { version = "*" }
 serde = { version = "*", features = ["derive"] }
 ron = "*"

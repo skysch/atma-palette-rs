@@ -20,7 +20,7 @@ use crate::parse::Success;
 use std::convert::TryFrom;
 use std::convert::TryInto as _;
 use std::borrow::Cow;
-
+use std::str::FromStr;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Constants.
@@ -35,6 +35,23 @@ pub const INT_RADIX_PREFIX_OCT: &'static str = "0o";
 /// Integer radix prefix for hexadecimal numbers.
 pub const INT_RADIX_PREFIX_HEX: &'static str = "0x";
 
+/// Floating point sign token.
+pub const FLOAT_SIGN: &'static str = "+-";
+
+/// Floating point infinity token.
+pub const FLOAT_INF: &'static str = "inf";
+
+/// Floating point NaN token.
+pub const FLOAT_NAN: &'static str = "NaN";
+
+/// Floating point exponent prefix token.
+pub const FLOAT_EXP: &'static str = "eE";
+
+/// Floating point decimal token.
+pub const FLOAT_DECIMAL: char = '.';
+
+/// Floating point decimal string. Used to ensure digits are parsed.
+const FLOAT_DECIMAL_STR: &'static str = ".";
 
 ////////////////////////////////////////////////////////////////////////////////
 // Char parsing.
@@ -146,7 +163,7 @@ pub fn literal<'t>(expect: &'t str)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Integer parseing.
+// Integer parsing.
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Returns a parser which parses an unsigned integer with optional radix
@@ -282,3 +299,119 @@ impl std::fmt::Display for ParseIntegerOverflow {
 }
 
 impl std::error::Error for ParseIntegerOverflow {}
+
+////////////////////////////////////////////////////////////////////////////////
+// Float parsing.
+////////////////////////////////////////////////////////////////////////////////
+/// Parses a float value.
+pub fn float<'t, T>(float_type: &'static str)
+    -> impl FnMut(&'t str) -> ParseResult<'t, T>
+    where
+        T: FromStr,
+        <T as FromStr>::Err: std::error::Error + 'static
+{
+    move |text| {
+        // Rust float syntax:
+        // Float  ::= Sign? ( 'inf' | 'NaN' | Number )
+        // Number ::= ( Digit+ |
+        //              Digit+ '.' Digit* |
+        //              Digit* '.' Digit+ ) Exp?
+        // Exp    ::= [eE] Sign? Digit+
+        // Sign   ::= [+-]
+        // Digit  ::= [0-9]
+        
+        // Parse the sign.
+        let sign_suc = maybe(char_in(FLOAT_SIGN))
+            (text)
+            .unwrap();
+
+        // Parse special literals.
+        if let Ok(inf_suc) = literal(FLOAT_INF)(sign_suc.rest) {
+            let full = sign_suc.join(inf_suc, text);
+            return match T::from_str(full.token) {
+                Ok(val) => Ok(full.map_value(|_| val)),
+                Err(e) => Err(Failure {
+                    context: full.token,
+                    expected: format!("Valid {} value", float_type).into(),
+                    source: Some(Box::new(e)),
+                    rest: full.rest,
+                }),
+            }
+        }
+
+        if let Ok(nan_suc) = literal(FLOAT_NAN)(sign_suc.rest) {
+            let full = sign_suc.join(nan_suc, text);
+            return match T::from_str(full.token) {
+                Ok(val) => Ok(full.map_value(|_| val)),
+                Err(e) => Err(Failure {
+                    context: full.token,
+                    expected: format!("Valid {} value", float_type).into(),
+                    source: Some(Box::new(e)),
+                    rest: full.rest,
+                }),
+            }
+        }
+
+        // Parse the digits.
+        let l_digit_suc = repeat(0, None, char_matching(|c| c.is_digit(10)))
+            (sign_suc.rest)
+            .unwrap();
+
+        let decimal_suc = maybe(char(FLOAT_DECIMAL))
+            (l_digit_suc.rest)
+            .unwrap();
+        let decimal_suc = l_digit_suc.join(decimal_suc, text);
+
+        let r_digit_suc = repeat(0, None, char_matching(|c| c.is_digit(10)))
+            (decimal_suc.rest)
+            .unwrap();
+        let r_digit_suc = decimal_suc.join(r_digit_suc, text);
+
+        if r_digit_suc.token == FLOAT_DECIMAL_STR || r_digit_suc.token.is_empty() {
+            let full = sign_suc.join(r_digit_suc, text);
+            return Err(Failure {
+                context: full.token,
+                expected: format!("Valid {} value", float_type).into(),
+                source: None,
+                rest: full.rest,
+            })
+        }
+        let full = sign_suc.join(r_digit_suc, text);
+
+        // Parse the exponent.
+        let exp_suc = maybe(float_exp)
+            (full.rest)
+            .unwrap();
+        let exp_suc = full.join(exp_suc, text);
+
+        match T::from_str(exp_suc.token) {
+            Ok(val) => Ok(exp_suc.map_value(|_| val)), 
+            Err(e) => Err(Failure {
+                context: exp_suc.token,
+                expected: format!("Valid {} value", float_type).into(),
+                source: Some(Box::new(e)),
+                rest: exp_suc.rest,
+            }),
+        }
+    }
+}
+
+
+fn float_exp<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
+    let e_suc = char_in(FLOAT_EXP)(text)
+        .source_for("float exponent")?;
+
+    let sign_suc = maybe(char_in(FLOAT_SIGN))
+        (e_suc.rest)
+        .unwrap();
+    let sign_suc = e_suc.join(sign_suc, text);
+
+    let digits_suc = repeat(1, None, char_matching(|c| c.is_digit(10)))
+        (sign_suc.rest)
+        .source_for("float exponent digits")
+        .with_join_context(&sign_suc, text)?;
+
+    Ok(sign_suc.join(digits_suc, text).tokenize_value())
+}
+
+

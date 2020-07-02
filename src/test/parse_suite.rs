@@ -1554,3 +1554,45 @@ fn cell_selection_match() {
             rest: "*abcd",
         }));
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Float parsing.
+////////////////////////////////////////////////////////////////////////////////
+
+
+/// Tests `parse::float` with `f32` values.
+#[test]
+fn float_f32_match() {
+    assert_eq!(
+        float::<f32>("f32")("0.0abcd"),
+        Ok(Success {
+            value: 0.0f32,
+            token: "0.0",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        float::<f32>("f32")("-110.0123141abcd"),
+        Ok(Success {
+            value: -110.0123141f32,
+            token: "-110.0123141",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        float::<f32>("f32")("-110.0123141eabcd"),
+        Ok(Success {
+            value: -110.0123141f32,
+            token: "-110.0123141",
+            rest: "eabcd",
+        }));
+
+    assert_eq!(
+        float::<f32>("f32")("-110.0123141e1abcd"),
+        Ok(Success {
+            value: -110.0123141e1f32,
+            token: "-110.0123141e1",
+            rest: "abcd",
+        }));
+}
