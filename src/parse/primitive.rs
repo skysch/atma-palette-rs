@@ -181,13 +181,13 @@ pub fn literal_ignore_ascii_case<'t>(expect: &'t str)
         loop {
             match dbg!((expect_chars.next(), text_chars.next())) {
                 (Some(e), Some((n, t))) if e.eq_ignore_ascii_case(&t) => {
-                    idx = n;
+                    idx = n + t.len_utf8();
                 },
 
-                (None, Some((n, _))) => return Ok(Success { 
-                    value: &text[..n],
-                    token: &text[..n],
-                    rest: &text[n..],
+                (None, _) => return Ok(Success { 
+                    value: &text[..idx],
+                    token: &text[..idx],
+                    rest: &text[idx..],
                 }),
 
                 (_, _) => return Err(Failure { 
