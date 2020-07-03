@@ -168,6 +168,38 @@ pub fn literal<'t>(expect: &'t str)
     }
 }
 
+/// Parses the given text literal, ignoring case.
+#[inline]
+pub fn literal_ignore_ascii_case<'t>(expect: &'t str)
+    -> impl FnMut(&'t str) -> ParseResult<'t, &'t str>
+{
+    move |text| {
+        let mut expect_chars = expect.chars();
+        let mut text_chars = text.char_indices();
+        let mut idx = 0;
+
+        loop {
+            match dbg!((expect_chars.next(), text_chars.next())) {
+                (Some(e), Some((n, t))) if e.eq_ignore_ascii_case(&t) => {
+                    idx = n;
+                },
+
+                (None, Some((n, _))) => return Ok(Success { 
+                    value: &text[..n],
+                    token: &text[..n],
+                    rest: &text[n..],
+                }),
+
+                (_, _) => return Err(Failure { 
+                    context: &text[..idx],
+                    expected: format!("ignore case literal {}", expect).into(),
+                    source: None,
+                    rest: text,
+                }),
+            }
+        }
+    }
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////

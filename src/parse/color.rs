@@ -24,10 +24,12 @@ use crate::parse::char_in;
 use crate::parse::circumfix;
 use crate::parse::Failure;
 use crate::parse::float;
+use crate::parse::literal_ignore_ascii_case;
 use crate::parse::maybe;
 use crate::parse::ParseResult;
 use crate::parse::ParseResultExt as _;
 use crate::parse::postfix;
+use crate::parse::prefix;
 use crate::parse::repeat;
 use crate::parse::intersperse_collect;
 use crate::parse::Success;
@@ -78,26 +80,17 @@ pub fn rgb_hex_3<'t>(text: &'t str) -> ParseResult<'t, Rgb> {
 ////////////////////////////////////////////////////////////////////////////////
 /// Parses an RGB value from it functional notation.
 pub fn rgb_functional<'t>(text: &'t str) -> ParseResult<'t, Rgb> {
-    let r_suc = char_in("Rr")(text)?;
-
-    let g_suc = char_in("Gg")(r_suc.rest)
-        .with_join_context(&r_suc, text)?;
-    let g_suc = r_suc.join(g_suc, text);
-
-    let b_suc = char_in("Bb")(g_suc.rest)
-        .with_join_context(&g_suc, text)?;
-    let b_suc = g_suc.join(b_suc, text);
-
-    let f_suc = functional(3)(b_suc.rest)
-        .with_join_context(&b_suc, text)?;
+    let suc = prefix(
+            functional(3),
+            literal_ignore_ascii_case("rgb"))
+        (text)?;
     let rgb = Rgb::from([
-        f_suc.value[0],
-        f_suc.value[1],
-        f_suc.value[2],
+        suc.value[0],
+        suc.value[1],
+        suc.value[2],
     ]);
 
-    Ok(b_suc.join(f_suc, text)
-        .map_value(|_| rgb))
+    Ok(suc.map_value(|_| rgb))
 }
 
 
@@ -148,13 +141,16 @@ fn functional<'t>(n: usize)
     -> impl FnMut(&'t str) -> ParseResult<'t, Vec<f32>>
 {
     use crate::parse::char;
-    
     bracket(
         intersperse_collect(n, Some(n),
             float::<f32>("f32"),
             circumfix(
                 char(FUNCTIONAL_SEPARATOR),
                 maybe(whitespace))),
-        char(FUNCTIONAL_OPEN_BRACKET),
-        char(FUNCTIONAL_CLOSE_BRACKET))
+        postfix(
+            char(FUNCTIONAL_OPEN_BRACKET),
+            maybe(whitespace)),
+        prefix(
+            char(FUNCTIONAL_CLOSE_BRACKET),
+            maybe(whitespace)))
 }
