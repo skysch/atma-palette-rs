@@ -16,6 +16,9 @@ use crate::cell::PositionSelector;
 use crate::cell::CellRef;
 use crate::color::Rgb;
 use crate::color::Hsv;
+use crate::color::Hsl;
+use crate::color::Cmyk;
+use crate::color::Xyz;
 
 
 
@@ -1614,7 +1617,6 @@ fn rgb_functional_match() {
         }));
 }
 
-
 /// Tests `parse::hsv_functional`.
 #[test]
 fn hsv_functional_match() {
@@ -1623,6 +1625,42 @@ fn hsv_functional_match() {
         Ok(Success {
             value: Hsv::new(1.0, 0.5, 0.0),
             token: "HSV(1.0, 0.5, 0.0)",
+            rest: "abcd",
+        }));
+}
+
+/// Tests `parse::hsl_functional`.
+#[test]
+fn hsl_functional_match() {
+    assert_eq!(
+        hsl_functional("HSL(1.0, 0.5, 0.0)abcd"),
+        Ok(Success {
+            value: Hsl::new(1.0, 0.5, 0.0),
+            token: "HSL(1.0, 0.5, 0.0)",
+            rest: "abcd",
+        }));
+}
+
+/// Tests `parse::cmyk_functional`.
+#[test]
+fn cmyk_functional_match() {
+    assert_eq!(
+        cmyk_functional("CMYK(1.0, 0.5, 0.0, 0.25)abcd"),
+        Ok(Success {
+            value: Cmyk::new(255, 127, 0, 63),
+            token: "CMYK(1.0, 0.5, 0.0, 0.25)",
+            rest: "abcd",
+        }));
+}
+
+/// Tests `parse::xyz_functional`.
+#[test]
+fn xyz_functional_match() {
+    assert_eq!(
+        xyz_functional("XYZ(1.0, 0.5, 0.0)abcd"),
+        Ok(Success {
+            value: Xyz::new(1.0, 0.5, 0.0),
+            token: "XYZ(1.0, 0.5, 0.0)",
             rest: "abcd",
         }));
 }

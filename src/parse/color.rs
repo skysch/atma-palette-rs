@@ -112,18 +112,49 @@ pub fn hsv_functional<'t>(text: &'t str) -> ParseResult<'t, Hsv> {
 
 /// Parses an HSL value from it functional notation.
 pub fn hsl_functional<'t>(text: &'t str) -> ParseResult<'t, Hsl> {
-    unimplemented!()
+    let suc = prefix(
+            functional(3),
+            literal_ignore_ascii_case("hsl"))
+        (text)?;
+    let hsl = Hsl::from([
+        suc.value[0],
+        suc.value[1],
+        suc.value[2],
+    ]);
+
+    Ok(suc.map_value(|_| hsl))
 }
 
 
 /// Parses an CMYK value from it functional notation.
 pub fn cmyk_functional<'t>(text: &'t str) -> ParseResult<'t, Cmyk> {
-    unimplemented!()
+    let suc = prefix(
+            functional(4),
+            literal_ignore_ascii_case("cmyk"))
+        (text)?;
+    let cmyk = Cmyk::from([
+        suc.value[0],
+        suc.value[1],
+        suc.value[2],
+        suc.value[3],
+    ]);
+
+    Ok(suc.map_value(|_| cmyk))
 }
 
 /// Parses an XYZ value from it functional notation.
 pub fn xyz_functional<'t>(text: &'t str) -> ParseResult<'t, Xyz> {
-    unimplemented!()
+    let suc = prefix(
+            functional(3),
+            literal_ignore_ascii_case("xyz"))
+        (text)?;
+    let xyz = Xyz::from([
+        suc.value[0],
+        suc.value[1],
+        suc.value[2],
+    ]);
+
+    Ok(suc.map_value(|_| xyz))
 }
 
 
