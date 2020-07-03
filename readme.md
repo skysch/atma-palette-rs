@@ -1,5 +1,6 @@
 
-# `atma-palette` -- a structured color palette format.
+# `atma` 
+## A structured color palette format & editor.
 
 
 

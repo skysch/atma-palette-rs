@@ -1,12 +1,12 @@
 [package]
-name = "atma-palette"
-version = "0.0.70"
+name = "atma"
+version = "0.0.71"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT or Apache-2.0"
 # maintenance = { status = "experiemental" }
-repository = "https://github.com/skysch/atma-palette-rs"
-description = "Atma structured color palette library"
+repository = "https://github.com/skysch/atma-rs"
+description = "Atma structured color palette library & CLI interface"
 readme = "readme.md"
 keywords = ["color", "palette"]
 categories = []
@@ -15,18 +15,23 @@ homepage = ""
 exclude = ["*.sublime-project", "*.sublime-workspace"]
 
 [lib]
-name = "atma_palette"
+name = "atma"
 
 [features]
 default = []
 
 # Required dependencies
 [dependencies]
-few = { version = "0.1" }
-log = { version = "*" }
-serde = { version = "*", features = ["derive"] }
-ron = "*"
+anyhow = "1.0"
 color = { git = "https://github.com/skysch/color-rs", features = ["serde"] }
+colored = "1.9"
+fern = { version = "*", features = ["colored"] }
+few = { version = "0.1" }
+log = { version = "*", features = ["serde"] }
+ron = "*"
+rustc_version_runtime = "*"
+serde = { version = "*", features = ["derive"] }
+structopt = { version = "0.3", features = ["suggestions", "color"] }
 
 
 # Dependencies used for tests, examples, and benches.

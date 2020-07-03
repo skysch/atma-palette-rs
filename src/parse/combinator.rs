@@ -37,7 +37,7 @@ pub fn maybe<'t, F, V>(mut parser: F)
 {
     move |text| {
         match (parser)(text) {
-            Ok(success) => Ok(success).map_value(Some),
+            Ok(success) => Ok(success.map_value(Some)),
             Err(_) => Ok(Success {
                 value: None,
                 token: "",

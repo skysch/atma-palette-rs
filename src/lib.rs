@@ -42,6 +42,8 @@
 // Internal modules.
 #[cfg(test)]
 mod test;
+mod command;
+mod config;
 
 // Public modules.
 pub mod basic;
@@ -53,11 +55,13 @@ pub mod expr;
 pub mod history;
 pub mod operation;
 pub mod utility;
+pub mod logger;
 
 // Exports.
 /// Color encodings.
 pub mod color {
     pub use color::*;
 }
+pub use command::*;
+pub use config::*;
 pub use palette::*;
-

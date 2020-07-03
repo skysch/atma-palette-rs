@@ -173,7 +173,6 @@ pub fn rgb_functional<'t>(text: &'t str) -> ParseResult<'t, Rgb> {
     Ok(suc.map_value(|_| rgb))
 }
 
-
 /// Parses an HSV value from it functional notation.
 pub fn hsv_functional<'t>(text: &'t str) -> ParseResult<'t, Hsv> {
     let suc = prefix(
@@ -189,7 +188,6 @@ pub fn hsv_functional<'t>(text: &'t str) -> ParseResult<'t, Hsv> {
     Ok(suc.map_value(|_| hsv))
 }
 
-
 /// Parses an HSL value from it functional notation.
 pub fn hsl_functional<'t>(text: &'t str) -> ParseResult<'t, Hsl> {
     let suc = prefix(
@@ -204,7 +202,6 @@ pub fn hsl_functional<'t>(text: &'t str) -> ParseResult<'t, Hsl> {
 
     Ok(suc.map_value(|_| hsl))
 }
-
 
 /// Parses an CMYK value from it functional notation.
 pub fn cmyk_functional<'t>(text: &'t str) -> ParseResult<'t, Cmyk> {
@@ -236,7 +233,6 @@ pub fn xyz_functional<'t>(text: &'t str) -> ParseResult<'t, Xyz> {
 
     Ok(suc.map_value(|_| xyz))
 }
-
 
 /// Returns a parser which parses a functional suffix with n float parameters.
 fn functional<'t>(n: usize)
