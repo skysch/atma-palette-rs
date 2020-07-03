@@ -33,7 +33,7 @@ pub fn null<'t>(text: &'t str) -> ParseResult<'t, ()> {
 #[inline]
 pub fn maybe<'t, F, V>(mut parser: F)
     -> impl FnMut(&'t str) -> ParseResult<'t, Option<V>>
-    where F: FnMut(&'t str) -> ParseResult<'t, V>
+    where F: FnMut(&'t str) -> ParseResult<'t, V>,
 {
     move |text| {
         match (parser)(text) {
@@ -52,7 +52,7 @@ pub fn maybe<'t, F, V>(mut parser: F)
 /// successes. Fails if the lower limit is not reached.
 pub fn repeat<'t, F, V>(low: usize, high: Option<usize>, parser: F)
     -> impl FnMut(&'t str) -> ParseResult<'t, usize>
-    where F: FnMut(&'t str) -> ParseResult<'t, V>
+    where F: FnMut(&'t str) -> ParseResult<'t, V>,
 {
     intersperse(low, high, parser, null)
 }
@@ -62,7 +62,7 @@ pub fn repeat<'t, F, V>(low: usize, high: Option<usize>, parser: F)
 /// each successful result in order. Fails if the lower limit is not reached.
 pub fn repeat_collect<'t, F, V>(low: usize, high: Option<usize>, parser: F)
     -> impl FnMut(&'t str) -> ParseResult<'t, Vec<V>>
-    where F: FnMut(&'t str) -> ParseResult<'t, V>
+    where F: FnMut(&'t str) -> ParseResult<'t, V>,
 {
     intersperse_collect(low, high, parser, null)
 }
@@ -78,7 +78,7 @@ pub fn intersperse<'t, F, G, V, U>(
     -> impl FnMut(&'t str) -> ParseResult<'t, usize>
     where 
         F: FnMut(&'t str) -> ParseResult<'t, V>,
-        G: FnMut(&'t str) -> ParseResult<'t, U>
+        G: FnMut(&'t str) -> ParseResult<'t, U>,
 {
     move |text| {
         let mut sub_suc = match (parser)(text) {
@@ -154,7 +154,7 @@ pub fn intersperse_collect<'t, F, G, V, U>(
     -> impl FnMut(&'t str) -> ParseResult<'t, Vec<V>>
     where
         F: FnMut(&'t str) -> ParseResult<'t, V>,
-        G: FnMut(&'t str) -> ParseResult<'t, U>
+        G: FnMut(&'t str) -> ParseResult<'t, U>,
 {
     move |text| {
         let mut sub_suc = match (parser)(text) {
@@ -226,7 +226,7 @@ pub fn prefix<'t, F, G, V, U>(mut parser: F, mut prefix_parser: G)
     -> impl FnMut(&'t str) -> ParseResult<'t, V>
     where
         F: FnMut(&'t str) -> ParseResult<'t, V>,
-        G: FnMut(&'t str) -> ParseResult<'t, U>
+        G: FnMut(&'t str) -> ParseResult<'t, U>,
 {
     move |text| {
         let pre_suc = (prefix_parser)(text)
@@ -246,7 +246,7 @@ pub fn postfix<'t, F, G, V, U>(mut parser: F, mut postfix_parser: G)
     -> impl FnMut(&'t str) -> ParseResult<'t, V>
     where
         F: FnMut(&'t str) -> ParseResult<'t, V>,
-        G: FnMut(&'t str) -> ParseResult<'t, U>
+        G: FnMut(&'t str) -> ParseResult<'t, U>,
 {
     move |text| {
         let sub_suc = (parser)(text)
@@ -267,7 +267,7 @@ pub fn circumfix<'t, F, G, V, U>(mut parser: F, mut circumfix_parser: G)
     -> impl FnMut(&'t str) -> ParseResult<'t, V>
     where
         F: FnMut(&'t str) -> ParseResult<'t, V>,
-        G: FnMut(&'t str) -> ParseResult<'t, U>
+        G: FnMut(&'t str) -> ParseResult<'t, U>,
 {
     move |text| {
         let pre_suc = (circumfix_parser)(text)

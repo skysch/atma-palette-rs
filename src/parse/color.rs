@@ -40,7 +40,6 @@ use crate::parse::whitespace;
 use std::borrow::Cow;
 
 
-
 /// Floating point sign token.
 pub const RGB_HEX_PREFIX: char = '#';
 

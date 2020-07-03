@@ -21,10 +21,6 @@ use std::convert::Into;
 /// The result of a parse attempt.
 pub type ParseResult<'t, V> = Result<Success<'t, V>, Failure<'t>>;
 
-// Truncate context.
-// Try other on failure.
-// Try next on success.
-
 /// Extension trait for parse results.
 pub trait ParseResultExt<'t, V>: Sized {
     /// Converts any Err result into an parse failure source.
