@@ -233,7 +233,6 @@ pub fn prefix<'t, F, G, V, U>(mut parser: F, mut prefix_parser: G)
             .with_new_context("", text)?;
         
         let sub_suc = (parser)(pre_suc.rest)
-            .source_for("prefix")
             .with_join_context(&pre_suc, text)?;
 
         Ok(pre_suc.join_with(sub_suc, text, |_, r| r))
@@ -254,7 +253,6 @@ pub fn postfix<'t, F, G, V, U>(mut parser: F, mut postfix_parser: G)
             .with_new_context("", text)?;
         
         let post_suc = (postfix_parser)(sub_suc.rest)
-            .source_for("postfix")
             .with_join_context(&sub_suc, text)?;
 
         Ok(sub_suc.join_with(post_suc, text, |l, _| l))
@@ -276,12 +274,10 @@ pub fn circumfix<'t, F, G, V, U>(mut parser: F, mut circumfix_parser: G)
             .with_new_context("", text)?;
         
         let sub_suc = (parser)(pre_suc.rest)
-            .source_for("circumfix")
             .with_join_context(&pre_suc, text)?;
         let sub_suc = pre_suc.join_with(sub_suc, text, |_, r| r);
 
         let post_suc = (circumfix_parser)(sub_suc.rest)
-            .source_for("circumfix")
             .with_join_context(&sub_suc, text)?;
 
         Ok(sub_suc.join_with(post_suc, text, |l, _| l))
@@ -307,12 +303,10 @@ pub fn bracket<'t, F, G, H, V, U, T>(
             .with_new_context("", text)?;
         
         let sub_suc = (parser)(pre_suc.rest)
-            .source_for("bracket")
             .with_join_context(&pre_suc, text)?;
         let sub_suc = pre_suc.join_with(sub_suc, text, |_, r| r);
 
         let post_suc = (postfix_parser)(sub_suc.rest)
-            .source_for("bracket")
             .with_join_context(&sub_suc, text)?;
 
         Ok(sub_suc.join_with(post_suc, text, |l, _| l))
