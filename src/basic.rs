@@ -252,7 +252,7 @@ impl BasicPalette {
 
     /// Returns the full range of occupied indices in the palette, or None if
     /// the palette is empty.
-    pub(crate) fn occupied_index_range(&self) -> Few<u32> {
+    pub(in crate) fn occupied_index_range(&self) -> Few<u32> {
         let mut keys = self.cells.keys();
         match (keys.next(), keys.next_back()) {
             (Some(first), Some(last)) => Few::Two(*first, *last),
@@ -261,7 +261,7 @@ impl BasicPalette {
         }
     }
 
-    pub(crate) fn occupied_index_subrange(&self, low: u32, high: u32)
+    pub(in crate) fn occupied_index_subrange(&self, low: u32, high: u32)
         -> Few<u32>
     {
         if low > high { return Few::Zero }
@@ -323,7 +323,7 @@ impl BasicPalette {
 
     /// Returns the full range of assigned indexes for a group in the palette,
     /// or None if the group is empty.
-    pub(crate) fn assigned_group_range(&self, group: &str) -> Few<u32> {
+    pub(in crate) fn assigned_group_range(&self, group: &str) -> Few<u32> {
         match self.groups.get(group) {
             None                            => Few::Zero,
             Some(elems) if elems.is_empty() => Few::Zero,
@@ -335,7 +335,7 @@ impl BasicPalette {
         }
     }
 
-    pub(crate) fn assigned_group_subrange(
+    pub(in crate) fn assigned_group_subrange(
         &self,
         group: &str,
         low: u32,
@@ -387,7 +387,7 @@ impl BasicPalette {
     /// Returns the full range of assigned positions in the palette, or None if
     /// no positions are assigned is empty.
     #[allow(unused)]
-    pub(crate) fn assigned_position_range(&self) -> Few<Position>  {
+    pub(in crate) fn assigned_position_range(&self) -> Few<Position>  {
         let mut keys = self.positions.keys();
         match (keys.next(), keys.next_back()) {
             (Some(first), Some(last)) => Few::Two(*first, *last),
@@ -396,7 +396,7 @@ impl BasicPalette {
         }
     }
 
-    pub(crate) fn assigned_position_subrange(&self,
+    pub(in crate) fn assigned_position_subrange(&self,
         low: Position,
         high: Position)
         -> Few<Position>
