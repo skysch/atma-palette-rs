@@ -24,6 +24,7 @@ use crate::parse::char_in;
 use crate::parse::circumfix;
 use crate::parse::Failure;
 use crate::parse::float;
+use crate::parse::intersperse_collect;
 use crate::parse::literal_ignore_ascii_case;
 use crate::parse::maybe;
 use crate::parse::ParseResult;
@@ -31,8 +32,8 @@ use crate::parse::ParseResultExt as _;
 use crate::parse::postfix;
 use crate::parse::prefix;
 use crate::parse::repeat;
-use crate::parse::intersperse_collect;
 use crate::parse::Success;
+use crate::parse::uint_digits_value;
 use crate::parse::whitespace;
 
 // Standard library imports.
@@ -51,33 +52,113 @@ pub const FUNCTIONAL_CLOSE_BRACKET: char = ')';
 ////////////////////////////////////////////////////////////////////////////////
 // Color
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Parses a Color.
 pub fn color<'t>(text: &'t str) -> ParseResult<'t, Color> {
-    unimplemented!()
+    let mut fail = Failure {
+        context: "",
+        expected: "color value".into(),
+        source: None,
+        rest: text,
+    };
+
+    match rgb_hex(text).or_else(|_| rgb_functional(text)) {
+        Ok(rgb_suc)   => return Ok(rgb_suc.map_value(Color::from)),
+        Err(rgb_fail) => {
+            fail.context = rgb_fail.context;
+            fail.rest = rgb_fail.rest;
+            fail.source = Some(Box::new(rgb_fail.to_owned()));
+        }
+    }
+
+    match cmyk_functional(text) {
+        Ok(cmyk_suc)   => return Ok(cmyk_suc.map_value(Color::from)),
+        Err(cmyk_fail) => if cmyk_fail.context.len() > fail.context.len() {
+            fail.context = cmyk_fail.context;
+            fail.rest = cmyk_fail.rest;
+            fail.source = Some(Box::new(cmyk_fail.to_owned()));
+        }
+    }
+
+    match hsv_functional(text) {
+        Ok(hsv_suc)   => return Ok(hsv_suc.map_value(Color::from)),
+        Err(hsv_fail) => if hsv_fail.context.len() > fail.context.len() {
+            fail.context = hsv_fail.context;
+            fail.rest = hsv_fail.rest;
+            fail.source = Some(Box::new(hsv_fail.to_owned()));
+        }
+    }
+    
+    match hsl_functional(text) {
+        Ok(hsl_suc)   => return Ok(hsl_suc.map_value(Color::from)),
+        Err(hsl_fail) => if hsl_fail.context.len() > fail.context.len() {
+            fail.context = hsl_fail.context;
+            fail.rest = hsl_fail.rest;
+            fail.source = Some(Box::new(hsl_fail.to_owned()));
+        }
+    }
+    
+    match xyz_functional(text) {
+        Ok(xyz_suc)   => return Ok(xyz_suc.map_value(Color::from)),
+        Err(xyz_fail) => if xyz_fail.context.len() > fail.context.len() {
+            fail.context = xyz_fail.context;
+            fail.rest = xyz_fail.rest;
+            fail.source = Some(Box::new(xyz_fail.to_owned()));
+        }
+    }
+
+    Err(fail)
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // rgb_hex
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Parses an RGB hex code.
 pub fn rgb_hex<'t>(text: &'t str) -> ParseResult<'t, Rgb> {
-    unimplemented!()
+    rgb_hex_6(text).or_else(|_| rgb_hex_3(text))
 }
 
 
 /// Parses a 6-digit RGB hex code.
 pub fn rgb_hex_6<'t>(text: &'t str) -> ParseResult<'t, Rgb> {
-    unimplemented!()
+    use crate::parse::char;
+
+    let suc = prefix(
+            uint_digits_value::<u32>("u32", 6, Some(6), 16),
+            char(RGB_HEX_PREFIX))
+        (text)?;
+
+    Ok(suc.map_value(Rgb::from))
 }
 
 /// Parses a 3-digit RGB hex code.
 pub fn rgb_hex_3<'t>(text: &'t str) -> ParseResult<'t, Rgb> {
-    unimplemented!()
+    use crate::parse::char;
+
+    let suc = prefix(
+            uint_digits_value::<u32>("u32", 3, Some(3), 16),
+            char(RGB_HEX_PREFIX))
+        (text)?;
+
+    Ok(suc.map_value(|v| {
+        let mut expanded = 0;
+        expanded |= v & 0x00F;
+        expanded |= (v & 0x00F) << 4;
+        expanded |= (v & 0x0F0) << 4;
+        expanded |= (v & 0x0F0) << 8;
+        expanded |= (v & 0xF00) << 8;
+        expanded |= (v & 0xF00) << 12;
+        Rgb::from(expanded)
+    }))
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // functional notation
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Parses an RGB value from it functional notation.
 pub fn rgb_functional<'t>(text: &'t str) -> ParseResult<'t, Rgb> {
     let suc = prefix(

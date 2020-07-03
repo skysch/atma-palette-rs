@@ -255,15 +255,27 @@ pub fn prefix_radix_token<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
     }
 }
 
-/// Returns a parser which parses an unsigned integer with optional radix
-/// prefix.
+/// Returns a parser which parses an unsigned integer with the given radix.
 pub fn uint_value<'t, T>(int_type: &'static str, radix: u32)
+    -> impl FnMut(&'t str) -> ParseResult<'t, T>
+    where T: TryFrom<u64>
+{
+    uint_digits_value(int_type, 1, None, radix)
+}
+
+/// Returns a parser which parses an unsigned integer with the given radix and
+/// number of digits.
+pub fn uint_digits_value<'t, T>(
+    int_type: &'static str,
+    low: usize,
+    high: Option<usize>,
+    radix: u32)
     -> impl FnMut(&'t str) -> ParseResult<'t, T>
     where T: TryFrom<u64>
 {
     move |text| {
         let digit = char_matching(|c| c.is_digit(radix) || c == '_');
-        let digits_suc = repeat(1, None, digit)(text)
+        let digits_suc = repeat(low, high, digit)(text)
             .source_for(
                 format!("{} integer digits with radix {}", int_type, radix))?;
 
@@ -314,7 +326,6 @@ pub fn uint_value<'t, T>(int_type: &'static str, radix: u32)
         }
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // ParseIntegerOverflow

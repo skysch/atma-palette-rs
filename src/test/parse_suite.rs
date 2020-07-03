@@ -19,6 +19,7 @@ use crate::color::Hsv;
 use crate::color::Hsl;
 use crate::color::Cmyk;
 use crate::color::Xyz;
+use crate::color::Color;
 
 
 
@@ -1661,6 +1662,110 @@ fn xyz_functional_match() {
         Ok(Success {
             value: Xyz::new(1.0, 0.5, 0.0),
             token: "XYZ(1.0, 0.5, 0.0)",
+            rest: "abcd",
+        }));
+}
+
+/// Tests `parse::rgb_hex_3`.
+#[test]
+fn rgb_hex_3_match() {
+    assert_eq!(
+        rgb_hex_3("#1BFabcd"),
+        Ok(Success {
+            value: Rgb { r: 0x11, g: 0xBB, b: 0xFF },
+            token: "#1BF",
+            rest: "abcd",
+        }));
+}
+
+/// Tests `parse::rgb_hex_6`.
+#[test]
+fn rgb_hex_6_match() {
+    assert_eq!(
+        rgb_hex_6("#11BBFFabcd"),
+        Ok(Success {
+            value: Rgb { r: 0x11, g: 0xBB, b: 0xFF },
+            token: "#11BBFF",
+            rest: "abcd",
+        }));
+}
+
+/// Tests `parse::rgb_hex`.
+#[test]
+fn rgb_hex_match() {
+    assert_eq!(
+        rgb_hex("#11BBFFabcd"),
+        Ok(Success {
+            value: Rgb { r: 0x11, g: 0xBB, b: 0xFF },
+            token: "#11BBFF",
+            rest: "abcd",
+        }));
+    assert_eq!(
+        rgb_hex("#1BF abcd"),
+        Ok(Success {
+            value: Rgb { r: 0x11, g: 0xBB, b: 0xFF },
+            token: "#1BF",
+            rest: " abcd",
+        }));
+}
+
+
+/// Tests `parse::color`.
+#[test]
+fn color_match() {
+    assert_eq!(
+        color("RGB(1.0, 0.5, 0.0)abcd"),
+        Ok(Success {
+            value: Color::from(Rgb { r: 255, g: 127, b: 0 }),
+            token: "RGB(1.0, 0.5, 0.0)",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        color("HSV(1.0, 0.5, 0.0)abcd"),
+        Ok(Success {
+            value: Color::from(Hsv::new(1.0, 0.5, 0.0)),
+            token: "HSV(1.0, 0.5, 0.0)",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        color("HSL(1.0, 0.5, 0.0)abcd"),
+        Ok(Success {
+            value: Color::from(Hsl::new(1.0, 0.5, 0.0)),
+            token: "HSL(1.0, 0.5, 0.0)",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        color("CMYK(1.0, 0.5, 0.0, 0.25)abcd"),
+        Ok(Success {
+            value: Color::from(Cmyk::new(255, 127, 0, 63)),
+            token: "CMYK(1.0, 0.5, 0.0, 0.25)",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        color("XYZ(1.0, 0.5, 0.0)abcd"),
+        Ok(Success {
+            value: Color::from(Xyz::new(1.0, 0.5, 0.0)),
+            token: "XYZ(1.0, 0.5, 0.0)",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        color("#1BF abcd"),
+        Ok(Success {
+            value: Color::from(Rgb { r: 0x11, g: 0xBB, b: 0xFF }),
+            token: "#1BF",
+            rest: " abcd",
+        }));
+
+    assert_eq!(
+        color("#11BBFFabcd"),
+        Ok(Success {
+            value: Color::from(Rgb { r: 0x11, g: 0xBB, b: 0xFF }),
+            token: "#11BBFF",
             rest: "abcd",
         }));
 }
