@@ -96,26 +96,17 @@ pub fn rgb_functional<'t>(text: &'t str) -> ParseResult<'t, Rgb> {
 
 /// Parses an HSV value from it functional notation.
 pub fn hsv_functional<'t>(text: &'t str) -> ParseResult<'t, Hsv> {
-    let h_suc = char_in("Hh")(text)?;
-
-    let s_suc = char_in("Ss")(h_suc.rest)
-        .with_join_context(&h_suc, text)?;
-    let s_suc = h_suc.join(s_suc, text);
-
-    let v_suc = char_in("Vv")(s_suc.rest)
-        .with_join_context(&s_suc, text)?;
-    let v_suc = s_suc.join(v_suc, text);
-
-    let f_suc = functional(3)(v_suc.rest)
-        .with_join_context(&v_suc, text)?;
+    let suc = prefix(
+            functional(3),
+            literal_ignore_ascii_case("hsv"))
+        (text)?;
     let hsv = Hsv::from([
-        f_suc.value[0],
-        f_suc.value[1],
-        f_suc.value[2],
+        suc.value[0],
+        suc.value[1],
+        suc.value[2],
     ]);
 
-    Ok(v_suc.join(f_suc, text)
-        .map_value(|_| hsv))
+    Ok(suc.map_value(|_| hsv))
 }
 
 

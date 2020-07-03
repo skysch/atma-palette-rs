@@ -179,7 +179,7 @@ pub fn literal_ignore_ascii_case<'t>(expect: &'t str)
         let mut idx = 0;
 
         loop {
-            match dbg!((expect_chars.next(), text_chars.next())) {
+            match (expect_chars.next(), text_chars.next()) {
                 (Some(e), Some((n, t))) if e.eq_ignore_ascii_case(&t) => {
                     idx = n + t.len_utf8();
                 },

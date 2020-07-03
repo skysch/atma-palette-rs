@@ -15,6 +15,7 @@ use crate::cell::CellSelector;
 use crate::cell::PositionSelector;
 use crate::cell::CellRef;
 use crate::color::Rgb;
+use crate::color::Hsv;
 
 
 
@@ -1609,6 +1610,19 @@ fn rgb_functional_match() {
         Ok(Success {
             value: Rgb { r: 255, g: 127, b: 0 },
             token: "RGB(1.0, 0.5, 0.0)",
+            rest: "abcd",
+        }));
+}
+
+
+/// Tests `parse::hsv_functional`.
+#[test]
+fn hsv_functional_match() {
+    assert_eq!(
+        hsv_functional("HSV(1.0, 0.5, 0.0)abcd"),
+        Ok(Success {
+            value: Hsv::new(1.0, 0.5, 0.0),
+            token: "HSV(1.0, 0.5, 0.0)",
             rest: "abcd",
         }));
 }
