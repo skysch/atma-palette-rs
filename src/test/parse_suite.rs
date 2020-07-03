@@ -14,6 +14,7 @@ use crate::cell::Position;
 use crate::cell::CellSelector;
 use crate::cell::PositionSelector;
 use crate::cell::CellRef;
+use crate::color::Rgb;
 
 
 
@@ -1560,7 +1561,6 @@ fn cell_selection_match() {
 // Float parsing.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 /// Tests `parse::float` with `f32` values.
 #[test]
 fn float_f32_match() {
@@ -1593,6 +1593,22 @@ fn float_f32_match() {
         Ok(Success {
             value: -110.0123141e1f32,
             token: "-110.0123141e1",
+            rest: "abcd",
+        }));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Color parsing.
+////////////////////////////////////////////////////////////////////////////////
+
+/// Tests `parse::rgb_functional`.
+#[test]
+fn rgb_functional_match() {
+    assert_eq!(
+        rgb_functional("RGB(1.0, 0.5, 0.0)abcd"),
+        Ok(Success {
+            value: Rgb { r: 255, g: 127, b: 0 },
+            token: "RGB(1.0, 0.5, 0.0)",
             rest: "abcd",
         }));
 }

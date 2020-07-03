@@ -58,6 +58,7 @@ const FLOAT_DECIMAL_STR: &'static str = ".";
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Returns a parser which parses the specified `char`.
+#[inline]
 pub fn char<'t>(c: char) -> impl FnMut(&'t str) -> ParseResult<'t, char> {
     move |text| {
         if text.starts_with(c) {
@@ -78,6 +79,7 @@ pub fn char<'t>(c: char) -> impl FnMut(&'t str) -> ParseResult<'t, char> {
 }
 
 /// Returns a parser which parses any single `char` in the given string.
+#[inline]
 pub fn char_in<'t, 'o: 't>(opts: &'o str)
     -> impl FnMut(&'t str) -> ParseResult<'t, char>
 {
@@ -99,6 +101,7 @@ pub fn char_in<'t, 'o: 't>(opts: &'o str)
 }
 
 /// Returns a parser which parses a `char` if it satisfies the given predicate.
+#[inline]
 pub fn char_matching<'t, F>(mut f: F)
     -> impl FnMut(&'t str) -> ParseResult<'t, char>
     where F: FnMut(char) -> bool
@@ -124,6 +127,7 @@ pub fn char_matching<'t, F>(mut f: F)
 }
 
 /// Parses a whitespace `char`.
+#[inline]
 pub fn char_whitespace<'t>(text: &'t str) -> ParseResult<'t, char> {
     char_matching(char::is_whitespace)(text)
         .source_for("whitespace char")
@@ -134,6 +138,7 @@ pub fn char_whitespace<'t>(text: &'t str) -> ParseResult<'t, char> {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Parses any nonzero amount of whitespace.
+#[inline]
 pub fn whitespace<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
     repeat(1, None, char_whitespace)(text)
         .tokenize_value()
@@ -141,6 +146,7 @@ pub fn whitespace<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
 }
 
 /// Parses the given text literal.
+#[inline]
 pub fn literal<'t>(expect: &'t str)
     -> impl FnMut(&'t str) -> ParseResult<'t, &'t str>
 {
@@ -161,6 +167,8 @@ pub fn literal<'t>(expect: &'t str)
         }
     }
 }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Integer parsing.
@@ -303,7 +311,7 @@ impl std::error::Error for ParseIntegerOverflow {}
 ////////////////////////////////////////////////////////////////////////////////
 // Float parsing.
 ////////////////////////////////////////////////////////////////////////////////
-/// Parses a float value.
+/// Returns a parser which parses a float value.
 pub fn float<'t, T>(float_type: &'static str)
     -> impl FnMut(&'t str) -> ParseResult<'t, T>
     where
@@ -396,7 +404,8 @@ pub fn float<'t, T>(float_type: &'static str)
     }
 }
 
-
+/// Parses the floating point exponent.
+#[inline]
 fn float_exp<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
     let e_suc = char_in(FLOAT_EXP)(text)
         .source_for("float exponent")?;

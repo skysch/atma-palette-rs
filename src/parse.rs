@@ -13,10 +13,12 @@ mod result;
 mod combinator;
 mod primitive;
 mod selection;
+mod color;
 
 // Exports.
 pub use self::result::*;
 pub use self::combinator::*;
 pub use self::primitive::*;
 pub use self::selection::*;
+pub use self::color::*;
 
