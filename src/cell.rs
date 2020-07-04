@@ -17,6 +17,7 @@ mod selector;
 // Local imports.
 use crate::color::Color;
 use crate::expr::Expr;
+use crate::basic::BasicPalette;
 
 // External library imports.
 use serde::Serialize;
@@ -33,7 +34,7 @@ pub use selector::*;
 // Cell
 ////////////////////////////////////////////////////////////////////////////////
 /// A cell holding a color expression.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 #[derive(Serialize, Deserialize)]
 #[serde(transparent)]
@@ -69,6 +70,11 @@ impl Cell {
     /// Returns a mut reference to the cell's color expression.
     pub fn expr_mut(&mut self) -> &mut Expr {
         &mut self.expr
+    }
+
+    /// Returns the Expr's color.
+    pub fn color(&self, basic: &BasicPalette) -> Option<Color> {
+        self.expr.color(basic)
     }
 }
 

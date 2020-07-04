@@ -176,7 +176,7 @@ impl Palette {
     ////////////////////////////////////////////////////////////////////////////
 
     /// Retreives a reference to the `Cell` associated with the given `CellRef`.
-    pub fn cell<'name>(&self, cell_ref: CellRef<'name>)
+    pub fn cell<'name>(&self, cell_ref: &CellRef<'name>)
         -> Result<&Cell, Error>
     {
         self.basic.cell(cell_ref)
@@ -184,7 +184,7 @@ impl Palette {
 
     /// Retreives a mutable reference to the `Cell` associated with the given
     /// `CellRef`.
-    pub fn cell_mut<'name>(&mut self, cell_ref: CellRef<'name>)
+    pub fn cell_mut<'name>(&mut self, cell_ref: &CellRef<'name>)
         -> Result<&mut Cell, Error>
     {
         self.basic.cell_mut(cell_ref)

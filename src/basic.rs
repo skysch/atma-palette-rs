@@ -12,12 +12,13 @@
 use crate::cell::Cell;
 use crate::cell::CellRef;
 use crate::cell::Position;
+use crate::cell::PositionSelector;
+use crate::color::Color;
 use crate::error::Error;
 use crate::expr::Expr;
 use crate::history::History;
 use crate::operation::Operation;
 use crate::utility::Few;
-use crate::cell::PositionSelector;
 use crate::utility::split_intersect;
 
 // External library imports.
@@ -40,6 +41,9 @@ use std::path::Path;
 
 
 
+////////////////////////////////////////////////////////////////////////////////
+// BasicPalette
+////////////////////////////////////////////////////////////////////////////////
 /// The Atma palette object.
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -161,31 +165,37 @@ impl BasicPalette {
     ////////////////////////////////////////////////////////////////////////////
     // Accessors
     ////////////////////////////////////////////////////////////////////////////
+    /// Retreives a copy of the color associated with the given `CellRef`.
+    pub fn color<'name>(&self, cell_ref: &CellRef<'name>)
+        -> Result<Option<Color>, Error>
+    {
+        self.cell(cell_ref).map(|cell| cell.color(self))
+    }
 
     /// Retreives a reference to the `Cell` associated with the given `CellRef`.
-    pub fn cell<'name>(&self, cell_ref: CellRef<'name>)
+    pub fn cell<'name>(&self, cell_ref: &CellRef<'name>)
         -> Result<&Cell, Error>
     {
-        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, cell_ref)?;
 
         self.cells
             .get(&idx)
             .ok_or(Error::UndefinedCellReference { 
-                cell_ref: cell_ref.into_static(),
+                cell_ref: cell_ref.clone_static(),
             })
     }
 
     /// Retreives a mutable reference to the `Cell` associated with the given
     /// `CellRef`.
-    pub fn cell_mut<'name>(&mut self, cell_ref: CellRef<'name>)
+    pub fn cell_mut<'name>(&mut self, cell_ref: &CellRef<'name>)
         -> Result<&mut Cell, Error>
     {
-        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
+        let idx = BasicPalette::resolve_ref_to_index(&self, cell_ref)?;
 
         self.cells
             .get_mut(&idx)
             .ok_or(Error::UndefinedCellReference { 
-                cell_ref: cell_ref.into_static(),
+                cell_ref: cell_ref.clone_static(),
             })
     }
     
@@ -219,7 +229,7 @@ impl BasicPalette {
                     }
                 })
                 .ok_or(Error::UndefinedCellReference { 
-                    cell_ref: cell_ref.clone().into_static(),
+                    cell_ref: cell_ref.clone().clone_static(),
                 }),
 
 
@@ -227,7 +237,7 @@ impl BasicPalette {
                 .get(position)
                 .cloned()
                 .ok_or(Error::UndefinedCellReference { 
-                    cell_ref: cell_ref.clone().into_static(),
+                    cell_ref: cell_ref.clone().clone_static(),
                 }),
 
             CellRef::Group { group, idx } => groups
@@ -235,7 +245,7 @@ impl BasicPalette {
                 .and_then(|cells| cells.get(*idx as usize))
                 .cloned()
                 .ok_or(Error::UndefinedCellReference { 
-                    cell_ref: cell_ref.clone().into_static(),
+                    cell_ref: cell_ref.clone().clone_static(),
                 }),
         }
     }
@@ -551,7 +561,7 @@ impl BasicPalette {
         use Operation::*;
         match op {
             InsertCell { idx, cell }
-                => self.insert_cell(*idx, cell),
+                => self.insert_cell(*idx, cell.clone()),
             RemoveCell { cell_ref }
                 => self.remove_cell(cell_ref.clone()),
 
@@ -580,11 +590,11 @@ impl BasicPalette {
     }
 
     /// Inserts a `Cell` into the palette at the given index.
-    pub fn insert_cell(&mut self, idx: Option<u32>, cell: &Cell)
+    pub fn insert_cell(&mut self, idx: Option<u32>, cell: Cell)
         -> Result<Vec<Operation>, Error>
     {
         let idx = idx.unwrap_or_else(|| self.allocate_index());
-        match self.cells.insert(idx, *cell) {
+        match self.cells.insert(idx, cell) {
             // No cell was replaced.
             None => Ok(vec![
                 Operation::RemoveCell {
