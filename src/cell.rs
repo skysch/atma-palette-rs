@@ -9,9 +9,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal modules.
+mod position;
 mod reference;
-mod selector;
 mod selection;
+mod selector;
 
 // Local imports.
 use crate::color::Color;
@@ -22,9 +23,10 @@ use serde::Serialize;
 use serde::Deserialize;
 
 // Exports.
+pub use position::*;
 pub use reference::*;
-pub use selector::*;
 pub use selection::*;
+pub use selector::*;
 
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -9,7 +9,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::cell::REF_POS_SEP_TOKEN;
+use crate::cell::Position;
 use crate::cell::REF_PREFIX_TOKEN;
 
 // External library imports.
@@ -75,47 +75,6 @@ impl<'name> std::fmt::Display for CellRef<'name> {
             Group { group, idx } => write!(f, 
                 "{}{}{}", group, REF_PREFIX_TOKEN, idx),
         }
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Position
-////////////////////////////////////////////////////////////////////////////////
-/// A reference to a `Cell` in a palette.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(Serialize, Deserialize)]
-pub struct Position {
-    /// The page number of the cell.
-    pub page: u16,
-    /// The line number of the cell.
-    pub line: u16,
-    /// The column number of the cell.
-    pub column: u16,
-}
-
-impl Position {
-    /// Returns the next position after the given one.
-    pub fn succ(&self) -> Position {
-        
-        let (column, over) = self.column.overflowing_add(1);
-        let (line, over) = self.line.overflowing_add(if over { 1 } else { 0 });
-        let page = self.page.checked_add(if over { 1 } else { 0 })
-            .expect("position page overflow");
-
-        Position { page, line, column }
-    }
-}
-
-impl std::fmt::Display for Position {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}{}{}{}{}", 
-            REF_PREFIX_TOKEN,
-            self.page,
-            REF_POS_SEP_TOKEN,
-            self.line,
-            REF_POS_SEP_TOKEN,
-            self.column)
     }
 }
 

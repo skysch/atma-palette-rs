@@ -17,6 +17,7 @@ use crate::expr::Expr;
 use crate::history::History;
 use crate::operation::Operation;
 use crate::utility::Few;
+use crate::cell::PositionSelector;
 use crate::utility::split_intersect;
 
 // External library imports.
