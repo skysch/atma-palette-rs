@@ -100,6 +100,6 @@ pub fn main_facade() -> Result<(), Error> {
 
     let mut pal = atma::Palette::default();
     
-    // pal.write_to_path(&cur_dir.join("test.atma"))?;
+    pal.write_to_path(&cur_dir.join("test.atma"))?;
     Ok(())
 }

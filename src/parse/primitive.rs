@@ -359,7 +359,7 @@ pub fn float<'t, T>(float_type: &'static str)
     -> impl FnMut(&'t str) -> ParseResult<'t, T>
     where
         T: FromStr,
-        <T as FromStr>::Err: std::error::Error + 'static
+        <T as FromStr>::Err: std::error::Error + Send + Sync + 'static
 {
     move |text| {
         // Rust float syntax:

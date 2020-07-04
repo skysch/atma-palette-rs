@@ -272,7 +272,7 @@ pub struct Failure<'t> {
     /// function name, or description of the context.
     pub expected: Cow<'static, str>,
     /// The parse failure that caused this one.
-    pub source: Option<Box<dyn std::error::Error + 'static>>,
+    pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
     /// The remainder of the parsable text. Failed parses should return their
     /// exact input text.
     pub rest: &'t str,
@@ -306,7 +306,11 @@ impl<'t> std::fmt::Display for Failure<'t> {
 
 impl<'t> std::error::Error for Failure<'t> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.source.as_ref().map(|src| src.as_ref())
+        self.source.as_ref().map(|src| {
+            // Cast away Send + Sync bounds.
+            let src: &(dyn std::error::Error + 'static) = src.as_ref();
+            src
+        })
     }
 }
 
@@ -335,7 +339,7 @@ pub struct FailureOwned {
     /// function name, or contextual description.
     pub expected: Cow<'static, str>,
     /// The parse failure that caused this one.
-    pub source: Option<Box<dyn std::error::Error + 'static>>,
+    pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
 impl std::fmt::Display for FailureOwned {
@@ -350,6 +354,10 @@ impl std::fmt::Display for FailureOwned {
 
 impl std::error::Error for FailureOwned {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.source.as_ref().map(|src| src.as_ref())
+        self.source.as_ref().map(|src| {
+            // Cast away Send + Sync bounds.
+            let src: &(dyn std::error::Error + 'static) = src.as_ref();
+            src
+        })
     }
 }

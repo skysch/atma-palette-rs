@@ -47,13 +47,14 @@ name
 
 
 # Command Operations
-## atma list
-## atma insert
-## atma delete
-## atma move
-## atma set
-## atma undo
-## atma redo
+## atma list {page #|selection}
+## atma insert {expr|ramp} {@cellref}
+## atma delete {selection}
+## atma move {selection} {@cellref}
+## atma set {name|position|group} {selection}
+## atma unset {name|position|group} {selection}
+## atma undo {#}
+## atma redo {#}
 ## atma import
 ## atma export
 
