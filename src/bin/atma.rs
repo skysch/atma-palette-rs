@@ -9,7 +9,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use atma::CommandOptions;
+use atma::AtmaOptions;
 use atma::Config;
 use atma::DEFAULT_CONFIG_PATH;
 use anyhow::Context;
@@ -41,11 +41,11 @@ pub fn main() {
 /// The application facade for propagating user errors.
 pub fn main_facade() -> Result<(), Error> {
     // Parse command line options.
-    let opts = CommandOptions::from_args();
+    let opts = AtmaOptions::from_args();
 
     // Find the path for the config file.
     let cur_dir = std::env::current_dir()?;
-    let config_path = match &opts.common().use_config {
+    let config_path = match &opts.common.use_config {
         Some(path) => path.clone(),
         None       => cur_dir.join(DEFAULT_CONFIG_PATH),
     };
@@ -67,8 +67,7 @@ pub fn main_facade() -> Result<(), Error> {
     for (context, level) in &config.log_levels {
         logger = logger.level_for(context.clone(), *level);
     }
-    let common = opts.common();
-    match (common.verbose, common.quiet, common.trace) {
+    match (opts.common.verbose, opts.common.quiet, opts.common.trace) {
         (_, _, true) => logger.level_for("atma", LevelFilter::Trace).start(),
         (_, true, _) => (),
         (true, _, _) => logger.level_for("atma", LevelFilter::Debug).start(),
@@ -98,7 +97,7 @@ pub fn main_facade() -> Result<(), Error> {
     //     Edit { common, in_path } => unimplemented!(),
     // }
 
-    let mut pal = atma::Palette::default();
+    let pal = atma::Palette::default();
     
     pal.write_to_path(&cur_dir.join("test.atma"))?;
     Ok(())

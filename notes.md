@@ -51,12 +51,14 @@ name
 ## atma insert {expr|ramp} {@cellref}
 ## atma delete {selection}
 ## atma move {selection} {@cellref}
-## atma set {name|position|group} {selection}
-## atma unset {name|position|group} {selection}
+## atma set {name|position|group|label} {selection}
+## atma unset {name|position|group|label} {selection}
 ## atma undo {#}
 ## atma redo {#}
 ## atma import
+    subpalette
 ## atma export
+    subpalette
 
 
 

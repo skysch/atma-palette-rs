@@ -26,6 +26,24 @@ use std::path::PathBuf;
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]
+#[structopt(name = "atma")]
+pub struct AtmaOptions {
+    // Options common to all commands.
+    #[allow(missing_docs)]
+    #[structopt(flatten)]
+    pub common: CommonOptions,
+    /// Subcommand options.
+    #[structopt(subcommand)]
+    pub command: Option<CommandOptions>,
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// CommonOptions
+////////////////////////////////////////////////////////////////////////////////
+/// Command line options shared between subcommands.
+#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
+#[derive(StructOpt)]
 pub struct CommonOptions {
     /// The config file to use.
     #[structopt(
@@ -67,25 +85,16 @@ pub struct CommonOptions {
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]
-#[structopt(name = "tabuline")]
 pub enum CommandOptions {
-    /// Copies files into the tabuline directory.
-    Edit {
-        /// The table input file.
-        #[structopt(short = "i", long = "in", parse(from_os_str))]
-        in_path: Option<PathBuf>,
-
-        #[structopt(flatten)]
-        common: CommonOptions,
-    },
+    List,
+    Insert,
+    Delete,
+    Move,
+    Set,
+    Unset,
+    Undo,
+    Redo,
+    Import,
+    Export,
 }
 
-impl CommandOptions {
-    /// Returns the `CommonOptions`.
-    pub fn common(&self) -> &CommonOptions {
-        use CommandOptions::*;
-        match self {
-            Edit { common, .. } => common,
-        }
-    }
-}
