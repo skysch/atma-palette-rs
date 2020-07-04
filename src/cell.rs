@@ -23,6 +23,9 @@ use crate::basic::BasicPalette;
 use serde::Serialize;
 use serde::Deserialize;
 
+// Standard library imports.
+use std::cell::Cell as StdCell;
+
 // Exports.
 pub use position::*;
 pub use reference::*;
@@ -42,7 +45,7 @@ pub struct Cell {
     /// The cell's expression.
     expr: Expr,
     #[serde(skip)]
-    cached: Option<Color>,
+    cached: StdCell<Option<Color>>,
 }
 
 impl Cell {
@@ -50,7 +53,7 @@ impl Cell {
     pub fn new() -> Self {
         Cell {
             expr: Default::default(),
-            cached: None,
+            cached: StdCell::new(None),
         }
     }
 
@@ -58,7 +61,7 @@ impl Cell {
     pub fn new_with_expr(expr: Expr) -> Self {
         Cell {
             expr,
-            cached: None,
+            cached: StdCell::new(None),
         }
     }
 
@@ -74,7 +77,20 @@ impl Cell {
 
     /// Returns the Expr's color.
     pub fn color(&self, basic: &BasicPalette) -> Option<Color> {
-        self.expr.color(basic)
+        let cached = self.cached.clone().take();
+        if cached.is_none() {
+            self.color_evaluate(basic)
+        } else {
+            cached
+        }
+        
+    }
+
+    /// Returns the Expr's color, forcing evaluation.
+    pub fn color_evaluate(&self, basic: &BasicPalette) -> Option<Color> {
+        let eval = self.expr.color(basic);
+        self.cached.set(eval.clone());
+        eval
     }
 }
 
