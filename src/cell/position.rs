@@ -17,6 +17,14 @@ use crate::cell::REF_ALL_TOKEN;
 use serde::Deserialize;
 use serde::Serialize;
 
+// Standard library imports.
+use std::convert::TryFrom;
+
+
+/// Error created by attempting to convert a PositionSelector into a Position.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct PositionCellConversionError;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Position
@@ -55,6 +63,22 @@ impl std::fmt::Display for Position {
             self.line,
             REF_POS_SEP_TOKEN,
             self.column)
+    }
+}
+
+
+impl TryFrom<PositionSelector> for Position {
+    type Error = PositionCellConversionError;
+
+    fn try_from(selector: PositionSelector) -> Result<Self, Self::Error> {
+        match selector {
+            PositionSelector {
+                page: Some(page),
+                line: Some(line),
+                column: Some(column),
+            } => Ok(Position { page, line, column }),
+            _ => Err(PositionCellConversionError),
+        }
     }
 }
 

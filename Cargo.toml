@@ -1,6 +1,6 @@
 [package]
 name = "atma"
-version = "0.0.74"
+version = "0.0.75"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT or Apache-2.0"
@@ -32,6 +32,7 @@ ron = "*"
 rustc_version_runtime = "*"
 serde = { version = "*", features = ["derive"] }
 structopt = { version = "0.3", features = ["suggestions", "color"] }
+bimap = { version = "0.4", features = [ "serde" ]}
 
 
 # Dependencies used for tests, examples, and benches.

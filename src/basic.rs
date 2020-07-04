@@ -21,6 +21,7 @@ use crate::cell::PositionSelector;
 use crate::utility::split_intersect;
 
 // External library imports.
+use bimap::BiBTreeMap;
 use serde::Deserialize;
 use serde::Serialize;
 use ron::ser::PrettyConfig;
@@ -48,8 +49,8 @@ pub struct BasicPalette {
     cells: BTreeMap<u32, Cell>,
     /// The next free cell index.
     next_index: u32,
-    /// A map of names assigned to cells.
-    names: BTreeMap<Cow<'static, str>, u32>,
+    /// A map of assigned names.
+    names: BiBTreeMap<Cow<'static, str>, PositionSelector>,
     /// A map of (page, line) positions assigned to cells.
     positions: BTreeMap<Position, u32>,
     /// A map of names assigned to groups of cells.
@@ -68,7 +69,7 @@ impl BasicPalette {
         BasicPalette {
             cells: BTreeMap::new(),
             next_index: 0,
-            names: BTreeMap::new(),
+            names: BiBTreeMap::new(),
             positions: BTreeMap::new(),
             groups: BTreeMap::new(),
         }
@@ -200,31 +201,36 @@ impl BasicPalette {
     }
 
     fn resolve_ref_to_index_using<'name>(
-        names: &BTreeMap<Cow<'static, str>, u32>,
+        names: &BiBTreeMap<Cow<'static, str>, PositionSelector>,
         positions: &BTreeMap<Position, u32>,
         groups: &BTreeMap<Cow<'static, str>, Vec<u32>>,
         cell_ref: &CellRef<'name>)
         -> Result<u32, Error>
     {
-        use CellRef::*;
         match cell_ref {
-            Index(idx) => Ok(*idx),
+            CellRef::Index(idx) => Ok(*idx),
 
-            Name(name) => names
-                .get(&*name)
-                .cloned()
+            CellRef::Name(name) => names
+                .get_by_left(&*name)
+                .and_then(|pos_sel| {
+                    match Position::try_from(pos_sel.clone()) {
+                        Err(_) => None,
+                        Ok(pos) => positions.get(&pos).cloned(),
+                    }
+                })
                 .ok_or(Error::UndefinedCellReference { 
                     cell_ref: cell_ref.clone().into_static(),
                 }),
 
-            Position(position) => positions
+
+            CellRef::Position(position) => positions
                 .get(position)
                 .cloned()
                 .ok_or(Error::UndefinedCellReference { 
                     cell_ref: cell_ref.clone().into_static(),
                 }),
 
-            Group { group, idx } => groups
+            CellRef::Group { group, idx } => groups
                 .get(&*group)
                 .and_then(|cells| cells.get(*idx as usize))
                 .cloned()
@@ -279,24 +285,36 @@ impl BasicPalette {
     /// Returns true if the given name is assigned in the palette.
     pub fn is_assigned_name(&self, name: &str) -> bool {
         self.names
-            .get(name)
+            .get_by_left(&Cow::Borrowed(name))
             .is_some()
     }
 
     /// Returns true if the given name is occupied in the palette.
     pub fn is_occupied_name(&self, name: &str) -> bool {
         self.names
-            .get(name)
-            .and_then(|idx| self.cells.get(idx))
+            .get_by_left(&Cow::Borrowed(name))
+            .and_then(|pos_sel| {
+                match Position::try_from(pos_sel.clone()) {
+                    Err(_) => None,
+                    Ok(pos) => self.positions.get(&pos).cloned(),
+                }
+            })
+            .and_then(|idx| self.cells.get(&idx))
             .is_some()
     }
 
     /// Returns the index associated with the given name if it is occupied.
     pub fn resolve_name_if_occupied(&self, name: &str) -> Option<u32> {
         self.names
-            .get(name)
-            .and_then(|idx| if self.cells.contains_key(idx) {
-                Some(*idx)
+            .get_by_left(&Cow::Borrowed(name))
+            .and_then(|pos_sel| {
+                match Position::try_from(pos_sel.clone()) {
+                    Err(_) => None,
+                    Ok(pos) => self.positions.get(&pos).cloned(),
+                }
+            })
+            .and_then(|idx| if self.cells.contains_key(&idx) {
+                Some(idx)
             } else {
                 None
             })
@@ -537,12 +555,10 @@ impl BasicPalette {
             RemoveCell { cell_ref }
                 => self.remove_cell(cell_ref.clone()),
 
-            AssignName { cell_ref, name } 
-                => self.assign_name(cell_ref.clone(), name.clone()),
-            UnassignName { cell_ref, name } 
-                => self.unassign_name(cell_ref.clone(), name.clone()),
-            ClearNames { cell_ref } 
-                => self.clear_names(cell_ref.clone()),
+            AssignName { selector, name } 
+                => self.assign_name(selector.clone(), name.clone()),
+            UnassignName { selector, name } 
+                => self.unassign_name(selector.clone(), name.clone()),
 
             AssignPosition { cell_ref, position } 
                 => self.assign_position(cell_ref.clone(), position.clone()),
@@ -602,28 +618,45 @@ impl BasicPalette {
         }
     }
 
-    /// Assigns a name to a cell.
-    pub fn assign_name<'name, T>(
+    /// Assigns a name to a position.
+    pub fn assign_name<T>(
         &mut self,
-        cell_ref: CellRef<'name>,
+        selector: PositionSelector,
         name: T)
         -> Result<Vec<Operation>, Error>
         where T: Into<Cow<'static, str>>
     {
         let name = name.into();
-        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 
-        match self.names.insert(name.clone(), idx) {
-            Some(old_idx) => Ok(vec![
+        use bimap::Overwritten::*;
+        match self.names.insert(name.clone(), selector) {
+            Left(old_name, old_selector) |
+            Right(old_name, old_selector) |
+            Pair(old_name, old_selector) => Ok(vec![
                 Operation::AssignName {
-                    cell_ref: CellRef::Index(old_idx),
-                    name: name,
+                    selector: old_selector,
+                    name: old_name,
                 },
             ]),
-            None => Ok(vec![
+            Both(
+                (old_name_a, old_selector_a),
+                (old_name_b, old_selector_b)) => 
+            {  
+                Ok(vec![
+                    Operation::AssignName {
+                        selector: old_selector_a,
+                        name: old_name_a,
+                    },
+                    Operation::AssignName {
+                        selector: old_selector_b,
+                        name: old_name_b,
+                    },
+                ])
+            },
+            Neither => Ok(vec![
                 Operation::UnassignName {
-                    cell_ref: CellRef::Index(idx),
-                    name: name,
+                    selector,
+                    name,
                 },
             ]),
         }
@@ -632,20 +665,19 @@ impl BasicPalette {
     /// Unassigns a name for a cell.
     pub fn unassign_name<'name, T>(
         &mut self,
-        cell_ref: CellRef<'name>,
+        selector: PositionSelector,
         name: T)
         -> Result<Vec<Operation>, Error>
         where T: Into<Cow<'static, str>>
     {
         let name = name.into();
-        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
         
-        match self.names.get(&name) {
-            Some(cur_idx) if *cur_idx == idx => {
-                let _ = self.names.remove(&name);
+        match self.names.get_by_left(&name) {
+            Some(cur_selector) if *cur_selector == selector => {
+                let _ = self.names.remove_by_left(&name);
                 Ok(vec![
                     Operation::AssignName {
-                        cell_ref: CellRef::Index(idx),
+                        selector,
                         name,
                     },
                 ])
@@ -654,30 +686,6 @@ impl BasicPalette {
         }
     }
 
-    /// Unassigns a name for a cell.
-    pub fn clear_names<'name>(&mut self, cell_ref: CellRef<'name>)
-        -> Result<Vec<Operation>, Error>
-    {
-        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
-
-        // TODO: Use BTreeMap::drain_filter when it becomes stable.
-        let mut to_remove = Vec::with_capacity(1);
-
-        for (name, cur_idx) in self.names.iter() {
-            if *cur_idx == idx { to_remove.push(name.clone()); }
-        }
-
-        let mut ops = Vec::with_capacity(to_remove.len());
-        for name in to_remove.into_iter() {
-            let _ = self.names.remove(&name);
-            ops.push(Operation::AssignName {
-                cell_ref: CellRef::Index(idx),
-                name,
-            });
-        }      
-
-        Ok(ops)
-    }
 
     /// Assigns a position to a cell.
     pub fn assign_position<'name>(

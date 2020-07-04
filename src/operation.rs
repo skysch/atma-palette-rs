@@ -12,6 +12,7 @@
 use crate::cell::Cell;
 use crate::cell::CellRef;
 use crate::cell::Position;
+use crate::cell::PositionSelector;
 use crate::expr::Expr;
 
 // External library imports.
@@ -52,26 +53,20 @@ pub enum Operation {
     // Name operations
     ////////////////////////////////////////////////////////////////////////////
 
-    /// Assigns a name to a cell.
+    /// Assigns a name to a position selector.
     AssignName {
-        /// A reference to the `Cell` to assign the name to.
-        cell_ref: CellRef<'static>,
+        /// The PositionSelector to assign the name to.
+        selector: PositionSelector,
         /// The name to assign.
         name: Cow<'static, str>,
     },
 
-    /// Unassigns a name for a cell.
+    /// Unassigns a name for a position selector.
     UnassignName {
-        /// A reference to the `Cell` to unassign the name for.
-        cell_ref: CellRef<'static>,
+        /// The PositionSelector to unassign the name from.
+        selector: PositionSelector,
         /// The name to unassign.
         name: Cow<'static, str>,
-    },
-
-    /// Unassigns all names for a cell.
-    ClearNames {
-        /// A reference to the `Cell` to clear the names for.
-        cell_ref: CellRef<'static>,
     },
 
     ////////////////////////////////////////////////////////////////////////////
