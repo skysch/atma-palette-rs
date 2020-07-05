@@ -49,18 +49,6 @@ pub trait ParseResultExt<'t, V>: Sized {
     fn with_new_context(self, context: &'t str, text: &'t str)
         -> ParseResult<'t, V>;
 
-    /// Returns a refernce to the value produced by a successful parse, or None
-    /// if the parse was not successful.
-    fn value(&self) -> Option<&V>;
-
-    /// Consumes the result, returning the value produced by a successful parse,
-    /// or None if the parse was not successful.
-    fn into_value(self) -> Option<V>;
-
-    /// Returns the token associated with a successful parse, or None if the
-    /// parse was not successful.
-    fn token(&self) -> Option<&'t str>;
-
     /// Returns the remaining parse text.
     fn rest(&self) -> &'t str;
 
@@ -70,10 +58,7 @@ pub trait ParseResultExt<'t, V>: Sized {
         where F: FnOnce(V) -> U;
 
     /// Discards the parsed value, replacing it with the parsed text.
-    fn tokenize_value(self) -> ParseResult<'t, &'t str> {
-        let token = self.token();
-        self.map_value(|_| token.unwrap())
-    }
+    fn tokenize_value(self) -> ParseResult<'t, &'t str>;
 
     /// Discards the parsed value.
     fn discard_value(self) -> ParseResult<'t, ()> {
@@ -86,6 +71,9 @@ pub trait ParseResultExt<'t, V>: Sized {
 
     /// Converts a parse failure into a success and vice versa.
     fn expect_failure(self) -> ParseResult<'t, &'t str>;
+
+    /// Discards parse data and returns the parse result or owned error.
+    fn finish(self) -> Result<V, FailureOwned>;
 }
 
 impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
@@ -120,18 +108,6 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
         })
     }
 
-    fn value(&self) -> Option<&V> {
-        self.as_ref().ok().map(|success| &success.value)
-    }
-
-    fn into_value(self) -> Option<V> {
-        self.ok().map(|success| success.value)
-    }
-
-    fn token(&self) -> Option<&'t str> {
-        self.as_ref().map(|success| success.token).ok()
-    }
-
     fn rest(&self) -> &'t str {
         match self {
             Ok(success) => success.rest,
@@ -146,6 +122,13 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
             value: (f)(success.value),
             token: success.token,
             rest: success.rest,
+        })
+    }
+
+    fn tokenize_value(self) -> ParseResult<'t, &'t str> {
+        self.map(|success| {
+            let token = success.token;
+            success.map_value(|_| token)
         })
     }
 
@@ -176,6 +159,11 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
                 rest: failure.rest,
             })
         }
+    }
+
+    fn finish(self) -> Result<V, FailureOwned> {
+        self.map(|suc| suc.value)
+            .map_err(Failure::to_owned)
     }
 }
 

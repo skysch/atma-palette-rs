@@ -90,8 +90,7 @@ impl std::str::FromStr for Position {
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         position(text)
             .expect_end_of_text()
-            .map(|suc| suc.value)
-            .map_err(|fail| fail.to_owned())
+            .finish()
     }
 }
 
