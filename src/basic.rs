@@ -31,6 +31,7 @@ use ron::ser::to_string_pretty;
 // Standard library imports.
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::collections::HashSet;
 use std::convert::TryInto;
 use std::convert::TryFrom;
 use std::fs::File;
@@ -169,7 +170,33 @@ impl BasicPalette {
     pub fn color<'name>(&self, cell_ref: &CellRef<'name>)
         -> Result<Option<Color>, Error>
     {
-        self.cell(cell_ref).map(|cell| cell.color(self))
+        let mut index_list = HashSet::new();
+        self.color_recursive(cell_ref, &mut index_list)
+    }
+
+    /// Retreives a copy of the color associated with the given `CellRef`.
+    pub(in crate) fn color_recursive<'name>(
+        &self,
+        cell_ref: &CellRef<'name>,
+        index_list: &mut HashSet<u32>)
+        -> Result<Option<Color>, Error>
+    {
+        let idx = BasicPalette::resolve_ref_to_index(&self, cell_ref)?;
+        if index_list.contains(&idx) {
+            return Err(Error::UndefinedColor {
+                cell_ref: cell_ref.clone_static(),
+                circular: true,
+            });
+        }
+        let _ = index_list.insert(idx);
+
+        self.cells
+            .get(&idx)
+            .ok_or(Error::UndefinedColor { 
+                cell_ref: cell_ref.clone_static(),
+                circular: false,
+            })
+            .and_then(|cell| cell.color(self, index_list))
     }
 
     /// Retreives a reference to the `Cell` associated with the given `CellRef`.

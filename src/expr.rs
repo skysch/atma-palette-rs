@@ -13,10 +13,14 @@ use crate::basic::BasicPalette;
 use crate::color::Color;
 use crate::color::Rgb;
 use crate::cell::CellRef;
+use crate::error::Error;
 
 // External library imports.
 use serde::Deserialize;
 use serde::Serialize;
+
+// Standard library imports.
+use std::collections::HashSet;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Expr
@@ -38,23 +42,28 @@ pub enum Expr {
 
 impl Expr {
     /// Returns the Expr's color.
-    pub fn color(&self, basic: &BasicPalette) -> Option<Color> {
+    pub fn color(
+        &self,
+        basic: &BasicPalette,
+        index_list: &mut HashSet<u32>)
+        -> Result<Option<Color>, Error>
+    {
         match self {
-            Expr::Empty => None,
+            Expr::Empty => Ok(None),
             
-            Expr::Color(c) => Some(c.clone()),
+            Expr::Color(c) => Ok(Some(c.clone())),
 
             Expr::RgbMultiply(a, b) => match (
-                basic.color(a).ok()?,
-                basic.color(b).ok()?)
+                basic.color_recursive(a, index_list)?,
+                basic.color_recursive(b, index_list)?)
             {
                 (Some(a), Some(b)) => {
                     let [ra, ga, ba] = a.rgb_ratios();
                     let [rb, gb, bb] = b.rgb_ratios();
                     let rgb = Rgb::from([ra * rb, ga * gb, ba * bb]);
-                    Some(Color::from(rgb))
+                    Ok(Some(Color::from(rgb)))
                 },
-                _ => None,
+                _ => Ok(None),
             },
         }
     }

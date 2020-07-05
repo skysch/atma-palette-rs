@@ -18,6 +18,7 @@ mod selector;
 use crate::color::Color;
 use crate::expr::Expr;
 use crate::basic::BasicPalette;
+use crate::error::Error;
 
 // External library imports.
 use serde::Serialize;
@@ -25,6 +26,7 @@ use serde::Deserialize;
 
 // Standard library imports.
 use std::cell::Cell as StdCell;
+use std::collections::HashSet;
 
 // Exports.
 pub use position::*;
@@ -76,21 +78,30 @@ impl Cell {
     }
 
     /// Returns the Expr's color.
-    pub fn color(&self, basic: &BasicPalette) -> Option<Color> {
+    pub fn color(
+        &self,
+        basic: &BasicPalette,
+        index_list: &mut HashSet<u32>)
+        -> Result<Option<Color>, Error>
+    {
         let cached = self.cached.clone().take();
         if cached.is_none() {
-            self.color_evaluate(basic)
+            self.color_evaluate(basic, index_list)
         } else {
-            cached
+            Ok(cached)
         }
-        
     }
 
     /// Returns the Expr's color, forcing evaluation.
-    pub fn color_evaluate(&self, basic: &BasicPalette) -> Option<Color> {
-        let eval = self.expr.color(basic);
+    pub fn color_evaluate(
+        &self,
+        basic: &BasicPalette,
+        index_list: &mut HashSet<u32>)
+        -> Result<Option<Color>, Error>
+    {
+        let eval = self.expr.color(basic, index_list)?;
         self.cached.set(eval.clone());
-        eval
+        Ok(eval)
     }
 }
 
