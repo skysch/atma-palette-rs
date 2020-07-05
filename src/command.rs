@@ -8,6 +8,8 @@
 //! Command line interface options.
 ////////////////////////////////////////////////////////////////////////////////
 
+// Local library imports.
+use crate::cell::Position;
 
 // External library imports.
 use serde::Deserialize;
@@ -87,7 +89,10 @@ pub struct CommonOptions {
 #[derive(StructOpt)]
 pub enum CommandOptions {
     List,
-    Insert,
+    Insert {
+        #[structopt(subcommand)]
+        insert_options: InsertOptions,
+    },
     Delete,
     Move,
     Set,
@@ -96,5 +101,40 @@ pub enum CommandOptions {
     Redo,
     Import,
     Export,
+}
+
+
+#[allow(missing_docs)]
+#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
+#[derive(StructOpt)]
+pub enum InsertOptions {
+    /// Insert a ramp into the palette.
+    Ramp {
+        /// The starting color or reference of the ramp.
+        #[structopt(short = "f", long = "from")]
+        from: String,
+
+        /// The ending color or reference of the ramp.
+        #[structopt(short = "t", long = "to")]
+        to: String,
+
+        /// The number of colors in the ramp.
+        #[structopt(short = "c", long = "count")]
+        count: usize,
+
+        /// The ramp interpolation function.
+        #[structopt(short = "i", long = "interpolate")]
+        interpolate: Option<String>,
+
+        /// The name of the ramp group.
+        #[structopt(long = "name")]
+        name: Option<String>,
+
+        /// The position of the ramp start
+        #[structopt(long = "at")]
+        at: Option<Position>
+    },
+    Color,
 }
 

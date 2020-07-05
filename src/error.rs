@@ -39,8 +39,6 @@ impl std::fmt::Display for InvalidFile {
     }
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 // MissingFile
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,7 +161,6 @@ impl std::error::Error for Error {
         }
     }
 }
-
 
 impl From<ron::error::Error> for Error {
     fn from(err: ron::error::Error) -> Self {

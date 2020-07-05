@@ -11,6 +11,9 @@
 // Local imports.
 use crate::cell::Position;
 use crate::cell::REF_PREFIX_TOKEN;
+use crate::parse::cell_ref;
+use crate::parse::ParseResultExt as _;
+use crate::parse::FailureOwned;
 
 // External library imports.
 use serde::Serialize;
@@ -75,5 +78,16 @@ impl<'name> std::fmt::Display for CellRef<'name> {
             Group { group, idx } => write!(f, 
                 "{}{}{}", group, REF_PREFIX_TOKEN, idx),
         }
+    }
+}
+
+impl std::str::FromStr for CellRef<'static> {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        cell_ref(text)
+            .expect_end_of_text()
+            .map(|suc| suc.value.clone_static())
+            .map_err(|fail| fail.to_owned())
     }
 }

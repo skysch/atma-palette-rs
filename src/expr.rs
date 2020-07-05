@@ -39,7 +39,6 @@ pub enum Expr {
     RgbMultiply(CellRef<'static>, CellRef<'static>),
 }
 
-
 impl Expr {
     /// Returns the Expr's color.
     pub fn color(

@@ -55,10 +55,8 @@ name
 ## atma unset {name|position|group|label} {selection}
 ## atma undo {#}
 ## atma redo {#}
-## atma import
-    subpalette
-## atma export
-    subpalette
+## atma import {subpalette}
+## atma export {subpalette}
 
 
 
@@ -104,3 +102,7 @@ name
 
 
 
+
+insert ramp #AAAAAA #BBBBBB --count=5 --interpolate=linear --name=blah --at=:1.2.3
+
+insert color #AAAAAA --name=blah --at=:1.2.3

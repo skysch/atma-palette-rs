@@ -366,7 +366,6 @@ impl BasicPalette {
             .unwrap_or(false)
     }
 
-
     /// Returns true if the given group index is occupied in the palette.
     pub fn is_occupied_group(&self, group: &str, idx: u32) -> bool {
         self.groups

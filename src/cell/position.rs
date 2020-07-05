@@ -12,6 +12,10 @@
 use crate::cell::REF_PREFIX_TOKEN;
 use crate::cell::REF_POS_SEP_TOKEN;
 use crate::cell::REF_ALL_TOKEN;
+use crate::parse::position;
+use crate::parse::position_selector;
+use crate::parse::FailureOwned;
+use crate::parse::ParseResultExt as _;
 
 // External library imports.
 use serde::Deserialize;
@@ -54,19 +58,6 @@ impl Position {
     }
 }
 
-impl std::fmt::Display for Position {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}{}{}{}{}", 
-            REF_PREFIX_TOKEN,
-            self.page,
-            REF_POS_SEP_TOKEN,
-            self.line,
-            REF_POS_SEP_TOKEN,
-            self.column)
-    }
-}
-
-
 impl TryFrom<PositionSelector> for Position {
     type Error = PositionCellConversionError;
 
@@ -82,6 +73,28 @@ impl TryFrom<PositionSelector> for Position {
     }
 }
 
+impl std::str::FromStr for Position {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        position(text)
+            .expect_end_of_text()
+            .map(|suc| suc.value)
+            .map_err(|fail| fail.to_owned())
+    }
+}
+
+impl std::fmt::Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}{}{}{}{}", 
+            REF_PREFIX_TOKEN,
+            self.page,
+            REF_POS_SEP_TOKEN,
+            self.line,
+            REF_POS_SEP_TOKEN,
+            self.column)
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // PositionSelector
@@ -158,6 +171,27 @@ impl PositionSelector {
     }
 }
 
+impl From<Position> for PositionSelector {
+    fn from(pos: Position) -> Self {
+        PositionSelector {
+            page: Some(pos.page),
+            line: Some(pos.line),
+            column: Some(pos.column),
+        }
+    }
+}
+
+impl std::str::FromStr for PositionSelector {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        position_selector(text)
+            .expect_end_of_text()
+            .map(|suc| suc.value)
+            .map_err(|fail| fail.to_owned())
+    }
+}
+
 impl std::fmt::Display for PositionSelector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", REF_PREFIX_TOKEN)?;
@@ -174,16 +208,6 @@ impl std::fmt::Display for PositionSelector {
         match self.column {
             Some(column) => write!(f, "{}", column),
             None => write!(f, "{}", REF_ALL_TOKEN),
-        }
-    }
-}
-
-impl From<Position> for PositionSelector {
-    fn from(pos: Position) -> Self {
-        PositionSelector {
-            page: Some(pos.page),
-            line: Some(pos.line),
-            column: Some(pos.column),
         }
     }
 }
