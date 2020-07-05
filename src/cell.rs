@@ -86,14 +86,14 @@ impl Cell {
     {
         let cached = self.cached.clone().take();
         if cached.is_none() {
-            self.color_evaluate(basic, index_list)
+            self.evaluate_color(basic, index_list)
         } else {
             Ok(cached)
         }
     }
 
     /// Returns the Expr's color, forcing evaluation.
-    pub fn color_evaluate(
+    pub fn evaluate_color(
         &self,
         basic: &BasicPalette,
         index_list: &mut HashSet<u32>)

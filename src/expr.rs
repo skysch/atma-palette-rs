@@ -54,8 +54,8 @@ impl Expr {
             Expr::Color(c) => Ok(Some(c.clone())),
 
             Expr::RgbMultiply(a, b) => match (
-                basic.color_recursive(a, index_list)?,
-                basic.color_recursive(b, index_list)?)
+                basic.cycle_detect_color(a, index_list)?,
+                basic.cycle_detect_color(b, index_list)?)
             {
                 (Some(a), Some(b)) => {
                     let [ra, ga, ba] = a.rgb_ratios();

@@ -171,11 +171,11 @@ impl BasicPalette {
         -> Result<Option<Color>, Error>
     {
         let mut index_list = HashSet::new();
-        self.color_recursive(cell_ref, &mut index_list)
+        self.cycle_detect_color(cell_ref, &mut index_list)
     }
 
     /// Retreives a copy of the color associated with the given `CellRef`.
-    pub(in crate) fn color_recursive<'name>(
+    pub(in crate) fn cycle_detect_color<'name>(
         &self,
         cell_ref: &CellRef<'name>,
         index_list: &mut HashSet<u32>)
