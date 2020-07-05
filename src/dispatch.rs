@@ -32,6 +32,12 @@ fn parse_color(text: String) -> Result<Color, Error> {
 pub fn dispatch(mut palette: Palette, opts: AtmaOptions)
     -> Result<(), Error>
 {
+    if opts.common.dry_run {
+        // TODO: Implement this.
+        println!("Dry run is currently unsupported.");
+        return Ok(());
+    }
+
     use CommandOptions::*;
     match opts.command {
         None => unimplemented!(),

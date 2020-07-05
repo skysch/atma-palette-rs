@@ -55,7 +55,7 @@ pub struct CommonOptions {
         parse(from_os_str))]
     pub use_config: Option<PathBuf>,
 
-    /// Print copy operations instead of running them.
+    /// Print palette operations instead of running them.
     #[structopt(short = "n", long = "dry-run")]
     pub dry_run: bool,
     
