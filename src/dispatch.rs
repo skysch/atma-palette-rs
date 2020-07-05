@@ -56,8 +56,16 @@ pub fn dispatch(mut palette: Palette, opts: AtmaOptions)
             Move => unimplemented!(),
             Set => unimplemented!(),
             Unset => unimplemented!(),
-            Undo => unimplemented!(),
-            Redo => unimplemented!(),
+            Undo { count } => {
+                let performed = palette.undo(count);
+                println!("{} undo operations performed.", performed);
+                Ok(())
+            },
+            Redo { count } => {
+                let performed = palette.redo(count);
+                println!("{} redo operations performed.", performed);
+                Ok(())
+            },
             Import => unimplemented!(),
             Export => unimplemented!(),
         },

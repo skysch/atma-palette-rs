@@ -7,6 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Command line interface options.
 ////////////////////////////////////////////////////////////////////////////////
+#![allow(variant_size_differences)] // TODO: Remove this.
 
 // Local library imports.
 use crate::cell::Position;
@@ -97,8 +98,14 @@ pub enum CommandOptions {
     Move,
     Set,
     Unset,
-    Undo,
-    Redo,
+    Undo {
+        /// The number of times to undo.
+        count: usize,
+    },
+    Redo {
+        /// The number of times to redo.
+        count: usize,
+    },
     Import,
     Export,
 }
