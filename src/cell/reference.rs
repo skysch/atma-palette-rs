@@ -54,15 +54,15 @@ pub enum CellRef<'name> {
 
 impl<'name> CellRef<'name> {
     /// Converts a `CellRef` to a static lifetime.
-    pub fn clone_static(&self) -> CellRef<'static> {
+    pub fn into_static(self) -> CellRef<'static> {
         use CellRef::*;
         match self {
-            Index(idx) => Index(*idx),
-            Position(position) => Position(position.clone()),
-            Name(name) => Name(Cow::from(name.clone().into_owned())),
+            Index(idx) => Index(idx),
+            Position(position) => Position(position),
+            Name(name) => Name(Cow::from(name.into_owned())),
             Group { group, idx } => Group {
-                group: Cow::from(group.clone().into_owned()),
-                idx: *idx,
+                group: Cow::from(group.into_owned()),
+                idx,
             },
         }
     }
@@ -87,7 +87,7 @@ impl std::str::FromStr for CellRef<'static> {
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         cell_ref(text)
             .expect_end_of_text()
-            .map(|suc| suc.value.clone_static())
+            .map(|suc| suc.value.clone().into_static())
             .map_err(|fail| fail.to_owned())
     }
 }

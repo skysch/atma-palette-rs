@@ -184,7 +184,7 @@ impl BasicPalette {
         let idx = BasicPalette::resolve_ref_to_index(&self, cell_ref)?;
         if index_list.contains(&idx) {
             return Err(Error::UndefinedColor {
-                cell_ref: cell_ref.clone_static(),
+                cell_ref: cell_ref.clone().into_static(),
                 circular: true,
             });
         }
@@ -193,7 +193,7 @@ impl BasicPalette {
         self.cells
             .get(&idx)
             .ok_or(Error::UndefinedColor { 
-                cell_ref: cell_ref.clone_static(),
+                cell_ref: cell_ref.clone().into_static(),
                 circular: false,
             })
             .and_then(|cell| cell.color(self, index_list))
@@ -208,7 +208,7 @@ impl BasicPalette {
         self.cells
             .get(&idx)
             .ok_or(Error::UndefinedCellReference { 
-                cell_ref: cell_ref.clone_static(),
+                cell_ref: cell_ref.clone().into_static(),
             })
     }
 
@@ -222,7 +222,7 @@ impl BasicPalette {
         self.cells
             .get_mut(&idx)
             .ok_or(Error::UndefinedCellReference { 
-                cell_ref: cell_ref.clone_static(),
+                cell_ref: cell_ref.clone().into_static(),
             })
     }
     
@@ -256,7 +256,7 @@ impl BasicPalette {
                     }
                 })
                 .ok_or(Error::UndefinedCellReference { 
-                    cell_ref: cell_ref.clone().clone_static(),
+                    cell_ref: cell_ref.clone().into_static(),
                 }),
 
 
@@ -264,7 +264,7 @@ impl BasicPalette {
                 .get(position)
                 .cloned()
                 .ok_or(Error::UndefinedCellReference { 
-                    cell_ref: cell_ref.clone().clone_static(),
+                    cell_ref: cell_ref.clone().into_static(),
                 }),
 
             CellRef::Group { group, idx } => groups
@@ -272,7 +272,7 @@ impl BasicPalette {
                 .and_then(|cells| cells.get(*idx as usize))
                 .cloned()
                 .ok_or(Error::UndefinedCellReference { 
-                    cell_ref: cell_ref.clone().clone_static(),
+                    cell_ref: cell_ref.clone().into_static(),
                 }),
         }
     }

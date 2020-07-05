@@ -12,13 +12,9 @@
 use crate::cell::CellSelector;
 use crate::basic::BasicPalette;
 use crate::parse::cell_selection;
-use crate::parse::circumfix;
-use crate::parse::whitespace;
-use crate::parse::maybe;
 use crate::parse::Failure;
 use crate::parse::FailureOwned;
 use crate::parse::ParseResultExt as _;
-use crate::error::Error;
 
 // External library imports.
 use serde::Serialize;
@@ -43,23 +39,13 @@ use std::iter::FromIterator;
 pub struct CellSelection<'name>(Vec<CellSelector<'name>>);
 
 impl<'name> CellSelection<'name> {
-    /// Parses a CellSelection from the given string.
-    pub fn parse(input: &'name str) -> Result<Self, Error> {
-        circumfix(
-            cell_selection,
-            maybe(whitespace))
-        (input)
-            .expect_end_of_text()
-            .map_err(Error::from)
-            .map(|success| success.value)
-    }
-
     /// Converts a `CellRef` to a static lifetime.
-    pub fn clone_static(&self) -> CellSelection<'static> {
+    pub fn into_static(self) -> CellSelection<'static> {
         CellSelection(
             self.0
                 .iter()
-                .map(|selector| selector.clone().into_static())
+                .cloned()
+                .map(CellSelector::into_static)
                 .collect())
     }
     
@@ -145,7 +131,7 @@ impl std::str::FromStr for CellSelection<'static> {
         cell_selection(text)
             .expect_end_of_text()
             .map_err(Failure::to_owned)
-            .map(|success| success.value.clone_static())
+            .map(|success| success.value.into_static())
     }
 }
 

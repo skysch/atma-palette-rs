@@ -48,7 +48,6 @@ pub struct Position {
 impl Position {
     /// Returns the next position after the given one.
     pub fn succ(&self) -> Position {
-        
         let (column, over) = self.column.overflowing_add(1);
         let (line, over) = self.line.overflowing_add(if over { 1 } else { 0 });
         let page = self.page.checked_add(if over { 1 } else { 0 })
@@ -73,17 +72,6 @@ impl TryFrom<PositionSelector> for Position {
     }
 }
 
-impl std::str::FromStr for Position {
-    type Err = FailureOwned;
-
-    fn from_str(text: &str) -> Result<Self, Self::Err> {
-        position(text)
-            .expect_end_of_text()
-            .map(|suc| suc.value)
-            .map_err(|fail| fail.to_owned())
-    }
-}
-
 impl std::fmt::Display for Position {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}{}{}{}{}{}", 
@@ -95,6 +83,18 @@ impl std::fmt::Display for Position {
             self.column)
     }
 }
+
+impl std::str::FromStr for Position {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        position(text)
+            .expect_end_of_text()
+            .map(|suc| suc.value)
+            .map_err(|fail| fail.to_owned())
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // PositionSelector
@@ -117,6 +117,15 @@ impl PositionSelector {
         PositionSelector {
             page: None,
             line: None,
+            column: None,
+        }
+    }
+
+    /// Returns the PositionSelector which selects a single line.
+    pub fn line(page: u16, line: u16) -> Self {
+        PositionSelector {
+            page: Some(page),
+            line: Some(line),
             column: None,
         }
     }
@@ -181,17 +190,6 @@ impl From<Position> for PositionSelector {
     }
 }
 
-impl std::str::FromStr for PositionSelector {
-    type Err = FailureOwned;
-
-    fn from_str(text: &str) -> Result<Self, Self::Err> {
-        position_selector(text)
-            .expect_end_of_text()
-            .map(|suc| suc.value)
-            .map_err(|fail| fail.to_owned())
-    }
-}
-
 impl std::fmt::Display for PositionSelector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", REF_PREFIX_TOKEN)?;
@@ -209,5 +207,16 @@ impl std::fmt::Display for PositionSelector {
             Some(column) => write!(f, "{}", column),
             None => write!(f, "{}", REF_ALL_TOKEN),
         }
+    }
+}
+
+impl std::str::FromStr for PositionSelector {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        position_selector(text)
+            .expect_end_of_text()
+            .map(|suc| suc.value)
+            .map_err(|fail| fail.to_owned())
     }
 }
