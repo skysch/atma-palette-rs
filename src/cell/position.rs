@@ -46,6 +46,23 @@ pub struct Position {
 }
 
 impl Position {
+    /// The zero position.
+    pub const ZERO: Position = Position {
+        page: 0,
+        line: 0,
+        column: 0,
+    };
+
+    /// The minimum position value.
+    pub const MIN: Position = Position::ZERO;
+
+    /// The maximump position value.
+    pub const MAX: Position = Position {
+        page: u16::MAX,
+        line: u16::MAX,
+        column: u16::MAX,
+    };
+
     /// Returns the next position after the given one.
     pub fn succ(&self) -> Position {
         let (column, over) = self.column.overflowing_add(1);
@@ -54,6 +71,29 @@ impl Position {
             .expect("position page overflow");
 
         Position { page, line, column }
+    }
+
+    /// Returns the next position after the given one, or None if the position
+    /// is MAX.
+    pub fn checked_succ(&self) -> Option<Position> {
+        let (column, over) = self.column.overflowing_add(1);
+        let (line, over) = self.line.overflowing_add(if over { 1 } else { 0 });
+        let page = self.page.checked_add(if over { 1 } else { 0 });
+
+        page.map(|page| Position { page, line, column })
+    }
+
+    /// Returns the next position after the given one, wrapping to zero if an
+    /// overflow occurs.
+    pub fn wrapping_succ(&self) -> Position {
+        let (column, over) = self.column.overflowing_add(1);
+        let (line, over) = self.line.overflowing_add(if over { 1 } else { 0 });
+        let page = self.page.checked_add(if over { 1 } else { 0 });
+
+        match page {
+            Some(page) => Position { page, line, column },
+            None => Position::ZERO,
+        }
     }
 }
 

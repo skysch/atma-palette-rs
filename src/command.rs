@@ -109,15 +109,24 @@ pub enum CommandOptions {
 #[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]
 pub enum InsertOptions {
+    /// Inserts colors into the palette.
+    Colors {
+        /// The colors to insert.
+        colors: Vec<String>,
+
+        /// The name of the colors group.
+        #[structopt(long = "name")]
+        name: Option<String>,
+
+        /// The position of the ramp start
+        #[structopt(long = "at")]
+        at: Option<Position>
+    },
+
     /// Insert a ramp into the palette.
     Ramp {
-        /// The starting color or reference of the ramp.
-        #[structopt(short = "f", long = "from")]
-        from: String,
-
-        /// The ending color or reference of the ramp.
-        #[structopt(short = "t", long = "to")]
-        to: String,
+        /// The ramp interpolation points.
+        points: Vec<String>,
 
         /// The number of colors in the ramp.
         #[structopt(short = "c", long = "count")]
@@ -135,6 +144,6 @@ pub enum InsertOptions {
         #[structopt(long = "at")]
         at: Option<Position>
     },
-    Color,
+    
 }
 

@@ -91,14 +91,10 @@ pub fn main_facade() -> Result<(), Error> {
         warn!("Using default config due to previous error.");
     };
 
-    // Dispatch to appropriate commands.
-    // use CommandOptions::*;
-    // match opts {
-    //     Edit { common, in_path } => unimplemented!(),
-    // }
-
+    // Load the palette.
     let pal = atma::Palette::default();
-    
-    pal.write_to_path(&cur_dir.join("test.atma"))?;
-    Ok(())
+
+    // Dispatch to appropriate commands.
+    atma::dispatch(pal, opts)
+        .map_err(Error::from)
 }

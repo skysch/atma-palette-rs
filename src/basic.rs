@@ -284,6 +284,20 @@ impl BasicPalette {
         idx
     }
 
+    /// Returns the given position if it is unoccupied, or the next unoccupied
+    /// position after it.
+    pub fn unoccupied_position_or_next(&self, from: Position)
+        -> Option<Position>
+    {
+        let mut next = from;
+        while self.is_occupied_position(&next) {
+            next = next.wrapping_succ();
+            // Check if we've looped all the way around.
+            if next == from { return None; }
+        }
+        Some(next)
+    }
+
 
     ////////////////////////////////////////////////////////////////////////////
     // Range and usability queries

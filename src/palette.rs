@@ -12,9 +12,11 @@
 use crate::basic::BasicPalette;
 use crate::cell::Cell;
 use crate::cell::CellRef;
-// use crate::cell::Position;
+use crate::cell::Position;
+use crate::cell::PositionSelector;
+use crate::color::Color;
 use crate::error::Error;
-// use crate::expr::Expr;
+use crate::expr::Expr;
 use crate::history::History;
 use crate::operation::Operation;
 
@@ -25,8 +27,7 @@ use ron::ser::PrettyConfig;
 use ron::ser::to_string_pretty;
 
 // Standard library imports.
-// use std::borrow::Cow;
-// use std::convert::TryInto;
+use std::borrow::Cow;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Read;
@@ -139,6 +140,89 @@ impl Palette {
         Ok(())
     }
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Accessors
+    ////////////////////////////////////////////////////////////////////////////
+
+    /// Retreives a reference to the `Cell` associated with the given `CellRef`.
+    pub fn cell<'name>(&self, cell_ref: &CellRef<'name>)
+        -> Result<&Cell, Error>
+    {
+        self.basic.cell(cell_ref)
+    }
+
+    /// Retreives a mutable reference to the `Cell` associated with the given
+    /// `CellRef`.
+    pub fn cell_mut<'name>(&mut self, cell_ref: &CellRef<'name>)
+        -> Result<&mut Cell, Error>
+    {
+        self.basic.cell_mut(cell_ref)
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Commands
+    ////////////////////////////////////////////////////////////////////////////
+    /// Inserts the given colors into the palette.
+    ///
+    /// ### Parameters
+    ///
+    /// + `colors`: The [`Colors`] to insert.
+    /// + `name`: The name of the colors. Creates a name association for a
+    /// single color, or a group association for multiple colors.
+    /// + `position`: The starting [`Position`] of the colors.
+    ///
+    /// [`Colors`]: ../color/struct.Color.html
+    /// [`Position`]: ../cell/struct.Position.html
+    pub fn insert_colors<'name>(
+        &mut self,
+        colors: &[Color],
+        name: Option<&'name str>,
+        position: Option<Position>)
+        -> Result<(), Error>
+    {
+        use Operation::*;
+        // Get start position.
+        let mut next = position.unwrap_or(Position::ZERO);
+        next = self.basic
+            .unoccupied_position_or_next(next)
+            .expect("no free positions"); // TODO: Handle with an error.
+
+        // Convert name into proper format.
+        let name: Option<Cow<'static, str>> = name
+            .map(|n| n.to_owned().into());
+
+        let mut ops = Vec::with_capacity(colors.len() * 2);
+        for color in colors {
+            // insert_cell
+            ops.push(InsertCell {
+                idx: None,
+                cell: Cell::new_with_expr(Expr::Color(color.clone())),
+            });
+            if let Some(name) = &name {
+                // assign_group
+                ops.push(AssignGroup {
+                    cell_ref: next.into(),
+                    group: name.clone(),
+                    idx: None,
+                });
+            }
+
+            // Shift to next position.
+            next = self.basic
+                .unoccupied_position_or_next(next.wrapping_succ())
+                .expect("no free positions");
+        }
+
+        match name {
+            Some(name) if colors.len() == 1 => ops.push(AssignName {
+                selector: PositionSelector::from(next),
+                name,
+            }),
+            _ => (),
+        }
+
+        self.apply_operations(&ops[..])
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Operations
@@ -170,24 +254,6 @@ impl Palette {
         self.basic.redo(&mut self.history, count)
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Accessors
-    ////////////////////////////////////////////////////////////////////////////
-
-    /// Retreives a reference to the `Cell` associated with the given `CellRef`.
-    pub fn cell<'name>(&self, cell_ref: &CellRef<'name>)
-        -> Result<&Cell, Error>
-    {
-        self.basic.cell(cell_ref)
-    }
-
-    /// Retreives a mutable reference to the `Cell` associated with the given
-    /// `CellRef`.
-    pub fn cell_mut<'name>(&mut self, cell_ref: &CellRef<'name>)
-        -> Result<&mut Cell, Error>
-    {
-        self.basic.cell_mut(cell_ref)
-    }
     
 }
 

@@ -40,22 +40,23 @@
 #![warn(while_true)]
 
 // Internal modules.
-#[cfg(test)]
-mod test;
 mod command;
 mod config;
+mod dispatch;
+mod error;
+mod palette;
+#[cfg(test)]
+mod test;
 
 // Public modules.
 pub mod basic;
 pub mod cell;
-pub mod palette;
-pub mod parse;
-pub mod error;
 pub mod expr;
 pub mod history;
-pub mod operation;
-pub mod utility;
 pub mod logger;
+pub mod operation;
+pub mod parse;
+pub mod utility;
 
 // Exports.
 /// Color encodings.
@@ -64,4 +65,6 @@ pub mod color {
 }
 pub use command::*;
 pub use config::*;
+pub use dispatch::*;
+pub use error::*;
 pub use palette::*;

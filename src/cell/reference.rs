@@ -68,6 +68,12 @@ impl<'name> CellRef<'name> {
     }
 }
 
+impl<'name> From<Position> for CellRef<'name> {
+    fn from(pos: Position) -> Self {
+        CellRef::Position(pos)
+    }
+}
+
 impl<'name> std::fmt::Display for CellRef<'name> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use CellRef::*;

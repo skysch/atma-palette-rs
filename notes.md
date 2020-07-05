@@ -105,4 +105,28 @@ name
 
 insert ramp #AAAAAA #BBBBBB --count=5 --interpolate=linear --name=blah --at=:1.2.3
 
-insert color #AAAAAA --name=blah --at=:1.2.3
+insert colors #AAAAAA #BBBBB --name=blah --at=:1.2.3
+
+
+# Overwrite behavior when inserting multiple cells.
+
+## Error
+Error if any cell is occupied.
+
+## Skip
+Move insertion past any occupied cells.
+
+## Move
+Move existing cells past any inserted cells, and fix any references.
+
+## Overwrite
+Overwrite any existing cells, preserving any existing structure.
+
+## Remove
+Remove any existing cells and anything referencing them.
+
+# Space behaviors when there is no room for a new cell.
+## Error
+## Stop
+## WrapLine
+## WrapPage
