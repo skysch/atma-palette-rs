@@ -173,12 +173,13 @@ impl Palette {
     ///
     /// [`Colors`]: ../color/struct.Color.html
     /// [`Position`]: ../cell/struct.Position.html
-    pub fn insert_colors<'name>(
+    pub fn insert_colors<'name, S>(
         &mut self,
         colors: &[Color],
-        name: Option<&'name str>,
+        name: Option<S>,
         position: Option<Position>)
         -> Result<(), Error>
+        where S: ToString
     {
         use Operation::*;
         // Get start position.
@@ -189,7 +190,7 @@ impl Palette {
 
         // Convert name into proper format.
         let name: Option<Cow<'static, str>> = name
-            .map(|n| n.to_owned().into());
+            .map(|n| n.to_string().into());
 
         let mut ops = Vec::with_capacity(colors.len() * 2);
         for color in colors {
