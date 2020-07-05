@@ -15,6 +15,8 @@ use crate::parse::cell_selection;
 use crate::parse::circumfix;
 use crate::parse::whitespace;
 use crate::parse::maybe;
+use crate::parse::Failure;
+use crate::parse::FailureOwned;
 use crate::parse::ParseResultExt as _;
 use crate::error::Error;
 
@@ -52,6 +54,16 @@ impl<'name> CellSelection<'name> {
             .map(|success| success.value)
     }
 
+    /// Converts a `CellRef` to a static lifetime.
+    pub fn clone_static(&self) -> CellSelection<'static> {
+        CellSelection(
+            self.0
+                .iter()
+                .map(|selector| selector.clone().into_static())
+                .collect())
+    }
+    
+
     /// Resolves the CellSelection into a CellIndexSelection containing all of
     /// the selected and occupied cells for the given palette.
     pub fn resolve(&self, basic: &BasicPalette) -> CellIndexSelection {
@@ -68,6 +80,11 @@ impl<'name> CellSelection<'name> {
             let _ = index_selection.insert_all(selector.resolve(basic));
         }
         index_selection
+    }
+
+    /// Returns true if the selection is trivially empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     /// Moves all `CellSelector`s in `other` into `self`, leaving `other` empty.
@@ -109,8 +126,29 @@ impl<'name> IntoIterator for CellSelection<'name> {
     }
 }
 
+impl<'name> std::fmt::Display for CellSelection<'name> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.is_empty() { return Ok(()); }
 
-// TODO: impl Display + FromStr
+        let mut iter = self.iter();
+        for selector in (&mut iter).take(self.0.len() - 1) {
+            write!(f, "{}, ", selector)?;
+        }
+        write!(f, "{}", iter.next().unwrap())
+    }
+}
+
+impl std::str::FromStr for CellSelection<'static> {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        cell_selection(text)
+            .expect_end_of_text()
+            .map_err(Failure::to_owned)
+            .map(|success| success.value.clone_static())
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // CellIndexSelection
