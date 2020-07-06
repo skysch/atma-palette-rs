@@ -10,7 +10,7 @@
 
 // Local imports.
 use crate::cell::CellSelector;
-use crate::basic::BasicPalette;
+use crate::palette::BasicPalette;
 use crate::parse::cell_selection;
 use crate::parse::FailureOwned;
 use crate::parse::ParseResultExt as _;

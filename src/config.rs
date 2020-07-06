@@ -10,9 +10,9 @@
 #![warn(missing_docs)]
 
 // Local imports.
-use crate::logger::LevelFilter;
-use crate::logger::LoggerConfig;
-use crate::logger::StdoutLogOutput;
+use crate::LevelFilter;
+use crate::LoggerConfig;
+use crate::StdoutLogOutput;
 use anyhow::Error;
 use anyhow::Context;
 

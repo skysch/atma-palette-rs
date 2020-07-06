@@ -16,8 +16,8 @@ mod selector;
 
 // Local imports.
 use crate::color::Color;
-use crate::expr::Expr;
-use crate::basic::BasicPalette;
+use crate::palette::Expr;
+use crate::palette::BasicPalette;
 use crate::error::Error;
 
 // External library imports.

@@ -9,7 +9,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use atma::AtmaOptions;
+use atma::command::AtmaOptions;
+use atma::Palette;
 use atma::Config;
 use atma::DEFAULT_CONFIG_PATH;
 use anyhow::Context;
@@ -92,9 +93,9 @@ pub fn main_facade() -> Result<(), Error> {
     };
 
     // Load the palette.
-    let pal = atma::Palette::default();
+    let pal = Palette::default();
 
     // Dispatch to appropriate commands.
-    atma::dispatch(pal, opts)
+    atma::command::dispatch(pal, opts)
         .map_err(Error::from)
 }

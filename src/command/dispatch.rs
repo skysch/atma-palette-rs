@@ -9,11 +9,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::AtmaOptions;
-use crate::InsertOptions;
-use crate::CommandOptions;
+use crate::command::AtmaOptions;
+use crate::command::InsertOptions;
+use crate::command::CommandOptions;
 use crate::Error;
-use crate::Palette;
+use crate::palette::Palette;
 use crate::color::Color;
 use crate::parse::ParseResultExt as _;
 use crate::parse::color;

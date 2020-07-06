@@ -10,7 +10,7 @@
 #![allow(variant_size_differences)] // TODO: Remove this.
 
 // Local imports.
-use crate::basic::BasicPalette;
+use crate::palette::BasicPalette;
 use crate::color::Color;
 use crate::color::Rgb;
 use crate::cell::CellRef;

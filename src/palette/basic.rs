@@ -15,9 +15,9 @@ use crate::cell::Position;
 use crate::cell::PositionSelector;
 use crate::color::Color;
 use crate::error::Error;
-use crate::expr::Expr;
-use crate::history::History;
-use crate::operation::Operation;
+use crate::palette::Expr;
+use crate::palette::History;
+use crate::palette::Operation;
 use crate::utility::Few;
 use crate::utility::split_intersect;
 

@@ -9,7 +9,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::operation::Operation;
+use crate::palette::Operation;
 
 // External library imports.
 use serde::Serialize;

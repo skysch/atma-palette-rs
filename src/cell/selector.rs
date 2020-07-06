@@ -9,7 +9,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::basic::BasicPalette;
+use crate::palette::BasicPalette;
 use crate::cell::CellRef;
 use crate::cell::PositionSelector;
 use crate::cell::Position;

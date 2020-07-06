@@ -13,7 +13,7 @@ use crate::cell::Cell;
 use crate::cell::CellRef;
 use crate::cell::Position;
 use crate::cell::PositionSelector;
-use crate::expr::Expr;
+use crate::palette::Expr;
 
 // External library imports.
 use serde::Serialize;

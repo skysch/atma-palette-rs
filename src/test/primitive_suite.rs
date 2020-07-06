@@ -10,7 +10,7 @@
 #![allow(unused_must_use)]
 
 // Local imports.
-use crate::basic::BasicPalette;
+use crate::palette::BasicPalette;
 use crate::cell::Cell;
 use crate::cell::Position;
 use crate::cell::CellRef;
