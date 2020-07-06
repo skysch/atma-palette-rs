@@ -12,7 +12,6 @@
 use crate::cell::CellSelector;
 use crate::basic::BasicPalette;
 use crate::parse::cell_selection;
-use crate::parse::Failure;
 use crate::parse::FailureOwned;
 use crate::parse::ParseResultExt as _;
 
@@ -129,9 +128,9 @@ impl std::str::FromStr for CellSelection<'static> {
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         cell_selection(text)
-            .expect_end_of_text()
-            .map_err(Failure::to_owned)
-            .map(|success| success.value.into_static())
+            .end_of_text()
+            .finish()
+            .map(|v| v.clone().into_static())
     }
 }
 

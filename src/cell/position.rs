@@ -129,7 +129,7 @@ impl std::str::FromStr for Position {
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         position(text)
-            .expect_end_of_text()
+            .end_of_text()
             .finish()
     }
 }
@@ -181,12 +181,8 @@ impl PositionSelector {
 
     /// Returns the bounds of the selectable positions.
     pub fn bounds(&self) -> (Position, Position) {
-        let mut low = Position { page: 0, line: 0, column: 0 };
-        let mut high = Position { 
-            page: u16::MAX,
-            line: u16::MAX,
-            column: u16::MAX,
-        };
+        let mut low = Position::MIN;
+        let mut high = Position::MAX;
 
         match (self.page, self.line, self.column) {
             (Some(p), Some(l), Some(c)) => {
@@ -257,8 +253,7 @@ impl std::str::FromStr for PositionSelector {
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         position_selector(text)
-            .expect_end_of_text()
-            .map(|suc| suc.value)
-            .map_err(|fail| fail.to_owned())
+            .end_of_text()
+            .finish()
     }
 }

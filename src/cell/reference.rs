@@ -92,8 +92,8 @@ impl std::str::FromStr for CellRef<'static> {
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         cell_ref(text)
-            .expect_end_of_text()
-            .map(|suc| suc.value.clone().into_static())
-            .map_err(|fail| fail.to_owned())
+            .end_of_text()
+            .finish()
+            .map(|v| v.clone().into_static())
     }
 }

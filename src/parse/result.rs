@@ -23,6 +23,13 @@ pub type ParseResult<'t, V> = Result<Success<'t, V>, Failure<'t>>;
 
 /// Extension trait for parse results.
 pub trait ParseResultExt<'t, V>: Sized {
+    /// Converts a parse success into a failre if the end of the text input has
+    /// not been reached.
+    fn end_of_text(self) -> ParseResult<'t, V>;
+
+    /// Discards parse data and returns the parse result or owned error.
+    fn finish(self) -> Result<V, FailureOwned>;
+
     /// Converts any Err result into an parse failure source.
     ///
     /// The given discription will become the new parse description.
@@ -49,9 +56,6 @@ pub trait ParseResultExt<'t, V>: Sized {
     fn with_new_context(self, context: &'t str, text: &'t str)
         -> ParseResult<'t, V>;
 
-    /// Returns the remaining parse text.
-    fn rest(&self) -> &'t str;
-
     /// Applies the given closure to the parsed value. Will only be called if
     /// the parse was successful.
     fn map_value<F, U>(self, f: F) -> ParseResult<'t, U>
@@ -64,19 +68,27 @@ pub trait ParseResultExt<'t, V>: Sized {
     fn discard_value(self) -> ParseResult<'t, ()> {
         self.map_value(|_| ())
     }
-
-    /// Converts a parse success into a failre if the end of the text input has
-    /// not been reached.
-    fn expect_end_of_text(self) -> ParseResult<'t, V>;
-
-    /// Converts a parse failure into a success and vice versa.
-    fn expect_failure(self) -> ParseResult<'t, &'t str>;
-
-    /// Discards parse data and returns the parse result or owned error.
-    fn finish(self) -> Result<V, FailureOwned>;
 }
 
 impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
+    fn end_of_text(self) -> ParseResult<'t, V> {
+        match self {
+            Ok(success) if success.rest.is_empty() => Ok(success),
+            Ok(success) => Err(Failure {
+                context: success.token,
+                expected: "end-of-text".into(),
+                source: None,
+                rest: success.rest,
+            }),
+            Err(failure) => Err(failure),
+        }
+    }
+
+    fn finish(self) -> Result<V, FailureOwned> {
+        self.map(|suc| suc.value)
+            .map_err(Failure::to_owned)
+    }
+
     fn source_for<E>(self, expected: E) -> Self
         where E: Into<Cow<'static, str>>
     {
@@ -108,13 +120,6 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
         })
     }
 
-    fn rest(&self) -> &'t str {
-        match self {
-            Ok(success) => success.rest,
-            Err(failure) => failure.rest,
-        }
-    }
-
     fn map_value<F, U>(self, f: F) -> ParseResult<'t, U>
         where F: FnOnce(V) -> U
     {
@@ -130,40 +135,6 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
             let token = success.token;
             success.map_value(|_| token)
         })
-    }
-
-    fn expect_end_of_text(self) -> ParseResult<'t, V> {
-        match self {
-            Ok(success) if success.rest.is_empty() => Ok(success),
-            Ok(success) => Err(Failure {
-                context: success.token,
-                expected: "end-of-text".into(),
-                source: None,
-                rest: success.rest,
-            }),
-            Err(failure) => Err(failure),
-        }
-    }
-
-    fn expect_failure(self) -> ParseResult<'t, &'t str> {
-        match self {
-            Ok(success) => Err(Failure {
-                context: success.token,
-                expected: "parse failure".into(),
-                source: None,
-                rest: success.rest,
-            }),
-            Err(failure) => Ok(Success {
-                value: failure.context,
-                token: failure.context,
-                rest: failure.rest,
-            })
-        }
-    }
-
-    fn finish(self) -> Result<V, FailureOwned> {
-        self.map(|suc| suc.value)
-            .map_err(Failure::to_owned)
     }
 }
 
