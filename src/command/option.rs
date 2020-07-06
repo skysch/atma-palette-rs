@@ -66,14 +66,6 @@ pub struct CommonOptions {
     #[structopt(short = "n", long = "dry-run")]
     pub dry_run: bool,
     
-    /// Shorten filenames by omitting path prefixes.
-    #[structopt(short = "s", long = "short-names")]
-    pub short_names: bool,
-    
-    /// Promote file access warnings into errors.
-    #[structopt(short = "e", long = "error")]
-    pub promote_warnings_to_errors: bool,
-    
     /// Provides more detailed messages.
     #[structopt(short = "v", long = "verbose")]
     pub verbose: bool,
