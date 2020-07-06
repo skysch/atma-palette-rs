@@ -25,7 +25,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 // Exports.
-pub use log::LevelFilter;
+pub(in crate) use log::LevelFilter;
 
 
 ////////////////////////////////////////////////////////////////////////////////

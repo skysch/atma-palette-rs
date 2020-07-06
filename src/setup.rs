@@ -5,19 +5,16 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Palette data definitions.
+//! Parsing module.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal modules.
-mod full;
-mod basic;
-mod expr;
-mod history;
-mod operation;
+mod config;
+mod logger;
+mod settings;
 
 // Exports.
-pub use full::*;
-pub use basic::*;
-pub use expr::*;
-pub use history::*;
-pub use operation::*;
+pub use self::config::*;
+pub use self::logger::*;
+pub use self::settings::*;
+

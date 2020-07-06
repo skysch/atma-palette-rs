@@ -1,6 +1,6 @@
 [package]
 name = "atma"
-version = "0.0.92"
+version = "0.0.93"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT or Apache-2.0"
@@ -12,7 +12,12 @@ keywords = ["color", "palette"]
 categories = []
 documentation = ""
 homepage = ""
-exclude = ["*.sublime-project", "*.sublime-workspace"]
+exclude = [
+	"*.sublime-project",
+	"*.sublime-workspace",
+	".atma-config",
+	".atma-settings",
+	"*.atma"]
 
 [lib]
 name = "atma"

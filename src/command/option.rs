@@ -50,10 +50,15 @@ pub struct AtmaOptions {
 pub struct CommonOptions {
     /// The config file to use.
     #[structopt(
-        short = "u",
-        long = "use-config",
+        long = "config-file",
         parse(from_os_str))]
-    pub use_config: Option<PathBuf>,
+    pub config_file: Option<PathBuf>,
+
+    /// The settings file to use.
+    #[structopt(
+        long = "settings-file",
+        parse(from_os_str))]
+    pub settings_file: Option<PathBuf>,
 
     /// The palette file to use.
     #[structopt(

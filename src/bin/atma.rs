@@ -9,13 +9,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use atma::command::AtmaOptions;
-use atma::Palette;
-use atma::Config;
-use atma::DEFAULT_CONFIG_PATH;
 use anyhow::Context;
 use anyhow::Error;
-use atma::logger::Logger;
+use atma::command::AtmaOptions;
+use atma::Config;
+use atma::Settings;
+use atma::DEFAULT_CONFIG_PATH;
+use atma::DEFAULT_SETTINGS_PATH;
+use atma::Logger;
+use atma::Palette;
 
 // External library imports.
 use structopt::StructOpt;
@@ -46,7 +48,7 @@ pub fn main_facade() -> Result<(), Error> {
 
     // Find the path for the config file.
     let cur_dir = std::env::current_dir()?;
-    let config_path = match &opts.common.use_config {
+    let config_path = match &opts.common.config_file {
         Some(path) => path.clone(),
         None       => cur_dir.join(DEFAULT_CONFIG_PATH),
     };
@@ -92,11 +94,36 @@ pub fn main_facade() -> Result<(), Error> {
         warn!("Using default config due to previous error.");
     };
 
+
+    // Find the path for the settings file.
+    let cur_dir = std::env::current_dir()?;
+    let settings_path = match &opts.common.settings_file {
+        Some(path) => path.clone(),
+        None       => cur_dir.join(DEFAULT_SETTINGS_PATH),
+    };
+
+    // Load the settings file.
+    let mut settings_load_status = Ok(());
+    let mut settings = Settings::from_path(&settings_path)
+        .with_context(|| format!("Unable to load settings file: {:?}", 
+            settings_path))
+        .unwrap_or_else(|e| {
+            settings_load_status = Err(e);
+            Settings::default()
+        });
+    settings.normalize_paths(&cur_dir);
+
+    // Log any settings loading errors.
+    if let Err(e) = settings_load_status { 
+        error!("{}", e);
+        warn!("Using default settings due to previous error.");
+    };
+
     // Load the palette.
-    let pal = match opts.common.palette {
-        Some(ref palette_path) => Some(Palette::new_from_path(palette_path)?),
-        None => match config.active_palette {
-            Some(ref palette_path) => Some(Palette::new_from_path(palette_path)?),
+    let pal = match &opts.common.palette {
+        Some(palette_path) => Some(Palette::new_from_path(&palette_path)?),
+        None => match settings.active_palette {
+            Some(palette_path) => Some(Palette::new_from_path(&palette_path)?),
             None => None,
         },
     };
