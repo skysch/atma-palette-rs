@@ -183,6 +183,10 @@ impl Palette {
         where S: ToString
     {
         use Operation::*;
+        // Get start index.
+        let mut idx = self.basic
+            .unoccupied_index_or_next(0)
+            .expect("no free indices"); // TODO: Handle with an error.
         // Get start position.
         let mut next = position.unwrap_or(Position::ZERO);
         next = self.basic
@@ -198,19 +202,22 @@ impl Palette {
             debug!("Inserting color {} at {}", color, next);
             // insert_cell
             ops.push(InsertCell {
-                idx: 0,
+                idx,
                 cell: Cell::new_with_expr(Expr::Color(color.clone())),
             });
             if let Some(name) = &name {
                 // assign_group
                 ops.push(AssignGroup {
-                    cell_ref: next.into(),
+                    cell_ref: CellRef::Index(idx),
                     group: name.clone(),
                     idx: None,
                 });
             }
 
             // Shift to next position.
+            idx = self.basic
+                .unoccupied_index_or_next(idx.wrapping_add(1))
+                .expect("no free indices"); 
             next = self.basic
                 .unoccupied_position_or_next(next.wrapping_succ())
                 .expect("no free positions");

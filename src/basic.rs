@@ -277,11 +277,16 @@ impl BasicPalette {
         }
     }
 
-    fn allocate_index(&mut self) -> u32 {
-        let idx = self.next_index;
-        // TODO: On wrap, do index compression.
-        self.next_index += 1;
-        idx
+    /// Returns the given index if it is unoccupied, or the next unoccupied
+    /// index after it.
+    pub fn unoccupied_index_or_next(&mut self, from: u32) -> Option<u32> {
+        let mut next = from;
+        while self.is_occupied_index(&next) {
+            next = next.wrapping_add(1);
+            // Check if we've looped all the way around.
+            if next == from { return None; }
+        }
+        Some(next)
     }
 
     /// Returns the given position if it is unoccupied, or the next unoccupied

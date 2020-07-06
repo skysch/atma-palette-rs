@@ -79,7 +79,7 @@ impl History {
     pub fn push_undo_ops(&mut self, ops: Vec<Operation>) {
         assert_eq!(self.cursor_state, CursorState::Valid);
 
-        if self.cursor >= ops.len() {
+        if self.cursor < ops.len() {
             self.ops.push(ops);
             self.cursor += 1;
         } else {

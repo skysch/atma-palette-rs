@@ -172,15 +172,6 @@ impl PositionSelector {
         }
     }
 
-    /// Returns the PositionSelector which selects a single line.
-    pub fn line(page: u16, line: u16) -> Self {
-        PositionSelector {
-            page: Some(page),
-            line: Some(line),
-            column: None,
-        }
-    }
-
     /// Returns true if the given position is selected.
     pub fn contains(&self, other: &Position) -> bool {
         self.page.map(|p| p == other.page).unwrap_or(true) &&

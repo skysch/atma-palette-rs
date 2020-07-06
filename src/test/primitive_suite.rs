@@ -32,7 +32,6 @@ fn cell_insert_remove_method_inverse() {
     assert!(pal.cell(&CellRef::Index(0)).is_err());
 }
 
-
 // /// Tests `BasicPalette::assign_name` followed by `BasicPalette::unassign_name`.
 // #[test]
 // fn cell_assign_unassign_name_method_inverse() {
@@ -47,8 +46,6 @@ fn cell_insert_remove_method_inverse() {
 //     pal.unassign_name(CellRef::Index(0), name.clone());
 //     assert!(pal.cell(&CellRef::Name(name.clone())).is_err());
 // }
-
-
 
 
 /// Tests `BasicPalette::assign_position` followed by
@@ -66,7 +63,6 @@ fn cell_assign_unassign_position_method_inverse() {
     pal.unassign_position(CellRef::Index(0), position.clone());
     assert!(pal.cell(&CellRef::Position(position.clone())).is_err());
 }
-
 
 /// Tests `BasicPalette::assign_position` followed by
 /// `BasicPalette::clear_positions`.
@@ -105,7 +101,6 @@ fn cell_assign_unassign_group_method_inverse() {
     assert!(pal.cell(&CellRef::Group { group: group.clone(), idx: 0 })
         .is_err());
 }
-
 
 /// Tests `BasicPalette::assign_group` followed by `BasicPalette::clear_groups`.
 #[test]
