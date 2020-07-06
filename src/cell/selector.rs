@@ -216,7 +216,7 @@ impl<'name> CellSelector<'name> {
     fn index_iter<'p>(&self, basic: &'p BasicPalette)
         -> CellSelectorIndexIter<'name, 'p>
     {
-        let mut pos_selector = PositionSelector::all();
+        let mut pos_selector = PositionSelector::ALL;
         let selector = {
             use CellSelector::*;
             match self {

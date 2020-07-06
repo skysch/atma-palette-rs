@@ -18,6 +18,8 @@ use crate::color::Color;
 use crate::parse::ParseResultExt as _;
 use crate::parse::color;
 
+// External library imports.
+use log::*;
 
 fn parse_color(text: String) -> Result<Color, Error> {
     color(&text[..])
@@ -32,6 +34,7 @@ fn parse_color(text: String) -> Result<Color, Error> {
 pub fn dispatch(mut palette: Palette, opts: AtmaOptions)
     -> Result<(), Error>
 {
+    trace!("{:?}", opts);
     if opts.common.dry_run {
         // TODO: Implement this.
         println!("Dry run is currently unsupported.");
@@ -46,13 +49,19 @@ pub fn dispatch(mut palette: Palette, opts: AtmaOptions)
             List => unimplemented!(),
             Insert { insert_options } => match insert_options {
                 InsertOptions::Colors { colors, name, at } => {
+                    trace!("{:?}", colors);
                     let colors: Vec<Color> = colors
                         .into_iter()
                         .map(parse_color)
                         .collect::<Result<Vec<_>,_>>()?;
+                    trace!("{:?}", colors);
 
-                    palette.insert_colors(&colors[..], name, at)
+                    let res = palette.insert_colors(&colors[..], name, at);
+                    info!("{:?}", palette);
+                    res
+
                 },
+
                 InsertOptions::Ramp { ..}=> //points, count, interpolate, name, at } => 
                 {
                     unimplemented!()

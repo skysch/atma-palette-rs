@@ -25,6 +25,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use ron::ser::PrettyConfig;
 use ron::ser::to_string_pretty;
+use log::*;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -194,9 +195,10 @@ impl Palette {
 
         let mut ops = Vec::with_capacity(colors.len() * 2);
         for color in colors {
+            debug!("Inserting color {} at {}", color, next);
             // insert_cell
             ops.push(InsertCell {
-                idx: None,
+                idx: 0,
                 cell: Cell::new_with_expr(Expr::Color(color.clone())),
             });
             if let Some(name) = &name {

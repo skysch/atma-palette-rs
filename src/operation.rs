@@ -36,9 +36,8 @@ pub enum Operation {
 
     /// Inserts a `Cell` into the palette.
     InsertCell {
-        /// The index to insert the cell into, or None if a new one is to be
-        /// allocated.
-        idx: Option<u32>,
+        /// The index to insert the cell into.
+        idx: u32,
         /// The `Cell` to insert.
         cell: Cell,
     },

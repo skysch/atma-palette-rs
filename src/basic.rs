@@ -630,10 +630,9 @@ impl BasicPalette {
     }
 
     /// Inserts a `Cell` into the palette at the given index.
-    pub fn insert_cell(&mut self, idx: Option<u32>, cell: Cell)
+    pub fn insert_cell(&mut self, idx: u32, cell: Cell)
         -> Result<Vec<Operation>, Error>
     {
-        let idx = idx.unwrap_or_else(|| self.allocate_index());
         match self.cells.insert(idx, cell) {
             // No cell was replaced.
             None => Ok(vec![
@@ -643,10 +642,7 @@ impl BasicPalette {
             ]),
             // A cell was replaced.
             Some(old) => Ok(vec![
-                Operation::InsertCell { 
-                    idx: Some(idx),
-                    cell: old,
-                },
+                Operation::InsertCell { idx, cell: old },
             ]),
         }
     }
@@ -660,7 +656,7 @@ impl BasicPalette {
         match self.cells.remove(&idx) {
             // Cell was removed.
             Some(cell) => Ok(vec![
-                Operation::InsertCell { idx: Some(idx), cell },
+                Operation::InsertCell { idx, cell },
             ]),
 
             // Cell is already missing.

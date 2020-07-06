@@ -151,12 +151,24 @@ pub struct PositionSelector {
 }
 
 impl PositionSelector {
-    /// Returns the PositionSelector which selects all positions.
-    pub fn all() -> Self {
+    /// The PositionSelector which selects all positions.
+    pub const ALL: PositionSelector = PositionSelector {
+        page: None,
+        line: None,
+        column: None,
+    };
+    
+    /// Constructs a new PositionSelector with the given page, line, and column.
+    pub fn new<P, L, C>(page: P, line: L, column: C) -> Self
+        where
+            P: Into<Option<u16>>,
+            L: Into<Option<u16>>,
+            C: Into<Option<u16>>,
+    {
         PositionSelector {
-            page: None,
-            line: None,
-            column: None,
+            page: page.into(),
+            line: line.into(),
+            column: column.into(),
         }
     }
 

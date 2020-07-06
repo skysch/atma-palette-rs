@@ -20,6 +20,9 @@ use crate::cell::CellSelector;
 use crate::cell::CellSelection;
 use crate::cell::PositionSelector;
 
+// Standard library imports.
+use std::str::FromStr;
+
 
 fn test_palette() -> BasicPalette {
     let mut palette = BasicPalette::new();
@@ -28,20 +31,20 @@ fn test_palette() -> BasicPalette {
         let r: u8 = u8::MAX - i;
         let g: u8 = i;
         let b: u8 = u8::MAX - i;
-        palette.insert_cell(Some(i as u32), &Cell::new_with_expr(
+        palette.insert_cell(i as u32, Cell::new_with_expr(
             Expr::Color(Rgb { r, g, b }.into())));
     }
     
-    palette.assign_name(CellRef::Index(100), "a");
-    palette.assign_name(CellRef::Index(110), "b");
-    palette.assign_name(CellRef::Index(120), "c");
-    palette.assign_name(CellRef::Index(130), "d");
-    palette.assign_name(CellRef::Index(140), "e");
-    palette.assign_name(CellRef::Index(150), "f");
-    palette.assign_name(CellRef::Index(160), "g");
-    palette.assign_name(CellRef::Index(170), "h");
-    palette.assign_name(CellRef::Index(180), "i");
-    palette.assign_name(CellRef::Index(190), "j");
+    palette.assign_name(PositionSelector::new(1, 0, 0), "a");
+    palette.assign_name(PositionSelector::new(1, 1, 0), "b");
+    palette.assign_name(PositionSelector::new(2, 0, 0), "c");
+    palette.assign_name(PositionSelector::new(2, 1, 0), "d");
+    palette.assign_name(PositionSelector::new(3, 0, 0), "e");
+    palette.assign_name(PositionSelector::new(3, 1, 0), "f");
+    palette.assign_name(PositionSelector::new(4, 0, 0), "g");
+    palette.assign_name(PositionSelector::new(4, 1, 0), "h");
+    palette.assign_name(PositionSelector::new(5, 0, 0), "i");
+    palette.assign_name(PositionSelector::new(5, 1, 0), "j");
 
     for i in 0u32..10u32 {
         palette.assign_group(CellRef::Index(100 + i), "GroupA", None);
@@ -257,7 +260,7 @@ fn cell_selector_resolve_position_selector() {
 fn cell_selection_resolve() {
     let pal = test_palette();
 
-    let selection = CellSelection::parse(" :100-:105, :1.6.6, GroupD:* ")
+    let selection = CellSelection::from_str(":100-:105, :1.6.6, GroupD:*")
         .unwrap();
     let res: Vec<_> = selection.resolve(&pal).into_iter().collect();
     assert_eq!(res.len(), 8);
