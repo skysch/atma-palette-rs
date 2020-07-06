@@ -31,7 +31,7 @@ fn parse_color(text: String) -> Result<Color, Error> {
 // dispatch
 ////////////////////////////////////////////////////////////////////////////////
 /// Executes the given `AtmaOptions` on the given `Palette`.
-pub fn dispatch(mut palette: Palette, opts: AtmaOptions)
+pub fn dispatch(palette: Option<Palette>, opts: AtmaOptions)
     -> Result<(), Error>
 {
     trace!("{:?}", opts);
@@ -42,10 +42,11 @@ pub fn dispatch(mut palette: Palette, opts: AtmaOptions)
     }
 
     use CommandOptions::*;
-    match opts.command {
-        None => unimplemented!(),
+    match (palette, opts.command) {
+        (_, None) => unimplemented!(),
+        (None, Some(_)) => unimplemented!(),
 
-        Some(command) => match command {
+        (Some(mut palette), Some(command)) => match command {
             List => unimplemented!(),
             Insert { insert_options } => match insert_options {
                 InsertOptions::Colors { colors, name, at } => {

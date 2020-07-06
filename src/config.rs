@@ -54,6 +54,10 @@ pub struct Config {
     /// Module specific log levels.
     #[serde(default = "Config::default_log_levels")]
     pub log_levels: BTreeMap<Cow<'static, str>, LevelFilter>,
+
+    /// The name of the palette to open when no palette is specified.
+    #[serde(default)]
+    pub active_palette: Option<PathBuf>,
 }
 
 
@@ -108,6 +112,14 @@ impl Config {
             },
             _ => (),
         }
+
+        match self.active_palette {
+            Some(ref active_palette) if active_palette.is_relative() => {
+                let active_palette = base.clone().join(active_palette);
+                self.active_palette = Some(active_palette);
+            },
+            _ => (),
+        }
     }
 
     /// Returns the default [`LoggerConfig`].
@@ -127,6 +139,11 @@ impl Config {
         Default::default()
     }
 
+    /// Returns the default active palette.
+    #[inline(always)]
+    fn default_active_palette() -> Option<PathBuf> {
+        None
+    }
 }
 
 impl Default for Config {
@@ -134,6 +151,7 @@ impl Default for Config {
         Config {
             logger_config: Config::default_logger_config(),
             log_levels: Config::default_log_levels(),
+            active_palette: Config::default_active_palette(),
         }
     }
 }
@@ -143,6 +161,8 @@ impl std::fmt::Display for Config {
         writeln!(fmt, "\n\tlogger_config/stdout_log_output: {:?}",
             self.logger_config.stdout_log_output)?;
         writeln!(fmt, "\tlogger_config/level_filter: {:?}",
-            self.logger_config.level_filter)
+            self.logger_config.level_filter)?;
+        writeln!(fmt, "\tactive_palette: {:?}",
+            self.active_palette)
     }
 }

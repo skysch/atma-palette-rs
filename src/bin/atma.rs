@@ -93,7 +93,13 @@ pub fn main_facade() -> Result<(), Error> {
     };
 
     // Load the palette.
-    let pal = Palette::default();
+    let pal = match opts.common.palette {
+        Some(ref palette_path) => Some(Palette::new_from_path(palette_path)?),
+        None => match config.active_palette {
+            Some(ref palette_path) => Some(Palette::new_from_path(palette_path)?),
+            None => None,
+        },
+    };
 
     // Dispatch to appropriate commands.
     atma::command::dispatch(pal, opts)

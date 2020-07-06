@@ -5,7 +5,7 @@
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Main Palette definition.
+//! Application-level palette wrapper.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
@@ -38,7 +38,7 @@ use std::path::Path;
 ////////////////////////////////////////////////////////////////////////////////
 // Palette
 ////////////////////////////////////////////////////////////////////////////////
-/// The main Atma Palette object.
+/// The Palette object.
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct Palette {
@@ -272,7 +272,6 @@ impl Default for Palette {
         Palette::new()
     }
 }
-
 
 #[cfg(test)]
 impl PartialEq for Palette {
