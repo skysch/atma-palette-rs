@@ -11,8 +11,8 @@
 
 // Local imports.
 use crate::command::AtmaOptions;
-use crate::command::InsertOptions;
-use crate::command::CommandOptions;
+use crate::command::InsertOption;
+use crate::command::CommandOption;
 use crate::Error;
 use crate::palette::Palette;
 use crate::color::Color;
@@ -47,14 +47,13 @@ pub fn dispatch(
     settings: Settings)
     -> Result<(), Error>
 {
-    trace!("{:?}", opts);
     if opts.common.dry_run {
         // TODO: Implement this.
         println!("Dry run is currently unsupported.");
         return Ok(());
     }
 
-    use CommandOptions::*;
+    use CommandOption::*;
     match (palette, opts.command) {
         (_, None) => unimplemented!(),
         (None, Some(_)) => unimplemented!(),
@@ -94,20 +93,18 @@ pub fn dispatch(
 
             List => unimplemented!(),
             Insert { insert_options } => match insert_options {
-                InsertOptions::Colors { colors, name, at } => {
-                    trace!("{:?}", colors);
+                InsertOption::Colors { colors, name, at } => {
                     let colors: Vec<Color> = colors
                         .into_iter()
                         .map(parse_color)
                         .collect::<Result<Vec<_>,_>>()?;
-                    trace!("{:?}", colors);
 
                     let res = palette.insert_colors(&colors[..], name, at);
                     info!("{:?}", palette);
                     res
                 },
 
-                InsertOptions::Ramp { ..}=> //points, count, interpolate, name, at } => 
+                InsertOption::Ramp { ..}=> //points, count, interpolate, name, at } => 
                 {
                     unimplemented!()
                 },

@@ -84,9 +84,8 @@ pub fn main_facade() -> Result<(), Error> {
     if let Some(hash) = rustc_meta.commit_hash {
         trace!("Rustc git commit: {}", hash);
     }
-    trace!("Options: {:?}", opts);
-    trace!("Config: {:?}", config); 
-
+    trace!("{:#?}", opts);
+    trace!("{:#?}", config); 
 
     // Log any config loading errors.
     if let Err(e) = config_load_status { 
@@ -111,6 +110,7 @@ pub fn main_facade() -> Result<(), Error> {
             Settings::default()
         });
     settings.normalize_paths(&cur_dir);
+    trace!("{:#?}", settings); 
 
     // Log any settings loading errors.
     if let Err(e) = settings_load_status { 
@@ -119,15 +119,20 @@ pub fn main_facade() -> Result<(), Error> {
     };
 
     // Load the palette.
-    let pal = match &opts.common.palette {
-        Some(palette_path) => Some(Palette::new_from_path(&palette_path)?),
-        None => match &settings.active_palette {
-            Some(palette_path) => Some(Palette::new_from_path(&palette_path)?),
-            None => None,
-        },
+    let palette = if !opts.command.as_ref().map_or(false, |c| c.is_new()) {
+        match &opts.common.palette {
+            Some(pal_path) => Some(Palette::new_from_path(&pal_path)?),
+            None => match &settings.active_palette {
+                Some(pal_path) => Some(Palette::new_from_path(&pal_path)?),
+                None => None,
+            },
+        }
+    } else {
+        None
     };
+    trace!("Palette: {:#?}", palette);
 
     // Dispatch to appropriate commands.
-    atma::command::dispatch(pal, opts, config, settings)
+    atma::command::dispatch(palette, opts, config, settings)
         .map_err(Error::from)
 }

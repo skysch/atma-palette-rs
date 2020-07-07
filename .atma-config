@@ -4,6 +4,6 @@ Config(
     //     log_path: ".log",
     // ),
     log_levels: {
-        "atma::dispatch": trace,
+        "atma::dispatch": debug,
     },
 )

@@ -104,9 +104,9 @@ impl Config {
         let mut d = Deserializer::from_bytes(&buf)
             .with_context(|| "Failed deserializing RON file")?;
         let config = Config::deserialize(&mut d)
-            .with_context(|| "Failed parsing Ron file")?;
+            .with_context(|| "Failed parsing RON file")?;
         d.end()
-            .with_context(|| "Failed parsing Ron file")?;
+            .with_context(|| "Failed parsing RON file")?;
 
         Ok(config) 
     }

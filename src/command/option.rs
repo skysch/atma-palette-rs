@@ -37,7 +37,7 @@ pub struct AtmaOptions {
     pub common: CommonOptions,
     /// Subcommand options.
     #[structopt(subcommand)]
-    pub command: Option<CommandOptions>,
+    pub command: Option<CommandOption>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,14 +85,14 @@ pub struct CommonOptions {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// CommandOptions
+// CommandOption
 ////////////////////////////////////////////////////////////////////////////////
 /// Command line subcommand options.
 #[allow(missing_docs)]
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]
-pub enum CommandOptions {
+pub enum CommandOption {
     New {
         /// The name of the palette file.
         #[structopt(
@@ -126,7 +126,7 @@ pub enum CommandOptions {
     List,
     Insert {
         #[structopt(subcommand)]
-        insert_options: InsertOptions,
+        insert_options: InsertOption,
     },
     Delete,
     Move,
@@ -144,12 +144,22 @@ pub enum CommandOptions {
     Export,
 }
 
+impl CommandOption {
+    /// Returns true if the variant is `CommandOption::New`.
+    pub fn is_new(&self) -> bool {
+        match self {
+            CommandOption::New { .. } => true,
+            _ => false,
+        }
+    }
+}
+
 
 #[allow(missing_docs)]
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]
-pub enum InsertOptions {
+pub enum InsertOption {
     /// Inserts colors into the palette.
     Colors {
         /// The colors to insert.
