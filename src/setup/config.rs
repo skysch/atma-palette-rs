@@ -74,6 +74,14 @@ impl Config {
         }
     }
 
+    /// Returns the given `Config` with the given load_path.
+    pub fn with_load_path<P>(mut self, path: P) -> Self
+        where P: AsRef<Path>
+    {
+        self.load_path = Some(path.as_ref().to_owned());
+        self
+    }
+
     /// Constructs a new `Config` with options read from the given file path.
     pub fn read_from_path<P>(path: P) -> Result<Self, Error> 
         where P: AsRef<Path>

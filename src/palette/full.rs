@@ -65,13 +65,18 @@ impl Palette {
         }
     }
 
-    /// Constructs a new `Palette` with an undo/redo history.
-    pub fn new_with_history() -> Self {
-        Palette {
-            load_path: None,
-            basic: BasicPalette::new(),
-            history: Some(History::new()),
-        }
+    /// Returns the given `Palette` with a new undo/redo history.
+    pub fn with_history(mut self) -> Self {
+        self.history = Some(History::new());
+        self
+    }
+
+    /// Returns the given `Palette` with the given load_path.
+    pub fn with_load_path<P>(mut self, path: P) -> Self
+        where P: AsRef<Path>
+    {
+        self.load_path = Some(path.as_ref().to_owned());
+        self
     }
 
     /// Constructs a new `Palette` by parsing data from the file at the given

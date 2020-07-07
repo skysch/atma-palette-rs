@@ -61,7 +61,7 @@ pub fn main_facade() -> Result<(), Error> {
         .unwrap_or_else(|e| {
             // Store the error for output until after the logger is configured.
             config_load_status = Err(e);
-            Config::default()
+            Config::new().with_load_path(config_path)
         });
     config.normalize_paths(&cur_dir);
 
@@ -107,7 +107,7 @@ pub fn main_facade() -> Result<(), Error> {
             settings_path))
         .unwrap_or_else(|e| {
             settings_load_status = Err(e);
-            Settings::default()
+            Settings::new().with_load_path(settings_path)
         });
     settings.normalize_paths(&cur_dir);
     trace!("{:#?}", settings); 

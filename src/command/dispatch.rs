@@ -65,31 +65,12 @@ pub fn dispatch(
                 no_config_file,
                 no_settings_file,
                 set_active,
-            } => {
-                let config = match (
-                    no_config_file,
-                    opts.common.config_file)
-                {
-                    (true, _) => None,
-                    (_, Some(config_file)) => Some(config),
-                    (_, None) => Some(Config::default()),
-                };
-                let settings = match (
-                    no_settings_file,
-                    opts.common.settings_file) 
-                {
-                    (true, _) => None,
-                    (_, Some(settings_file)) => unimplemented!(),
-                    (_, None) => Some(Settings::default()),
-                };
-
-                new_palette(
-                    name,
-                    no_history,
-                    config,
-                    settings,
-                    set_active)
-            },
+            } => new_palette(
+                name,
+                no_history,
+                if no_config_file { None } else { Some(config) },
+                if no_settings_file { None } else { Some(settings) },
+                set_active),
 
             List => unimplemented!(),
             Insert { insert_options } => match insert_options {
@@ -142,9 +123,10 @@ fn new_palette(
     let palette = if no_history {
         Palette::new()
     } else {
-        Palette::new_with_history()
+        Palette::new().with_history()
     };
 
     
+
     unimplemented!()
 }
