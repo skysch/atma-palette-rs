@@ -93,6 +93,36 @@ pub struct CommonOptions {
 #[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]
 pub enum CommandOptions {
+    New {
+        /// The name of the palette file.
+        #[structopt(
+            long = "name", 
+            parse(from_os_str))]
+        name: Option<PathBuf>,
+
+        /// Disables undo/redo operations for the palette.
+        #[structopt(
+            long = "no-history",
+            parse(from_flag = std::ops::Not::not))]
+        no_history: bool,
+
+        /// Creates a config file in the palette directory.
+        #[structopt(
+            long = "no_config_file",
+            parse(from_flag = std::ops::Not::not))]
+        no_config_file: bool,
+
+        /// Creates a settings file in the palette directory.
+        #[structopt(
+            long = "no_settings_file",
+            parse(from_flag = std::ops::Not::not))]
+        no_settings_file: bool,
+        
+        /// Sets the palette as the default active palette.
+        #[structopt(long = "set-active")]
+        set_active: bool,
+    },
+
     List,
     Insert {
         #[structopt(subcommand)]

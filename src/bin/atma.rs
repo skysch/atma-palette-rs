@@ -94,7 +94,6 @@ pub fn main_facade() -> Result<(), Error> {
         warn!("Using default config due to previous error.");
     };
 
-
     // Find the path for the settings file.
     let cur_dir = std::env::current_dir()?;
     let settings_path = match &opts.common.settings_file {
@@ -122,13 +121,13 @@ pub fn main_facade() -> Result<(), Error> {
     // Load the palette.
     let pal = match &opts.common.palette {
         Some(palette_path) => Some(Palette::new_from_path(&palette_path)?),
-        None => match settings.active_palette {
+        None => match &settings.active_palette {
             Some(palette_path) => Some(Palette::new_from_path(&palette_path)?),
             None => None,
         },
     };
 
     // Dispatch to appropriate commands.
-    atma::command::dispatch(pal, opts)
+    atma::command::dispatch(pal, opts, config, settings)
         .map_err(Error::from)
 }

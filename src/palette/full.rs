@@ -45,7 +45,7 @@ pub struct Palette {
     /// The internal palette data.
     basic: BasicPalette,
     /// The command history for the palette.
-    history: History,
+    history: Option<History>,
 }
 
 
@@ -54,7 +54,15 @@ impl Palette {
     pub fn new() -> Self {
         Palette {
             basic: BasicPalette::new(),
-            history: History::new(),
+            history: None,
+        }
+    }
+
+    /// Constructs a new `Palette` with an undo/redo history.
+    pub fn new_with_history() -> Self {
+        Palette {
+            basic: BasicPalette::new(),
+            history: Some(History::new()),
         }
     }
 
@@ -243,7 +251,7 @@ impl Palette {
     /// ### Parameters
     /// + `op`: The operation to apply.
     pub fn apply_operations(&mut self, ops: &[Operation]) -> Result<(), Error> {
-        self.basic.apply_operations(ops, Some(&mut self.history))
+        self.basic.apply_operations(ops, self.history.as_mut())
     }
 
     /// Unapplies the latest set of applied operations.
@@ -252,7 +260,11 @@ impl Palette {
     /// be fewer than the number provided if there are fewer undo operations
     /// recorded than requested.
     pub fn undo(&mut self, count: usize) -> usize {
-        self.basic.undo(&mut self.history, count)
+        if let Some(history) = self.history.as_mut() {
+            self.basic.undo(history, count)
+        } else {
+            0
+        }
     }
 
     /// Reapplies the latest set of undone operations.
@@ -261,7 +273,11 @@ impl Palette {
     /// be fewer than the number provided if there are fewer redo operations
     /// recorded than requested.
     pub fn redo(&mut self, count: usize) -> usize {
-        self.basic.redo(&mut self.history, count)
+        if let Some(history) = self.history.as_mut() {
+            self.basic.redo(history, count)
+        } else {
+            0
+        }
     }
 
     

@@ -7,6 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Command line dispatching.
 ////////////////////////////////////////////////////////////////////////////////
+#![allow(unused)] // TODO: Remove this.
 
 // Local imports.
 use crate::command::AtmaOptions;
@@ -17,9 +18,17 @@ use crate::palette::Palette;
 use crate::color::Color;
 use crate::parse::ParseResultExt as _;
 use crate::parse::color;
+use crate::Config;
+use crate::Settings;
 
 // External library imports.
 use log::*;
+
+// Standard library imports.
+use std::path::PathBuf;
+use std::path::Path;
+
+
 
 fn parse_color(text: String) -> Result<Color, Error> {
     color(&text[..])
@@ -31,7 +40,11 @@ fn parse_color(text: String) -> Result<Color, Error> {
 // dispatch
 ////////////////////////////////////////////////////////////////////////////////
 /// Executes the given `AtmaOptions` on the given `Palette`.
-pub fn dispatch(palette: Option<Palette>, opts: AtmaOptions)
+pub fn dispatch(
+    palette: Option<Palette>,
+    opts: AtmaOptions,
+    config: Config,
+    settings: Settings)
     -> Result<(), Error>
 {
     trace!("{:?}", opts);
@@ -47,6 +60,38 @@ pub fn dispatch(palette: Option<Palette>, opts: AtmaOptions)
         (None, Some(_)) => unimplemented!(),
 
         (Some(mut palette), Some(command)) => match command {
+            New {
+                name,
+                no_history,
+                no_config_file,
+                no_settings_file,
+                set_active,
+            } => {
+                let config = match (
+                    no_config_file,
+                    opts.common.config_file)
+                {
+                    (true, _) => None,
+                    (_, Some(config_file)) => Some(config),
+                    (_, None) => Some(Config::default()),
+                };
+                let settings = match (
+                    no_settings_file,
+                    opts.common.settings_file) 
+                {
+                    (true, _) => None,
+                    (_, Some(settings_file)) => unimplemented!(),
+                    (_, None) => Some(Settings::default()),
+                };
+
+                new_palette(
+                    name,
+                    no_history,
+                    config,
+                    settings,
+                    set_active)
+            },
+
             List => unimplemented!(),
             Insert { insert_options } => match insert_options {
                 InsertOptions::Colors { colors, name, at } => {
@@ -60,7 +105,6 @@ pub fn dispatch(palette: Option<Palette>, opts: AtmaOptions)
                     let res = palette.insert_colors(&colors[..], name, at);
                     info!("{:?}", palette);
                     res
-
                 },
 
                 InsertOptions::Ramp { ..}=> //points, count, interpolate, name, at } => 
@@ -86,4 +130,24 @@ pub fn dispatch(palette: Option<Palette>, opts: AtmaOptions)
             Export => unimplemented!(),
         },
     }
+}
+
+
+
+fn new_palette(
+    name: Option<PathBuf>,
+    no_history: bool,
+    config: Option<Config>,
+    settings: Option<Settings>,
+    set_active: bool)
+    -> Result<(), Error>
+{
+    let pal = if no_history {
+        Palette::new()
+    } else {
+        Palette::new_with_history()
+    };
+
+
+    unimplemented!()
 }

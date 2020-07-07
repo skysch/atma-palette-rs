@@ -23,12 +23,14 @@ use serde::Serialize;
 use log::*;
 
 // Standard library imports.
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
-use std::path::PathBuf;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::Read;
+use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,6 +50,10 @@ pub const DEFAULT_CONFIG_PATH: &'static str = ".atma-config";
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    /// The path the config was initially loaded from.
+    #[serde(skip)]
+    load_path: Option<PathBuf>,
+
     /// The logger configuration.
     #[serde(default = "Config::default_logger_config")]
     pub logger_config: LoggerConfig,
@@ -61,20 +67,27 @@ pub struct Config {
 impl Config {
     /// Constructs a new `Config` with the default options.
     pub fn new() -> Self {
-        Config::default()
+        Config {
+            load_path: None,
+            logger_config: Config::default_logger_config(),
+            log_levels: Config::default_log_levels(),
+        }
     }
 
     /// Constructs a new `Config` with options read from the given file path.
     pub fn from_path<P>(path: P) -> Result<Self, Error> 
         where P: AsRef<Path>
     {
-        let file = File::open(path)
+        let path = path.as_ref().to_owned();
+        let file = File::open(&path)
             .with_context(|| "Failed to open config file.")?;
-        Config::from_file(file)
+        let mut config = Config::from_file(file)?;
+        config.load_path = Some(path);
+        Ok(config)
     }
 
     /// Constructs a new `Config` with options parsed from the given file.
-    fn from_file(mut file: File) -> Result<Self, Error>  {
+    pub fn from_file(mut file: File) -> Result<Self, Error>  {
         Config::parse_ron_file(&mut file)
     }
 
@@ -98,6 +111,60 @@ impl Config {
         Ok(config) 
     }
     
+    /// Open a file at the given path and write the `Config` into it.
+    pub fn write_to_path<P>(&self, path: P)
+        -> Result<(), Error>
+        where P: AsRef<Path>
+    {
+        let path = path.as_ref().to_owned();
+        let file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(path)
+            .with_context(|| "Failed to open config file.")?;
+        self.write_to_file(file)
+            .with_context(|| "Failed to write config file.")?;
+        Ok(())
+    }
+
+    /// Write the `Config` into the file is was loaded from. Returns true if the
+    /// data was written.
+    pub fn write_to_load_path(&self)
+        -> Result<bool, Error>
+    {
+        match &self.load_path {
+            Some(path) => {
+                self.write_to_path(path)?;
+                Ok(true)
+            },
+            None => Ok(false)    
+        }
+    }
+
+    /// Write the `Config` into the given file.
+    pub fn write_to_file(&self, mut file: File) -> Result<(), Error> {
+        self.generate_ron_file(&mut file)
+    }
+
+    /// Parses a `Config` from a file using the RON format.
+    fn generate_ron_file(&self, file: &mut File) -> Result<(), Error> {
+        let pretty = ron::ser::PrettyConfig::new()
+            .with_depth_limit(2)
+            .with_separate_tuple_members(true)
+            .with_enumerate_arrays(true);
+        let s = ron::ser::to_string_pretty(&self, pretty)
+            .with_context(|| "Failed to serialize RON file")?;
+        file.write_all(s.as_bytes())
+            .with_context(|| "Failed to write RON file")
+    }
+
+    /// Sets the `Config`'s load path.
+    pub fn set_load_path<P>(&mut self, path: P)
+        where P: AsRef<Path>
+    {
+        self.load_path = Some(path.as_ref().to_owned());
+    }
+
     /// Normalizes paths in the config by expanding them relative to the given
     /// root path.
     pub fn normalize_paths(&mut self, base: &PathBuf) {
@@ -131,10 +198,7 @@ impl Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Config {
-            logger_config: Config::default_logger_config(),
-            log_levels: Config::default_log_levels(),
-        }
+        Config::new()
     }
 }
 

@@ -21,7 +21,9 @@ use log::*;
 
 // Standard library imports.
 use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::Read;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -42,6 +44,10 @@ pub const DEFAULT_SETTINGS_PATH: &'static str = ".atma-settings";
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Settings {
+    /// The path the settings were initially loaded from.
+    #[serde(skip)]
+    load_path: Option<PathBuf>,
+
     /// The name of the palette to open when no palette is specified.
     #[serde(default)]
     pub active_palette: Option<PathBuf>,
@@ -51,20 +57,26 @@ pub struct Settings {
 impl Settings {
     /// Constructs a new `Settings` with the default options.
     pub fn new() -> Self {
-        Settings::default()
+        Settings {
+            load_path: None,
+            active_palette: Settings::default_active_palette(),
+        }
     }
 
     /// Constructs a new `Settings` with options read from the given file path.
     pub fn from_path<P>(path: P) -> Result<Self, Error> 
         where P: AsRef<Path>
     {
-        let file = File::open(path)
+        let path = path.as_ref().to_owned();
+        let file = File::open(&path)
             .with_context(|| "Failed to open settings file.")?;
-        Settings::from_file(file)
+        let mut settings = Settings::from_file(file)?;
+        settings.load_path = Some(path);
+        Ok(settings)
     }
 
     /// Constructs a new `Settings` with options parsed from the given file.
-    fn from_file(mut file: File) -> Result<Self, Error>  {
+    pub fn from_file(mut file: File) -> Result<Self, Error>  {
         Settings::parse_ron_file(&mut file)
     }
 
@@ -88,6 +100,60 @@ impl Settings {
         Ok(settings) 
     }
     
+    /// Open a file at the given path and write the `Settings` into it.
+    pub fn write_to_path<P>(&self, path: P)
+        -> Result<(), Error>
+        where P: AsRef<Path>
+    {
+        let path = path.as_ref().to_owned();
+        let file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(path)
+            .with_context(|| "Failed to open config file.")?;
+        self.write_to_file(file)
+            .with_context(|| "Failed to write config file.")?;
+        Ok(())
+    }
+
+    /// Write the `Settings` into the file is was loaded from. Returns true if the
+    /// data was written.
+    pub fn write_to_load_path(&self)
+        -> Result<bool, Error>
+    {
+        match &self.load_path {
+            Some(path) => {
+                self.write_to_path(path)?;
+                Ok(true)
+            },
+            None => Ok(false)    
+        }
+    }
+
+    /// Write the `Settings` into the given file.
+    pub fn write_to_file(&self, mut file: File) -> Result<(), Error> {
+        self.generate_ron_file(&mut file)
+    }
+
+    /// Parses a `Settings` from a file using the RON format.
+    fn generate_ron_file(&self, file: &mut File) -> Result<(), Error> {
+        let pretty = ron::ser::PrettyConfig::new()
+            .with_depth_limit(2)
+            .with_separate_tuple_members(true)
+            .with_enumerate_arrays(true);
+        let s = ron::ser::to_string_pretty(&self, pretty)
+            .with_context(|| "Failed to serialize RON file")?;
+        file.write_all(s.as_bytes())
+            .with_context(|| "Failed to write RON file")
+    }
+
+    /// Sets the `Settings`'s load path.
+    pub fn set_load_path<P>(&mut self, path: P)
+        where P: AsRef<Path>
+    {
+        self.load_path = Some(path.as_ref().to_owned());
+    }
+
     /// Normalizes paths in the settings by expanding them relative to the given
     /// root path.
     pub fn normalize_paths(&mut self, base: &PathBuf) {
@@ -109,9 +175,7 @@ impl Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings {
-            active_palette: Settings::default_active_palette(),
-        }
+        Settings::new()
     }
 }
 
