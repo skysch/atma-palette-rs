@@ -139,12 +139,12 @@ fn new_palette(
     set_active: bool)
     -> Result<(), Error>
 {
-    let pal = if no_history {
+    let palette = if no_history {
         Palette::new()
     } else {
         Palette::new_with_history()
     };
 
-
+    
     unimplemented!()
 }

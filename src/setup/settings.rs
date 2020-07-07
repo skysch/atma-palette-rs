@@ -64,24 +64,24 @@ impl Settings {
     }
 
     /// Constructs a new `Settings` with options read from the given file path.
-    pub fn from_path<P>(path: P) -> Result<Self, Error> 
+    pub fn read_from_path<P>(path: P) -> Result<Self, Error> 
         where P: AsRef<Path>
     {
         let path = path.as_ref().to_owned();
         let file = File::open(&path)
             .with_context(|| "Failed to open settings file.")?;
-        let mut settings = Settings::from_file(file)?;
+        let mut settings = Settings::read_from_file(file)?;
         settings.load_path = Some(path);
         Ok(settings)
     }
 
     /// Constructs a new `Settings` with options parsed from the given file.
-    pub fn from_file(mut file: File) -> Result<Self, Error>  {
-        Settings::parse_ron_file(&mut file)
+    pub fn read_from_file(mut file: File) -> Result<Self, Error>  {
+        Settings::parse_ron_from_file(&mut file)
     }
 
     /// Parses a `Settings` from a file using the RON format.
-    fn parse_ron_file(file: &mut File) -> Result<Self, Error> {
+    fn parse_ron_from_file(file: &mut File) -> Result<Self, Error> {
         let len = file.metadata()
             .with_context(|| "Failed to recover file metadata.")?
             .len();
@@ -132,11 +132,11 @@ impl Settings {
 
     /// Write the `Settings` into the given file.
     pub fn write_to_file(&self, mut file: File) -> Result<(), Error> {
-        self.generate_ron_file(&mut file)
+        self.generate_ron_into_file(&mut file)
     }
 
     /// Parses a `Settings` from a file using the RON format.
-    fn generate_ron_file(&self, file: &mut File) -> Result<(), Error> {
+    fn generate_ron_into_file(&self, file: &mut File) -> Result<(), Error> {
         let pretty = ron::ser::PrettyConfig::new()
             .with_depth_limit(2)
             .with_separate_tuple_members(true)

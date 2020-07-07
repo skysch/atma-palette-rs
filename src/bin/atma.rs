@@ -55,7 +55,7 @@ pub fn main_facade() -> Result<(), Error> {
 
     // Load the config file.
     let mut config_load_status = Ok(());
-    let mut config = Config::from_path(&config_path)
+    let mut config = Config::read_from_path(&config_path)
         .with_context(|| format!("Unable to load config file: {:?}", 
             config_path))
         .unwrap_or_else(|e| {
@@ -102,7 +102,7 @@ pub fn main_facade() -> Result<(), Error> {
 
     // Load the settings file.
     let mut settings_load_status = Ok(());
-    let mut settings = Settings::from_path(&settings_path)
+    let mut settings = Settings::read_from_path(&settings_path)
         .with_context(|| format!("Unable to load settings file: {:?}", 
             settings_path))
         .unwrap_or_else(|e| {
@@ -121,9 +121,9 @@ pub fn main_facade() -> Result<(), Error> {
     // Load the palette.
     let palette = if !opts.command.as_ref().map_or(false, |c| c.is_new()) {
         match &opts.common.palette {
-            Some(pal_path) => Some(Palette::new_from_path(&pal_path)?),
+            Some(pal_path) => Some(Palette::read_from_path(&pal_path)?),
             None => match &settings.active_palette {
-                Some(pal_path) => Some(Palette::new_from_path(&pal_path)?),
+                Some(pal_path) => Some(Palette::read_from_path(&pal_path)?),
                 None => None,
             },
         }

@@ -29,11 +29,13 @@ use log::*;
 
 // Standard library imports.
 use std::borrow::Cow;
+use std::fmt::Debug;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::io::Write;
 use std::path::Path;
+use std::path::PathBuf;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,6 +45,9 @@ use std::path::Path;
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct Palette {
+    /// The path the palette was initially loaded from.
+    #[serde(skip)]
+    load_path: Option<PathBuf>,
     /// The internal palette data.
     basic: BasicPalette,
     /// The command history for the palette.
@@ -54,6 +59,7 @@ impl Palette {
     /// Constructs a new `Palette`.
     pub fn new() -> Self {
         Palette {
+            load_path: None,
             basic: BasicPalette::new(),
             history: None,
         }
@@ -62,6 +68,7 @@ impl Palette {
     /// Constructs a new `Palette` with an undo/redo history.
     pub fn new_with_history() -> Self {
         Palette {
+            load_path: None,
             basic: BasicPalette::new(),
             history: Some(History::new()),
         }
@@ -69,39 +76,25 @@ impl Palette {
 
     /// Constructs a new `Palette` by parsing data from the file at the given
     /// path.
-    pub fn new_from_path(path: &Path) -> Result<Self, Error>  {
+    pub fn read_from_path<P>(path: &P) -> Result<Self, Error>
+        where P: AsRef<Path> + Debug
+    {
+        let path = path.as_ref().to_owned();
         let mut file = OpenOptions::new()
             .read(true)
-            .open(path)
+            .open(&path)
             .map_err(|e| Error::IoError { 
                 msg: Some(format!("Failed to open file {:?}", path)),
                 source: e,
             })?;
-        Palette::new_from_file(&mut file)
+        let mut palette = Palette::read_from_file(&mut file)?;
+        palette.load_path = Some(path);
+        Ok(palette)
     }
 
     /// Constructs a new `Palette` by parsing data from the given file.
-    pub fn new_from_file(file: &mut File) -> Result<Self, Error>  {
+    pub fn read_from_file(file: &mut File) -> Result<Self, Error> {
         Palette::parse_ron_from_file(file)
-    }
-
-    /// Writes the `Palette` to the file at the given path.
-    pub fn write_to_path(&self, path: &Path) -> Result<(), Error>  {
-        let mut file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(path)
-            .map_err(|e| Error::IoError { 
-                msg: Some(format!("Failed to open file {:?}", path)),
-                source: e,
-            })?;
-        self.write_to_file(&mut file)
-    }
-
-    /// Writes the `Palette` to the given file.
-    pub fn write_to_file(&self, file: &mut File) -> Result<(), Error>  {
-        self.generate_ron_into_file(file)
     }
 
     /// Parses a `Palette` from a file using the RON format.
@@ -138,6 +131,39 @@ impl Palette {
         Ok(palette)
     }
 
+    /// Writes the `Palette` to the file at the given path.
+    pub fn write_to_path<P>(&self, path: &P) -> Result<(), Error>
+        where P: AsRef<Path> + Debug
+    {
+        let mut file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(path)
+            .map_err(|e| Error::IoError { 
+                msg: Some(format!("Failed to open file {:?}", path)),
+                source: e,
+            })?;
+        self.write_to_file(&mut file)
+    }
+
+    /// Write the `Palette` into the file is was loaded from. Returns true if
+    /// the data was written.
+    pub fn write_to_load_path(&self) -> Result<bool, Error> {
+        match &self.load_path {
+            Some(path) => {
+                self.write_to_path(path)?;
+                Ok(true)
+            },
+            None => Ok(false)    
+        }
+    }
+
+    /// Writes the `Palette` to the given file.
+    pub fn write_to_file(&self, file: &mut File) -> Result<(), Error> {
+        self.generate_ron_into_file(file)
+    }
+
     /// Generates a RON formatted `Palette` by serializing into the given file.
     fn generate_ron_into_file(&self, file: &mut File) -> Result<(), Error> {
         let pretty = PrettyConfig::new()
@@ -148,6 +174,13 @@ impl Palette {
 
         file.write_all(s.as_bytes())?;
         Ok(())
+    }
+
+    /// Sets the `Palette`'s load path.
+    pub fn set_load_path<P>(&mut self, path: P)
+        where P: AsRef<Path>
+    {
+        self.load_path = Some(path.as_ref().to_owned());
     }
 
     ////////////////////////////////////////////////////////////////////////////
