@@ -26,8 +26,6 @@ use crate::Settings;
 
 // External library imports.
 use log::*;
-use anyhow::Error;
-use anyhow::Context;
 
 // Standard library imports.
 use std::path::PathBuf;
@@ -50,15 +48,17 @@ pub fn dispatch(
     opts: AtmaOptions,
     config: Config,
     settings: Settings)
-    -> Result<(), Error>
+    -> Result<(), anyhow::Error>
 {
+    use CommandOption::*;
+    use anyhow::Context as _;
+
     if opts.common.dry_run {
         // TODO: Implement this.
         println!("Dry run is currently unsupported.");
         return Ok(());
     }
 
-    use CommandOption::*;
     match opts.command {
         None => unimplemented!(),
 
@@ -127,13 +127,21 @@ fn new_palette(
     set_active: bool)
     -> Result<(), FileError>
 {
+    use crate::error::FileErrorContext as _;
+
     if !no_history { palette = palette.with_history(); }
     if let Some(name) = name {
         palette.inner_mut().assign_name(name, PositionSelector::ALL);
     }
 
     if let Some(config) = config {
-        // config.write_to_load_path()?;
+        let _ = config
+            .write_to_load_path()
+            .with_context(|| if let Some(path) = config.load_path() {
+                    format!("error writing config file {}", path.display())
+                } else {
+                    format!("error writing config file")
+                })?;
     }
     if let Some(mut settings) = settings {
         if set_active {
@@ -141,9 +149,21 @@ fn new_palette(
                 .load_path()
                 .map(ToOwned::to_owned);
         }
-        // settings.write_to_load_path()?;
+        let _ = settings
+            .write_to_load_path()
+            .with_context(|| if let Some(path) = settings.load_path() {
+                    format!("error writing settings file {}", path.display())
+                } else {
+                    format!("error writing settings file")
+                })?;
     }
 
-    palette.write_to_load_path()
+    palette
+        .write_to_load_path()
+        .with_context(|| if let Some(path) = palette.load_path() {
+                format!("error writing palette file {}", path.display())
+            } else {
+                format!("error writing palette file")
+            })
         .map(|_| ())
 }
