@@ -139,7 +139,7 @@ fn new_palette(
     }
 
     if let Some(config) = config {
-        let res = config.write_to_load_path();
+        let res = config.write_to_load_path_if_new();
         if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
             info!("Config file already exists.");
             debug!("Config {:?}", config.load_path());
@@ -160,7 +160,7 @@ fn new_palette(
                 .map(ToOwned::to_owned);
         }
         
-        let res = settings.write_to_load_path();
+        let res = settings.write_to_load_path_if_new();
         if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
             info!("Settings file already exists.");
             debug!("Settings {:?}", settings.load_path());
@@ -174,7 +174,7 @@ fn new_palette(
         }
     }
 
-    let res = palette.write_to_load_path();
+    let res = palette.write_to_load_path_if_new();
     if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
         info!("Palette file already exists.");
         debug!("Palette {:?}", palette.load_path());

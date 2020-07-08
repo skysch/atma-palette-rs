@@ -147,6 +147,18 @@ impl Palette {
     {
         let mut file = OpenOptions::new()
             .write(true)
+            .create(true)
+            .open(path)
+            .with_context(|| format!("Failed to open file {:?}", path))?;
+        self.write_to_file(&mut file)
+    }
+
+    /// Writes the `Palette` to a new file at the given path.
+    pub fn write_to_path_if_new<P>(&self, path: &P) -> Result<(), FileError>
+        where P: AsRef<Path> + Debug
+    {
+        let mut file = OpenOptions::new()
+            .write(true)
             .create_new(true)
             .open(path)
             .with_context(|| format!("Failed to open file {:?}", path))?;
@@ -159,6 +171,18 @@ impl Palette {
         match &self.load_path {
             Some(path) => {
                 self.write_to_path(path)?;
+                Ok(true)
+            },
+            None => Ok(false)    
+        }
+    }
+
+    /// Write the `Palette` into a new file using the load path. Returns true if
+    /// the data was written.
+    pub fn write_to_load_path_if_new(&self) -> Result<bool, FileError> {
+        match &self.load_path {
+            Some(path) => {
+                self.write_to_path_if_new(path)?;
                 Ok(true)
             },
             None => Ok(false)    

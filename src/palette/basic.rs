@@ -124,9 +124,20 @@ impl BasicPalette {
         where P: AsRef<Path> + Debug
     {
         let mut file = OpenOptions::new()
-            .read(true)
             .write(true)
             .create(true)
+            .open(path)
+            .with_context(|| format!("Failed to open file {:?}", path))?;
+        self.write_to_file(&mut file)
+    }
+
+    /// Writes the `BasicPalette` to a new file at the given path.
+    pub fn write_to_path_if_new<P>(&self, path: &P) -> Result<(), FileError>
+        where P: AsRef<Path> + Debug
+    {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
             .open(path)
             .with_context(|| format!("Failed to open file {:?}", path))?;
         self.write_to_file(&mut file)

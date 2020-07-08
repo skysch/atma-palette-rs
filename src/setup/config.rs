@@ -131,9 +131,25 @@ impl Config {
 
         Ok(config) 
     }
-    
+
     /// Open a file at the given path and write the `Config` into it.
     pub fn write_to_path<P>(&self, path: P)
+        -> Result<(), FileError>
+        where P: AsRef<Path>
+    {
+        let path = path.as_ref().to_owned();
+        let file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(path)
+            .context("Failed to open config file.")?;
+        self.write_to_file(file)
+            .context("Failed to write config file.")?;
+        Ok(())
+    }
+    
+    /// Create a new file at the given path and write the `Config` into it.
+    pub fn write_to_path_if_new<P>(&self, path: P)
         -> Result<(), FileError>
         where P: AsRef<Path>
     {
@@ -156,6 +172,20 @@ impl Config {
         match &self.load_path {
             Some(path) => {
                 self.write_to_path(path)?;
+                Ok(true)
+            },
+            None => Ok(false)    
+        }
+    }
+
+    /// Write the `Config` into a new file using the load path. Returns true
+    /// if the data was written.
+    pub fn write_to_load_path_if_new(&self)
+        -> Result<bool, FileError>
+    {
+        match &self.load_path {
+            Some(path) => {
+                self.write_to_path_if_new(path)?;
                 Ok(true)
             },
             None => Ok(false)    

@@ -129,6 +129,22 @@ impl Settings {
         let path = path.as_ref().to_owned();
         let file = OpenOptions::new()
             .write(true)
+            .create(true)
+            .open(path)
+            .context("Failed to open config file.")?;
+        self.write_to_file(file)
+            .context("Failed to write config file.")?;
+        Ok(())
+    }
+
+    /// Create a new file at the given path and write the `Settings` into it.
+    pub fn write_to_path_if_new<P>(&self, path: P)
+        -> Result<(), FileError>
+        where P: AsRef<Path>
+    {
+        let path = path.as_ref().to_owned();
+        let file = OpenOptions::new()
+            .write(true)
             .create_new(true)
             .open(path)
             .context("Failed to open config file.")?;
@@ -140,6 +156,20 @@ impl Settings {
     /// Write the `Settings` into the file is was loaded from. Returns true if
     /// the data was written.
     pub fn write_to_load_path(&self)
+        -> Result<bool, FileError>
+    {
+        match &self.load_path {
+            Some(path) => {
+                self.write_to_path(path)?;
+                Ok(true)
+            },
+            None => Ok(false)    
+        }
+    }
+
+    /// Write the `Settings` into a new file using the load path. Returns true
+    /// if the data was written.
+    pub fn write_to_load_path_if_new(&self)
         -> Result<bool, FileError>
     {
         match &self.load_path {
