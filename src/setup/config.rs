@@ -14,10 +14,10 @@ use crate::LevelFilter;
 use crate::LoggerConfig;
 use crate::StdoutLogOutput;
 use crate::utility::normalize_path;
+use crate::error::FileError;
+use crate::error::FileErrorContext as _;
 
 // External library imports.
-use anyhow::Error;
-use anyhow::Context;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -96,45 +96,45 @@ impl Config {
     }
 
     /// Constructs a new `Config` with options read from the given file path.
-    pub fn read_from_path<P>(path: P) -> Result<Self, Error> 
+    pub fn read_from_path<P>(path: P) -> Result<Self, FileError> 
         where P: AsRef<Path>
     {
         let path = path.as_ref().to_owned();
         let file = File::open(&path)
-            .with_context(|| "Failed to open config file.")?;
+            .context("Failed to open config file.")?;
         let mut config = Config::read_from_file(file)?;
         config.load_path = Some(path);
         Ok(config)
     }
 
     /// Constructs a new `Config` with options parsed from the given file.
-    pub fn read_from_file(mut file: File) -> Result<Self, Error>  {
+    pub fn read_from_file(mut file: File) -> Result<Self, FileError>  {
         Config::parse_ron_from_file(&mut file)
     }
 
     /// Parses a `Config` from a file using the RON format.
-    fn parse_ron_from_file(file: &mut File) -> Result<Self, Error> {
+    fn parse_ron_from_file(file: &mut File) -> Result<Self, FileError> {
         let len = file.metadata()
-            .with_context(|| "Failed to recover file metadata.")?
+            .context("Failed to recover file metadata.")?
             .len();
         let mut buf = Vec::with_capacity(len as usize);
         let _ = file.read_to_end(&mut buf)
-            .with_context(|| "Failed to read config file")?;
+            .context("Failed to read config file")?;
 
         use ron::de::Deserializer;
         let mut d = Deserializer::from_bytes(&buf)
-            .with_context(|| "Failed deserializing RON file")?;
+            .context("Failed deserializing RON file")?;
         let config = Config::deserialize(&mut d)
-            .with_context(|| "Failed parsing RON file")?;
+            .context("Failed parsing RON file")?;
         d.end()
-            .with_context(|| "Failed parsing RON file")?;
+            .context("Failed parsing RON file")?;
 
         Ok(config) 
     }
     
     /// Open a file at the given path and write the `Config` into it.
     pub fn write_to_path<P>(&self, path: P)
-        -> Result<(), Error>
+        -> Result<(), FileError>
         where P: AsRef<Path>
     {
         let path = path.as_ref().to_owned();
@@ -142,16 +142,16 @@ impl Config {
             .write(true)
             .create(true)
             .open(path)
-            .with_context(|| "Failed to open config file.")?;
+            .context("Failed to open config file.")?;
         self.write_to_file(file)
-            .with_context(|| "Failed to write config file.")?;
+            .context("Failed to write config file.")?;
         Ok(())
     }
 
     /// Write the `Config` into the file is was loaded from. Returns true if the
     /// data was written.
     pub fn write_to_load_path(&self)
-        -> Result<bool, Error>
+        -> Result<bool, FileError>
     {
         match &self.load_path {
             Some(path) => {
@@ -163,20 +163,20 @@ impl Config {
     }
 
     /// Write the `Config` into the given file.
-    pub fn write_to_file(&self, mut file: File) -> Result<(), Error> {
+    pub fn write_to_file(&self, mut file: File) -> Result<(), FileError> {
         self.generate_ron_into_file(&mut file)
     }
 
     /// Parses a `Config` from a file using the RON format.
-    fn generate_ron_into_file(&self, file: &mut File) -> Result<(), Error> {
+    fn generate_ron_into_file(&self, file: &mut File) -> Result<(), FileError> {
         let pretty = ron::ser::PrettyConfig::new()
             .with_depth_limit(2)
             .with_separate_tuple_members(true)
             .with_enumerate_arrays(true);
         let s = ron::ser::to_string_pretty(&self, pretty)
-            .with_context(|| "Failed to serialize RON file")?;
+            .context("Failed to serialize RON file")?;
         file.write_all(s.as_bytes())
-            .with_context(|| "Failed to write RON file")
+            .context("Failed to write RON file")
     }
 
     /// Normalizes paths in the config by expanding them relative to the given

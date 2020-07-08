@@ -75,6 +75,16 @@ pub enum FileError {
     },
 }
 
+impl FileError {
+    /// Returns a mutable reference to the error's message.
+    fn msg_mut(&mut self) -> &mut Option<String> {
+        match self {
+            FileError::IoError { msg, .. } => msg,
+            FileError::RonError { msg, .. } => msg,
+        }
+    }
+}
+
 impl std::fmt::Display for FileError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -110,6 +120,48 @@ impl From<ron::error::Error> for FileError {
 impl From<std::io::Error> for FileError {
     fn from(err: std::io::Error) -> Self {
         FileError::IoError { msg: None, source: err }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// FileErrorContext
+////////////////////////////////////////////////////////////////////////////////
+/// Trait for enabling convenient construction of `FileError`s.
+pub trait FileErrorContext<T> {
+    /// Wrap the error value with additional context.
+    fn context<S>(self, msg: S) -> Result<T, FileError>
+        where S: ToString;
+
+    /// Wrap the error value with additional context. The given closure is
+    /// evaluated lazily when an error occurs.
+    fn with_context<F, S>(self, msg: F) -> Result<T, FileError>
+        where
+            F: FnOnce() -> S,
+            S: ToString;
+}
+
+impl<T, E> FileErrorContext<T> for Result<T, E> where E: Into<FileError> {
+
+    fn context<S>(self, msg: S) -> Result<T, FileError>
+        where S: ToString
+    {
+        self.map_err(|err| {
+            let mut file_error = err.into();
+            *file_error.msg_mut() = Some(msg.to_string());
+            file_error
+        })
+    }
+
+    fn with_context<F, S>(self, msg_fn: F) -> Result<T, FileError>
+        where
+            F: FnOnce() -> S,
+            S: ToString
+    {
+        self.map_err(|err| {
+            let mut file_error = err.into();
+            *file_error.msg_mut() = Some((msg_fn)().to_string());
+            file_error
+        })
     }
 }
 

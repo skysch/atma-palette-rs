@@ -15,6 +15,7 @@ use crate::cell::Position;
 use crate::cell::PositionSelector;
 use crate::color::Color;
 use crate::error::FileError;
+use crate::error::FileErrorContext as _;
 use crate::error::PaletteError;
 use crate::palette::BasicPalette;
 use crate::palette::Expr;
@@ -110,10 +111,7 @@ impl Palette {
         let mut file = OpenOptions::new()
             .read(true)
             .open(&path)
-            .map_err(|e| FileError::IoError { 
-                msg: Some(format!("Failed to open file {:?}", path)),
-                source: e,
-            })?;
+            .with_context(|| format!("Failed to open file {:?}", path))?;
         let mut palette = Palette::read_from_file(&mut file)?;
         palette.load_path = Some(path);
         Ok(palette)
@@ -127,34 +125,19 @@ impl Palette {
     /// Parses a `Palette` from a file using the RON format.
     fn parse_ron_from_file(file: &mut File) -> Result<Self, FileError> {
         let len = file.metadata()
-            .map_err(|e| FileError::IoError { 
-                msg: Some("Failed to read file metadata".to_owned()),
-                source: e,
-            })?
+            .context("Failed to read file metadata")?
             .len();
         let mut buf = Vec::with_capacity(len as usize);
         let _ = file.read_to_end(&mut buf)
-            .map_err(|e| FileError::IoError { 
-                msg: Some("Failed to read palette file".to_owned()),
-                source: e,
-            })?;
+            .context("Failed to read palette file")?;
 
         use ron::de::Deserializer;
         let mut d = Deserializer::from_bytes(&buf)
-            .map_err(|e| FileError::RonError { 
-                msg: Some("Failed deserializing RON file".to_owned()),
-                source: e,
-            })?;
+            .context("Failed deserializing RON file")?;
         let palette = Palette::deserialize(&mut d)
-            .map_err(|e| FileError::RonError { 
-                msg: Some("Failed parsing RON file".to_owned()),
-                source: e,
-            })?;
+            .context("Failed parsing RON file")?;
         d.end()
-            .map_err(|e| FileError::RonError { 
-                msg: Some("Failed parsing RON file".to_owned()),
-                source: e,
-            })?;
+            .context("Failed parsing RON file")?;
         Ok(palette)
     }
 
@@ -167,10 +150,7 @@ impl Palette {
             .write(true)
             .create(true)
             .open(path)
-            .map_err(|e| FileError::IoError { 
-                msg: Some(format!("Failed to open file {:?}", path)),
-                source: e,
-            })?;
+            .with_context(|| format!("Failed to open file {:?}", path))?;
         self.write_to_file(&mut file)
     }
 
