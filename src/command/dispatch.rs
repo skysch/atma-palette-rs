@@ -76,7 +76,7 @@ pub fn dispatch(
                     if no_config_file { None } else { Some(config) },
                     if no_settings_file { None } else { Some(settings) },
                     set_active)
-                .with_context(|| "new command failed"),
+                .with_context(|| "Command 'new' failed"),
 
             List => unimplemented!(),
             Insert { insert_options } => match insert_options {
@@ -88,7 +88,7 @@ pub fn dispatch(
 
                     let res = palette.insert_colors(&colors[..], name, at);
                     info!("{:?}", palette);
-                    res.with_context(|| "insert command failed")
+                    res.with_context(|| "Command 'insert' failed")
                 },
 
                 InsertOption::Ramp { ..}=> //points, count, interpolate, name, at } => 
@@ -129,41 +129,62 @@ fn new_palette(
 {
     use crate::error::FileErrorContext as _;
 
+    fn already_exists(e: &FileError) -> bool {
+        e.is_io_error_kind(std::io::ErrorKind::AlreadyExists)
+    }
+
     if !no_history { palette = palette.with_history(); }
     if let Some(name) = name {
         palette.inner_mut().assign_name(name, PositionSelector::ALL);
     }
 
     if let Some(config) = config {
-        let _ = config
-            .write_to_load_path()
-            .with_context(|| if let Some(path) = config.load_path() {
-                    format!("error writing config file {}", path.display())
+        let res = config.write_to_load_path();
+        if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
+            info!("Config file already exists.");
+            debug!("Config {:?}", config.load_path());
+        } else {
+            let _ = res.with_context(|| 
+                if let Some(path) = config.load_path() {
+                    format!("Error writing config file: {}", path.display())
                 } else {
-                    format!("error writing config file")
+                    format!("Error writing config file")
                 })?;
+        }
     }
+
     if let Some(mut settings) = settings {
         if set_active {
             settings.active_palette = palette
                 .load_path()
                 .map(ToOwned::to_owned);
         }
-        let _ = settings
-            .write_to_load_path()
-            .with_context(|| if let Some(path) = settings.load_path() {
-                    format!("error writing settings file {}", path.display())
+        
+        let res = settings.write_to_load_path();
+        if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
+            info!("Settings file already exists.");
+            debug!("Settings {:?}", settings.load_path());
+        } else {
+            let _ = res.with_context(|| 
+                if let Some(path) = settings.load_path() {
+                    format!("Error writing settings file: {}", path.display())
                 } else {
-                    format!("error writing settings file")
+                    format!("Error writing settings file")
                 })?;
+        }
     }
 
-    palette
-        .write_to_load_path()
-        .with_context(|| if let Some(path) = palette.load_path() {
-                format!("error writing palette file {}", path.display())
+    let res = palette.write_to_load_path();
+    if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
+        info!("Palette file already exists.");
+        debug!("Palette {:?}", palette.load_path());
+    } else {
+        let _ = res.with_context(|| 
+            if let Some(path) = palette.load_path() {
+                format!("Error writing palette file: {}", path.display())
             } else {
-                format!("error writing palette file")
-            })
-        .map(|_| ())
+                format!("Error writing palette file")
+            })?;
+    }
+    Ok(())
 }

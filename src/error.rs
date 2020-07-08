@@ -30,7 +30,7 @@ pub struct ParseError {
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(msg) = &self.msg { writeln!(f, "{}", msg)?; }
-        writeln!(f, "{}", self.source)
+        Ok(())
     }
 }
 
@@ -76,6 +76,14 @@ pub enum FileError {
 }
 
 impl FileError {
+    /// Returns true if the error is an IoError of the given ErrorKind
+    pub fn is_io_error_kind(&self, kind: std::io::ErrorKind) -> bool {
+        match self {
+            FileError::IoError { source, .. } => { source.kind() == kind },
+            _ => false
+        }
+    }
+
     /// Returns a mutable reference to the error's message.
     fn msg_mut(&mut self) -> &mut Option<String> {
         match self {
@@ -88,16 +96,15 @@ impl FileError {
 impl std::fmt::Display for FileError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            FileError::IoError { msg, source } => {
+            FileError::IoError { msg, .. } => {
                 if let Some(msg) = msg { writeln!(f, "{}", msg)?; }
-                writeln!(f, "{}", source)
             },
 
-            FileError::RonError { msg, source } => {
+            FileError::RonError { msg, .. } => {
                 if let Some(msg) = msg { writeln!(f, "{}", msg)?; }
-                writeln!(f, "{}", source)
             },
         }
+        Ok(())
     }
 }
 

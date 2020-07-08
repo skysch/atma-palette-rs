@@ -146,9 +146,8 @@ impl Palette {
         where P: AsRef<Path> + Debug
     {
         let mut file = OpenOptions::new()
-            .read(true)
             .write(true)
-            .create(true)
+            .create_new(true)
             .open(path)
             .with_context(|| format!("Failed to open file {:?}", path))?;
         self.write_to_file(&mut file)

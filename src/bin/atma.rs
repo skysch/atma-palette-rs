@@ -35,7 +35,8 @@ use log::LevelFilter;
 pub fn main() {
     if let Err(err) = main_facade() {
         // Print errors to stderr and exit with error code.
-        eprintln!("{}", err);
+        error!("{:?}", err);
+        eprintln!("{:?}", err);
         std::process::exit(1);
     }
 }

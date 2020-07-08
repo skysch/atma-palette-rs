@@ -99,21 +99,15 @@ pub enum CommandOption {
         name: Option<String>,
 
         /// Disables undo/redo operations for the palette.
-        #[structopt(
-            long = "no-history",
-            parse(from_flag = std::ops::Not::not))]
+        #[structopt(long = "no-history")]
         no_history: bool,
 
         /// Creates a config file in the palette directory.
-        #[structopt(
-            long = "no_config_file",
-            parse(from_flag = std::ops::Not::not))]
+        #[structopt(long = "no_config_file")]
         no_config_file: bool,
 
         /// Creates a settings file in the palette directory.
-        #[structopt(
-            long = "no_settings_file",
-            parse(from_flag = std::ops::Not::not))]
+        #[structopt(long = "no_settings_file")]
         no_settings_file: bool,
         
         /// Sets the palette as the default active palette.
