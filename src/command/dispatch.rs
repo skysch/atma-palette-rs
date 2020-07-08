@@ -13,7 +13,9 @@
 use crate::command::AtmaOptions;
 use crate::command::InsertOption;
 use crate::command::CommandOption;
-use crate::Error;
+use crate::error::PaletteError;
+use crate::error::ParseError;
+use crate::error::FileError;
 use crate::palette::Palette;
 use crate::cell::PositionSelector;
 use crate::color::Color;
@@ -24,6 +26,8 @@ use crate::Settings;
 
 // External library imports.
 use log::*;
+use anyhow::Error;
+use anyhow::Context;
 
 // Standard library imports.
 use std::path::PathBuf;
@@ -31,10 +35,10 @@ use std::path::Path;
 
 
 
-fn parse_color(text: String) -> Result<Color, Error> {
+fn parse_color(text: String) -> Result<Color, ParseError> {
     color(&text[..])
         .finish()
-        .map_err(Error::from)
+        .map_err(ParseError::from)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,12 +70,13 @@ pub fn dispatch(
                 no_settings_file,
                 set_active,
             } => new_palette(
-                palette,
-                name,
-                no_history,
-                if no_config_file { None } else { Some(config) },
-                if no_settings_file { None } else { Some(settings) },
-                set_active),
+                    palette,
+                    name,
+                    no_history,
+                    if no_config_file { None } else { Some(config) },
+                    if no_settings_file { None } else { Some(settings) },
+                    set_active)
+                .with_context(|| "new command failed"),
 
             List => unimplemented!(),
             Insert { insert_options } => match insert_options {
@@ -83,7 +88,7 @@ pub fn dispatch(
 
                     let res = palette.insert_colors(&colors[..], name, at);
                     info!("{:?}", palette);
-                    res
+                    res.with_context(|| "insert command failed")
                 },
 
                 InsertOption::Ramp { ..}=> //points, count, interpolate, name, at } => 
@@ -120,7 +125,7 @@ fn new_palette(
     config: Option<Config>,
     mut settings: Option<Settings>,
     set_active: bool)
-    -> Result<(), Error>
+    -> Result<(), FileError>
 {
     if !no_history { palette = palette.with_history(); }
     if let Some(name) = name {
@@ -139,7 +144,6 @@ fn new_palette(
         // settings.write_to_load_path()?;
     }
 
-    // palette.write_to_load_path()
-    //     .map(|_| ())
-    unimplemented!()
+    palette.write_to_load_path()
+        .map(|_| ())
 }

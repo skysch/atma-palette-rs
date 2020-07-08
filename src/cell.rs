@@ -18,7 +18,7 @@ mod selector;
 use crate::color::Color;
 use crate::palette::Expr;
 use crate::palette::BasicPalette;
-use crate::error::Error;
+use crate::error::PaletteError;
 
 // External library imports.
 use serde::Serialize;
@@ -82,7 +82,7 @@ impl Cell {
         &self,
         basic: &BasicPalette,
         index_list: &mut HashSet<u32>)
-        -> Result<Option<Color>, Error>
+        -> Result<Option<Color>, PaletteError>
     {
         let cached = self.cached.clone().take();
         if cached.is_none() {
@@ -97,7 +97,7 @@ impl Cell {
         &self,
         basic: &BasicPalette,
         index_list: &mut HashSet<u32>)
-        -> Result<Option<Color>, Error>
+        -> Result<Option<Color>, PaletteError>
     {
         let eval = self.expr.color(basic, index_list)?;
         self.cached.set(eval.clone());

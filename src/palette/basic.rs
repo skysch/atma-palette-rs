@@ -14,7 +14,8 @@ use crate::cell::CellRef;
 use crate::cell::Position;
 use crate::cell::PositionSelector;
 use crate::color::Color;
-use crate::error::Error;
+use crate::error::PaletteError;
+use crate::error::FileError;
 use crate::palette::Expr;
 use crate::palette::History;
 use crate::palette::Operation;
@@ -83,13 +84,13 @@ impl BasicPalette {
 
     /// Constructs a new `BasicPalette` by parsing data from the file at the given
     /// path.
-    pub fn read_from_path<P>(path: &P) -> Result<Self, Error>
+    pub fn read_from_path<P>(path: &P) -> Result<Self, FileError>
         where P: AsRef<Path> + Debug
     {
         let mut file = OpenOptions::new()
             .read(true)
             .open(path)
-            .map_err(|e| Error::IoError { 
+            .map_err(|e| FileError::IoError { 
                 msg: Some(format!("Failed to open file {:?}", path)),
                 source: e,
             })?;
@@ -97,38 +98,38 @@ impl BasicPalette {
     }
 
     /// Constructs a new `BasicPalette` by parsing data from the given file.
-    pub fn read_from_file(file: &mut File) -> Result<Self, Error> {
+    pub fn read_from_file(file: &mut File) -> Result<Self, FileError> {
         BasicPalette::parse_ron_from_file(file)
     }
 
     /// Parses a `BasicPalette` from a file using the RON format.
-    fn parse_ron_from_file(file: &mut File) -> Result<Self, Error> {
+    fn parse_ron_from_file(file: &mut File) -> Result<Self, FileError> {
         let len = file.metadata()
-            .map_err(|e| Error::IoError { 
+            .map_err(|e| FileError::IoError { 
                 msg: Some("Failed to read file metadata".to_owned()),
                 source: e,
             })?
             .len();
         let mut buf = Vec::with_capacity(len as usize);
         let _ = file.read_to_end(&mut buf)
-            .map_err(|e| Error::IoError { 
+            .map_err(|e| FileError::IoError { 
                 msg: Some("Failed to read palette file".to_owned()),
                 source: e,
             })?;
 
         use ron::de::Deserializer;
         let mut d = Deserializer::from_bytes(&buf)
-            .map_err(|e| Error::RonError { 
+            .map_err(|e| FileError::RonError { 
                 msg: Some("Failed deserializing RON file".to_owned()),
                 source: e,
             })?;
         let palette = BasicPalette::deserialize(&mut d)
-            .map_err(|e| Error::RonError { 
+            .map_err(|e| FileError::RonError { 
                 msg: Some("Failed parsing RON file".to_owned()),
                 source: e,
             })?;
         d.end()
-            .map_err(|e| Error::RonError { 
+            .map_err(|e| FileError::RonError { 
                 msg: Some("Failed parsing RON file".to_owned()),
                 source: e,
             })?;
@@ -136,7 +137,7 @@ impl BasicPalette {
     }
 
     /// Writes the `BasicPalette` to the file at the given path.
-    pub fn write_to_path<P>(&self, path: &P) -> Result<(), Error>
+    pub fn write_to_path<P>(&self, path: &P) -> Result<(), FileError>
         where P: AsRef<Path> + Debug
     {
         let mut file = OpenOptions::new()
@@ -144,7 +145,7 @@ impl BasicPalette {
             .write(true)
             .create(true)
             .open(path)
-            .map_err(|e| Error::IoError { 
+            .map_err(|e| FileError::IoError { 
                 msg: Some(format!("Failed to open file {:?}", path)),
                 source: e,
             })?;
@@ -152,12 +153,12 @@ impl BasicPalette {
     }
 
     /// Writes the `BasicPalette` to the given file.
-    pub fn write_to_file(&self, file: &mut File) -> Result<(), Error> {
+    pub fn write_to_file(&self, file: &mut File) -> Result<(), FileError> {
         self.generate_ron_into_file(file)
     }
 
     /// Generates a RON formatted `BasicPalette` by serializing into the given file.
-    fn generate_ron_into_file(&self, file: &mut File) -> Result<(), Error> {
+    fn generate_ron_into_file(&self, file: &mut File) -> Result<(), FileError> {
         let pretty = PrettyConfig::new()
             .with_depth_limit(2)
             .with_separate_tuple_members(true)
@@ -173,7 +174,7 @@ impl BasicPalette {
     ////////////////////////////////////////////////////////////////////////////
     /// Retreives a copy of the color associated with the given `CellRef`.
     pub fn color<'name>(&self, cell_ref: &CellRef<'name>)
-        -> Result<Option<Color>, Error>
+        -> Result<Option<Color>, PaletteError>
     {
         let mut index_list = HashSet::new();
         self.cycle_detect_color(cell_ref, &mut index_list)
@@ -184,11 +185,11 @@ impl BasicPalette {
         &self,
         cell_ref: &CellRef<'name>,
         index_list: &mut HashSet<u32>)
-        -> Result<Option<Color>, Error>
+        -> Result<Option<Color>, PaletteError>
     {
         let idx = BasicPalette::resolve_ref_to_index(&self, cell_ref)?;
         if index_list.contains(&idx) {
-            return Err(Error::UndefinedColor {
+            return Err(PaletteError::UndefinedColor {
                 cell_ref: cell_ref.clone().into_static(),
                 circular: true,
             });
@@ -197,7 +198,7 @@ impl BasicPalette {
 
         self.cells
             .get(&idx)
-            .ok_or(Error::UndefinedColor { 
+            .ok_or(PaletteError::UndefinedColor { 
                 cell_ref: cell_ref.clone().into_static(),
                 circular: false,
             })
@@ -206,13 +207,13 @@ impl BasicPalette {
 
     /// Retreives a reference to the `Cell` associated with the given `CellRef`.
     pub fn cell<'name>(&self, cell_ref: &CellRef<'name>)
-        -> Result<&Cell, Error>
+        -> Result<&Cell, PaletteError>
     {
         let idx = BasicPalette::resolve_ref_to_index(&self, cell_ref)?;
 
         self.cells
             .get(&idx)
-            .ok_or(Error::UndefinedCellReference { 
+            .ok_or(PaletteError::UndefinedCellReference { 
                 cell_ref: cell_ref.clone().into_static(),
             })
     }
@@ -220,20 +221,20 @@ impl BasicPalette {
     /// Retreives a mutable reference to the `Cell` associated with the given
     /// `CellRef`.
     pub fn cell_mut<'name>(&mut self, cell_ref: &CellRef<'name>)
-        -> Result<&mut Cell, Error>
+        -> Result<&mut Cell, PaletteError>
     {
         let idx = BasicPalette::resolve_ref_to_index(&self, cell_ref)?;
 
         self.cells
             .get_mut(&idx)
-            .ok_or(Error::UndefinedCellReference { 
+            .ok_or(PaletteError::UndefinedCellReference { 
                 cell_ref: cell_ref.clone().into_static(),
             })
     }
     
     /// Resolves a `CellRef` to its index in the palette.
     pub fn resolve_ref_to_index<'name>(&self, cell_ref: &CellRef<'name>)
-        -> Result<u32, Error>
+        -> Result<u32, PaletteError>
     {
         BasicPalette::resolve_ref_to_index_using(
             &self.names,
@@ -247,7 +248,7 @@ impl BasicPalette {
         positions: &BTreeMap<Position, u32>,
         groups: &BTreeMap<Cow<'static, str>, Vec<u32>>,
         cell_ref: &CellRef<'name>)
-        -> Result<u32, Error>
+        -> Result<u32, PaletteError>
     {
         match cell_ref {
             CellRef::Index(idx) => Ok(*idx),
@@ -260,7 +261,7 @@ impl BasicPalette {
                         Ok(pos) => positions.get(&pos).cloned(),
                     }
                 })
-                .ok_or(Error::UndefinedCellReference { 
+                .ok_or(PaletteError::UndefinedCellReference { 
                     cell_ref: cell_ref.clone().into_static(),
                 }),
 
@@ -268,7 +269,7 @@ impl BasicPalette {
             CellRef::Position(position) => positions
                 .get(position)
                 .cloned()
-                .ok_or(Error::UndefinedCellReference { 
+                .ok_or(PaletteError::UndefinedCellReference { 
                     cell_ref: cell_ref.clone().into_static(),
                 }),
 
@@ -276,7 +277,7 @@ impl BasicPalette {
                 .get(&*group)
                 .and_then(|cells| cells.get(*idx as usize))
                 .cloned()
-                .ok_or(Error::UndefinedCellReference { 
+                .ok_or(PaletteError::UndefinedCellReference { 
                     cell_ref: cell_ref.clone().into_static(),
                 }),
         }
@@ -520,7 +521,7 @@ impl BasicPalette {
         &mut self,
         ops: &[Operation],
         history: Option<&mut History>)
-        -> Result<(), Error>
+        -> Result<(), PaletteError>
     {
         if let Some(history) = history {
             let mut undo_ops = Vec::with_capacity(ops.len());
@@ -606,7 +607,7 @@ impl BasicPalette {
     /// ### Parameters
     /// + `op`: The operation to apply.
     pub fn apply_operation(&mut self, op: &Operation) 
-        -> Result<Vec<Operation>, Error>
+        -> Result<Vec<Operation>, PaletteError>
     {
         use Operation::*;
         match op {
@@ -641,7 +642,7 @@ impl BasicPalette {
 
     /// Inserts a `Cell` into the palette at the given index.
     pub fn insert_cell(&mut self, idx: u32, cell: Cell)
-        -> Result<Vec<Operation>, Error>
+        -> Result<Vec<Operation>, PaletteError>
     {
         match self.cells.insert(idx, cell) {
             // No cell was replaced.
@@ -659,7 +660,7 @@ impl BasicPalette {
 
     /// Removes a `Cell` from the palette.
     pub fn remove_cell<'name>(&mut self, cell_ref: CellRef<'name>)
-        -> Result<Vec<Operation>, Error> 
+        -> Result<Vec<Operation>, PaletteError> 
     {
         let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
         
@@ -679,7 +680,7 @@ impl BasicPalette {
         &mut self,
         name: T,
         selector: PositionSelector)
-        -> Result<Vec<Operation>, Error>
+        -> Result<Vec<Operation>, PaletteError>
         where T: Into<Cow<'static, str>>
     {
         let name = name.into();
@@ -723,7 +724,7 @@ impl BasicPalette {
         &mut self,
         selector: PositionSelector,
         name: T)
-        -> Result<Vec<Operation>, Error>
+        -> Result<Vec<Operation>, PaletteError>
         where T: Into<Cow<'static, str>>
     {
         let name = name.into();
@@ -748,7 +749,7 @@ impl BasicPalette {
         &mut self,
         cell_ref: CellRef<'name>,
         position: Position)
-        -> Result<Vec<Operation>, Error>
+        -> Result<Vec<Operation>, PaletteError>
     {
         let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 
@@ -773,7 +774,7 @@ impl BasicPalette {
         &mut self,
         cell_ref: CellRef<'name>,
         position: Position)
-        -> Result<Vec<Operation>, Error>
+        -> Result<Vec<Operation>, PaletteError>
     {
         let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
         
@@ -793,7 +794,7 @@ impl BasicPalette {
 
     /// Unassigns a position for a cell.
     pub fn clear_positions<'name>(&mut self, cell_ref: CellRef<'name>)
-        -> Result<Vec<Operation>, Error>
+        -> Result<Vec<Operation>, PaletteError>
     {
         let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 
@@ -822,7 +823,7 @@ impl BasicPalette {
         cell_ref: CellRef<'name>,
         group: T,
         group_idx: Option<u32>)
-        -> Result<Vec<Operation>, Error>
+        -> Result<Vec<Operation>, PaletteError>
         where T: Into<Cow<'static, str>>
     {
         let group = group.into();
@@ -850,7 +851,7 @@ impl BasicPalette {
                 // Remove the empty group that we probably just added.
                 let _ = self.groups.remove(&group);
             }
-            Err(Error::GroupIndexOutOfBounds {
+            Err(PaletteError::GroupIndexOutOfBounds {
                 group,
                 index: group_idx,
                 max: members_len,
@@ -863,7 +864,7 @@ impl BasicPalette {
         &mut self,
         cell_ref: CellRef<'name>,
         group: T)
-        -> Result<Vec<Operation>, Error>
+        -> Result<Vec<Operation>, PaletteError>
         where T: Into<Cow<'static, str>>
     {
         let group = group.into();
@@ -897,7 +898,7 @@ impl BasicPalette {
 
     /// Removes the cell from all groups.
     pub fn clear_groups<'name>(&mut self, cell_ref: CellRef<'name>)
-        -> Result<Vec<Operation>, Error>
+        -> Result<Vec<Operation>, PaletteError>
     {
         let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 
@@ -930,7 +931,7 @@ impl BasicPalette {
 
     /// Sets the color expression for a `Cell`.
     pub fn set_expr<'name>(&mut self, cell_ref: CellRef<'name>, expr: Expr)
-        -> Result<Vec<Operation>, Error>
+        -> Result<Vec<Operation>, PaletteError>
     {
         let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 

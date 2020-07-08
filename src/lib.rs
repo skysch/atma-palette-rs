@@ -57,7 +57,6 @@ pub mod utility;
 pub mod color {
     pub use color::*;
 }
-pub use error::*;
 pub use palette::Expr;
 pub use palette::Palette;
 pub use palette::DEFAULT_PALETTE_PATH;

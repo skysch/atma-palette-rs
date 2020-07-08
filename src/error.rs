@@ -10,68 +10,54 @@
 
 // Local imports.
 use crate::cell::CellRef;
-use crate::parse::FailureOwned;
-use crate::parse::Failure;
 
 // Standard library imports.
 use std::borrow::Cow;
 
 
-// Standard library imports.
-use std::path::Path;
-
-
 ////////////////////////////////////////////////////////////////////////////////
-// InvalidFile
+// ParseError
 ////////////////////////////////////////////////////////////////////////////////
-/// The specified file was invalid.
-#[allow(missing_copy_implementations)]
-#[derive(Debug, Clone)]
-pub struct InvalidFile;
-
-impl std::error::Error for InvalidFile {}
-
-impl std::fmt::Display for InvalidFile {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>)
-        -> Result<(), std::fmt::Error> 
-    {
-        write!(f, "Invalid file.")
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// MissingFile
-////////////////////////////////////////////////////////////////////////////////
-/// The specified file was missing.
-#[derive(Debug, Clone)]
-pub struct MissingFile { 
-    /// The path of the missing file.
-    pub path: Box<Path>,
-}
-
-impl std::error::Error for MissingFile {}
-
-impl std::fmt::Display for MissingFile {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>)
-        -> Result<(), std::fmt::Error> 
-    {
-        write!(f, "missing file: {}.", self.path.display())
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Error
-////////////////////////////////////////////////////////////////////////////////
+/// A parse error occurred.
 #[derive(Debug)]
-/// Atma palette error type.
-pub enum Error {
-    /// A RON error.
-    RonError {
-        /// The error message.
-        msg: Option<String>,
-        /// The error source.
-        source: ron::error::Error
-    },
+pub struct ParseError {
+    /// The error message.
+    msg: Option<String>,
+    /// The error source.
+    source: crate::parse::FailureOwned,
+}
+
+impl std::fmt::Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(msg) = &self.msg { writeln!(f, "{}", msg)?; }
+        writeln!(f, "{}", self.source)
+    }
+}
+
+impl std::error::Error for ParseError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.source)
+    }
+}
+
+impl From<crate::parse::FailureOwned> for ParseError {
+    fn from(err: crate::parse::FailureOwned) -> Self {
+        ParseError { msg: None, source: err }
+    }
+}
+
+impl<'t> From<crate::parse::Failure<'t>> for ParseError {
+    fn from(err: crate::parse::Failure<'t>) -> Self {
+        err.to_owned().into()
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// FileError
+////////////////////////////////////////////////////////////////////////////////
+/// A file error occurred.
+#[derive(Debug)]
+pub enum FileError {
     /// An I/O error.
     IoError {
         /// The error message.
@@ -80,6 +66,59 @@ pub enum Error {
         source: std::io::Error,
     },
 
+    /// A RON error.
+    RonError {
+        /// The error message.
+        msg: Option<String>,
+        /// The error source.
+        source: ron::error::Error
+    },
+}
+
+impl std::fmt::Display for FileError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FileError::IoError { msg, source } => {
+                if let Some(msg) = msg { writeln!(f, "{}", msg)?; }
+                writeln!(f, "{}", source)
+            },
+
+            FileError::RonError { msg, source } => {
+                if let Some(msg) = msg { writeln!(f, "{}", msg)?; }
+                writeln!(f, "{}", source)
+            },
+        }
+    }
+}
+
+impl std::error::Error for FileError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        // Some(&self.source)
+        match self {
+            FileError::IoError { source, .. } => Some(source),
+            FileError::RonError { source, .. } => Some(source),
+        }
+    }
+}
+
+impl From<ron::error::Error> for FileError {
+    fn from(err: ron::error::Error) -> Self {
+        FileError::RonError { msg: None, source: err }
+    }
+}
+
+impl From<std::io::Error> for FileError {
+    fn from(err: std::io::Error) -> Self {
+        FileError::IoError { msg: None, source: err }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// PaletteError
+////////////////////////////////////////////////////////////////////////////////
+/// A palette error occurred.
+#[derive(Debug)]
+pub enum PaletteError {
     /// An attempt to resolve a CellRef failed.
     UndefinedCellReference {
         /// The failing reference.
@@ -103,85 +142,36 @@ pub enum Error {
         /// Whether the color is undefined due to a circular reference.
         circular: bool,
     },
-
-    /// A parse error occurred.
-    ParseError {
-        /// The error message.
-        msg: Option<String>,
-        /// The error source.
-        source: FailureOwned,
-    },
 }
 
-impl std::fmt::Display for Error {
+impl std::fmt::Display for PaletteError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use Error::*;
         match self {
-            RonError { msg, source } => match msg {
-                Some(msg) => write!(f, "{}\n{}", msg, source),
-                None => write!(f, "{}", source),
+
+            PaletteError::UndefinedCellReference { cell_ref } => {
+                write!(f, "undefined cell reference: {}", cell_ref)
             },
             
-            IoError { msg, source } => match msg {
-                Some(msg) => write!(f, "{}\n{}", msg, source),
-                None => write!(f, "{}", source),
+            PaletteError::GroupIndexOutOfBounds { group, index, max } => {
+                write!(f, 
+                    "group index out of bounds: {}:{} > {}",
+                    group,
+                    index,
+                    max)
             },
 
-            UndefinedCellReference { cell_ref } => write!(f, 
-                "undefined cell reference: {}", cell_ref),
-            
-            GroupIndexOutOfBounds { group, index, max } => write!(f, 
-                "group index out of bounds: {}:{} > {}", group, index, max),
-
-            UndefinedColor { cell_ref, circular } => if *circular {
+            PaletteError::UndefinedColor { cell_ref, circular } => {
                 write!(f,
-                    "color is undefined due to circular cell references: {}",
+                    "color is undefined {} cell references: {}",
+                    if *circular { "due to circular" } else { "for" },
                     cell_ref)
-            } else {
-                write!(f, "color is undefined for cell reference: {}",
-                    cell_ref)
-            },
-
-            ParseError { msg, source } => match msg {
-                Some(msg) => write!(f, "{}\n{}", msg, source),
-                None => write!(f, "{}", source),
             },
         }
     }
 }
 
-impl std::error::Error for Error {
+impl std::error::Error for PaletteError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        use Error::*;
-        match self {
-            RonError { source, .. } => Some(source),
-            IoError { source, .. } => Some(source),
-            ParseError { source, .. } => Some(source),
-            _ => None,
-        }
-    }
-}
-
-impl From<ron::error::Error> for Error {
-    fn from(err: ron::error::Error) -> Self {
-        Error::RonError { msg: None, source: err }
-    }
-}
-
-impl From<std::io::Error> for Error {
-    fn from(err: std::io::Error) -> Self {
-        Error::IoError { msg: None, source: err }
-    }
-}
-
-impl From<FailureOwned> for Error {
-    fn from(err: FailureOwned) -> Self {
-        Error::ParseError { msg: None, source: err }
-    }
-}
-
-impl<'t> From<Failure<'t>> for Error {
-    fn from(err: Failure<'t>) -> Self {
-        err.to_owned().into()
+        None
     }
 }

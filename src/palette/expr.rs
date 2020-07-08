@@ -14,7 +14,7 @@ use crate::palette::BasicPalette;
 use crate::color::Color;
 use crate::color::Rgb;
 use crate::cell::CellRef;
-use crate::error::Error;
+use crate::error::PaletteError;
 
 // External library imports.
 use serde::Deserialize;
@@ -46,7 +46,7 @@ impl Expr {
         &self,
         basic: &BasicPalette,
         index_list: &mut HashSet<u32>)
-        -> Result<Option<Color>, Error>
+        -> Result<Option<Color>, PaletteError>
     {
         match self {
             Expr::Empty => Ok(None),

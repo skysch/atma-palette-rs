@@ -9,13 +9,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::palette::BasicPalette;
 use crate::cell::Cell;
 use crate::cell::CellRef;
 use crate::cell::Position;
 use crate::cell::PositionSelector;
 use crate::color::Color;
-use crate::error::Error;
+use crate::error::FileError;
+use crate::error::PaletteError;
+use crate::palette::BasicPalette;
 use crate::palette::Expr;
 use crate::palette::History;
 use crate::palette::Operation;
@@ -102,14 +103,14 @@ impl Palette {
 
     /// Constructs a new `Palette` by parsing data from the file at the given
     /// path.
-    pub fn read_from_path<P>(path: &P) -> Result<Self, Error>
+    pub fn read_from_path<P>(path: &P) -> Result<Self, FileError>
         where P: AsRef<Path> + Debug
     {
         let path = path.as_ref().to_owned();
         let mut file = OpenOptions::new()
             .read(true)
             .open(&path)
-            .map_err(|e| Error::IoError { 
+            .map_err(|e| FileError::IoError { 
                 msg: Some(format!("Failed to open file {:?}", path)),
                 source: e,
             })?;
@@ -119,38 +120,38 @@ impl Palette {
     }
 
     /// Constructs a new `Palette` by parsing data from the given file.
-    pub fn read_from_file(file: &mut File) -> Result<Self, Error> {
+    pub fn read_from_file(file: &mut File) -> Result<Self, FileError> {
         Palette::parse_ron_from_file(file)
     }
 
     /// Parses a `Palette` from a file using the RON format.
-    fn parse_ron_from_file(file: &mut File) -> Result<Self, Error> {
+    fn parse_ron_from_file(file: &mut File) -> Result<Self, FileError> {
         let len = file.metadata()
-            .map_err(|e| Error::IoError { 
+            .map_err(|e| FileError::IoError { 
                 msg: Some("Failed to read file metadata".to_owned()),
                 source: e,
             })?
             .len();
         let mut buf = Vec::with_capacity(len as usize);
         let _ = file.read_to_end(&mut buf)
-            .map_err(|e| Error::IoError { 
+            .map_err(|e| FileError::IoError { 
                 msg: Some("Failed to read palette file".to_owned()),
                 source: e,
             })?;
 
         use ron::de::Deserializer;
         let mut d = Deserializer::from_bytes(&buf)
-            .map_err(|e| Error::RonError { 
+            .map_err(|e| FileError::RonError { 
                 msg: Some("Failed deserializing RON file".to_owned()),
                 source: e,
             })?;
         let palette = Palette::deserialize(&mut d)
-            .map_err(|e| Error::RonError { 
+            .map_err(|e| FileError::RonError { 
                 msg: Some("Failed parsing RON file".to_owned()),
                 source: e,
             })?;
         d.end()
-            .map_err(|e| Error::RonError { 
+            .map_err(|e| FileError::RonError { 
                 msg: Some("Failed parsing RON file".to_owned()),
                 source: e,
             })?;
@@ -158,7 +159,7 @@ impl Palette {
     }
 
     /// Writes the `Palette` to the file at the given path.
-    pub fn write_to_path<P>(&self, path: &P) -> Result<(), Error>
+    pub fn write_to_path<P>(&self, path: &P) -> Result<(), FileError>
         where P: AsRef<Path> + Debug
     {
         let mut file = OpenOptions::new()
@@ -166,7 +167,7 @@ impl Palette {
             .write(true)
             .create(true)
             .open(path)
-            .map_err(|e| Error::IoError { 
+            .map_err(|e| FileError::IoError { 
                 msg: Some(format!("Failed to open file {:?}", path)),
                 source: e,
             })?;
@@ -175,7 +176,7 @@ impl Palette {
 
     /// Write the `Palette` into the file is was loaded from. Returns true if
     /// the data was written.
-    pub fn write_to_load_path(&self) -> Result<bool, Error> {
+    pub fn write_to_load_path(&self) -> Result<bool, FileError> {
         match &self.load_path {
             Some(path) => {
                 self.write_to_path(path)?;
@@ -186,12 +187,12 @@ impl Palette {
     }
 
     /// Writes the `Palette` to the given file.
-    pub fn write_to_file(&self, file: &mut File) -> Result<(), Error> {
+    pub fn write_to_file(&self, file: &mut File) -> Result<(), FileError> {
         self.generate_ron_into_file(file)
     }
 
     /// Generates a RON formatted `Palette` by serializing into the given file.
-    fn generate_ron_into_file(&self, file: &mut File) -> Result<(), Error> {
+    fn generate_ron_into_file(&self, file: &mut File) -> Result<(), FileError> {
         let pretty = PrettyConfig::new()
             .with_depth_limit(2)
             .with_separate_tuple_members(true)
@@ -208,7 +209,7 @@ impl Palette {
 
     /// Retreives a reference to the `Cell` associated with the given `CellRef`.
     pub fn cell<'name>(&self, cell_ref: &CellRef<'name>)
-        -> Result<&Cell, Error>
+        -> Result<&Cell, PaletteError>
     {
         self.inner.cell(cell_ref)
     }
@@ -216,7 +217,7 @@ impl Palette {
     /// Retreives a mutable reference to the `Cell` associated with the given
     /// `CellRef`.
     pub fn cell_mut<'name>(&mut self, cell_ref: &CellRef<'name>)
-        -> Result<&mut Cell, Error>
+        -> Result<&mut Cell, PaletteError>
     {
         self.inner.cell_mut(cell_ref)
     }
@@ -251,7 +252,7 @@ impl Palette {
         colors: &[Color],
         name: Option<S>,
         position: Option<Position>)
-        -> Result<(), Error>
+        -> Result<(), PaletteError>
         where S: ToString
     {
         use Operation::*;
@@ -314,7 +315,9 @@ impl Palette {
     ///
     /// ### Parameters
     /// + `op`: The operation to apply.
-    pub fn apply_operations(&mut self, ops: &[Operation]) -> Result<(), Error> {
+    pub fn apply_operations(&mut self, ops: &[Operation])
+        -> Result<(), PaletteError>
+    {
         self.inner.apply_operations(ops, self.history.as_mut())
     }
 
