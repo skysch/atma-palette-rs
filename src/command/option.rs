@@ -94,11 +94,9 @@ pub struct CommonOptions {
 #[derive(StructOpt)]
 pub enum CommandOption {
     New {
-        /// The name of the palette file.
-        #[structopt(
-            long = "name", 
-            parse(from_os_str))]
-        name: Option<PathBuf>,
+        /// The name of the palette.
+        #[structopt(long = "name")]
+        name: Option<String>,
 
         /// Disables undo/redo operations for the palette.
         #[structopt(

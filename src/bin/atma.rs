@@ -16,8 +16,10 @@ use atma::Config;
 use atma::Settings;
 use atma::DEFAULT_CONFIG_PATH;
 use atma::DEFAULT_SETTINGS_PATH;
+use atma::DEFAULT_PALETTE_PATH;
 use atma::Logger;
 use atma::Palette;
+use atma::utility::normalize_path;
 
 // External library imports.
 use structopt::StructOpt;
@@ -119,16 +121,18 @@ pub fn main_facade() -> Result<(), Error> {
     };
 
     // Load the palette.
-    let palette = if !opts.command.as_ref().map_or(false, |c| c.is_new()) {
-        match &opts.common.palette {
-            Some(pal_path) => Some(Palette::read_from_path(&pal_path)?),
-            None => match &settings.active_palette {
-                Some(pal_path) => Some(Palette::read_from_path(&pal_path)?),
-                None => None,
-            },
-        }
-    } else {
-        None
+    let palette = match &opts.common.palette {
+        Some(pal_path) => {
+            let path = normalize_path(cur_dir, pal_path);
+            Palette::read_from_path(&path)
+                .unwrap_or_else(|_| Palette::new().with_load_path(path))
+        },
+
+        None => match &settings.active_palette {
+            Some(pal_path) => Palette::read_from_path(&pal_path)?,
+            None => Palette::new()
+                .with_load_path(cur_dir.join(DEFAULT_PALETTE_PATH)),
+        },
     };
     trace!("Palette: {:#?}", palette);
 

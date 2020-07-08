@@ -13,10 +13,11 @@
 use crate::LevelFilter;
 use crate::LoggerConfig;
 use crate::StdoutLogOutput;
-use anyhow::Error;
-use anyhow::Context;
+use crate::utility::normalize_path;
 
 // External library imports.
+use anyhow::Error;
+use anyhow::Context;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -80,6 +81,18 @@ impl Config {
     {
         self.load_path = Some(path.as_ref().to_owned());
         self
+    }
+
+    /// Returns the `Config`'s load path.
+    pub fn load_path(&self) -> Option<&Path> {
+        self.load_path.as_ref().map(AsRef::as_ref)
+    }
+
+    /// Sets the `Config`'s load path.
+    pub fn set_load_path<P>(&mut self, path: P)
+        where P: AsRef<Path>
+    {
+        self.load_path = Some(path.as_ref().to_owned());
     }
 
     /// Constructs a new `Config` with options read from the given file path.
@@ -166,24 +179,12 @@ impl Config {
             .with_context(|| "Failed to write RON file")
     }
 
-    /// Sets the `Config`'s load path.
-    pub fn set_load_path<P>(&mut self, path: P)
-        where P: AsRef<Path>
-    {
-        self.load_path = Some(path.as_ref().to_owned());
-    }
-
     /// Normalizes paths in the config by expanding them relative to the given
     /// root path.
     pub fn normalize_paths(&mut self, base: &PathBuf) {
-        match self.logger_config.log_path {
-            Some(ref log_path) if log_path.is_relative() => {
-                let log_path = base.clone().join(log_path);
-                // Relative log file paths are relative to base.
-                self.logger_config.log_path = Some(log_path);
-            },
-            _ => (),
-        }
+        self.logger_config.log_path = self.logger_config.log_path
+            .as_ref()
+            .map(|p| normalize_path(base, p));
     }
 
     /// Returns the default [`LoggerConfig`].

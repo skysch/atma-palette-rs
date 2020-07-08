@@ -1,4 +1,4 @@
 #![enable(implicit_some)]
 Settings(
-	active_palette: "test.atma",
+	active_palette: None,
 )

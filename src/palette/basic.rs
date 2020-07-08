@@ -616,7 +616,7 @@ impl BasicPalette {
                 => self.remove_cell(cell_ref.clone()),
 
             AssignName { selector, name } 
-                => self.assign_name(selector.clone(), name.clone()),
+                => self.assign_name(name.clone(), selector.clone()),
             UnassignName { selector, name } 
                 => self.unassign_name(selector.clone(), name.clone()),
 
@@ -677,8 +677,8 @@ impl BasicPalette {
     /// Assigns a name to a position.
     pub fn assign_name<T>(
         &mut self,
-        selector: PositionSelector,
-        name: T)
+        name: T,
+        selector: PositionSelector)
         -> Result<Vec<Operation>, Error>
         where T: Into<Cow<'static, str>>
     {

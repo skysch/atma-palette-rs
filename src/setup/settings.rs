@@ -10,10 +10,12 @@
 #![warn(missing_docs)]
 
 // Local imports.
+use crate::utility::normalize_path;
+
+// External library imports.
 use anyhow::Error;
 use anyhow::Context;
 
-// External library imports.
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -69,6 +71,18 @@ impl Settings {
     {
         self.load_path = Some(path.as_ref().to_owned());
         self
+    }
+
+    /// Returns the `Settings`' load path.
+    pub fn load_path(&self) -> Option<&Path> {
+        self.load_path.as_ref().map(AsRef::as_ref)
+    }
+
+    /// Sets the `Settings`'s load path.
+    pub fn set_load_path<P>(&mut self, path: P)
+        where P: AsRef<Path>
+    {
+        self.load_path = Some(path.as_ref().to_owned());
     }
 
     /// Constructs a new `Settings` with options read from the given file path.
@@ -155,23 +169,12 @@ impl Settings {
             .with_context(|| "Failed to write RON file")
     }
 
-    /// Sets the `Settings`'s load path.
-    pub fn set_load_path<P>(&mut self, path: P)
-        where P: AsRef<Path>
-    {
-        self.load_path = Some(path.as_ref().to_owned());
-    }
-
     /// Normalizes paths in the settings by expanding them relative to the given
     /// root path.
     pub fn normalize_paths(&mut self, base: &PathBuf) {
-        match self.active_palette {
-            Some(ref active_palette) if active_palette.is_relative() => {
-                let active_palette = base.clone().join(active_palette);
-                self.active_palette = Some(active_palette);
-            },
-            _ => (),
-        }
+        self.active_palette = self.active_palette
+            .as_ref()
+            .map(|p| normalize_path(base, p));
     }
 
     /// Returns the default active palette.

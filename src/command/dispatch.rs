@@ -15,6 +15,7 @@ use crate::command::InsertOption;
 use crate::command::CommandOption;
 use crate::Error;
 use crate::palette::Palette;
+use crate::cell::PositionSelector;
 use crate::color::Color;
 use crate::parse::ParseResultExt as _;
 use crate::parse::color;
@@ -41,7 +42,7 @@ fn parse_color(text: String) -> Result<Color, Error> {
 ////////////////////////////////////////////////////////////////////////////////
 /// Executes the given `AtmaOptions` on the given `Palette`.
 pub fn dispatch(
-    palette: Option<Palette>,
+    mut palette: Palette,
     opts: AtmaOptions,
     config: Config,
     settings: Settings)
@@ -54,11 +55,10 @@ pub fn dispatch(
     }
 
     use CommandOption::*;
-    match (palette, opts.command) {
-        (_, None) => unimplemented!(),
-        (None, Some(_)) => unimplemented!(),
+    match opts.command {
+        None => unimplemented!(),
 
-        (Some(mut palette), Some(command)) => match command {
+        Some(command) => match command {
             New {
                 name,
                 no_history,
@@ -66,6 +66,7 @@ pub fn dispatch(
                 no_settings_file,
                 set_active,
             } => new_palette(
+                palette,
                 name,
                 no_history,
                 if no_config_file { None } else { Some(config) },
@@ -111,22 +112,34 @@ pub fn dispatch(
 }
 
 
-
+/// Initializes a new palette.
 fn new_palette(
-    name: Option<PathBuf>,
+    mut palette: Palette,
+    name: Option<String>,
     no_history: bool,
     config: Option<Config>,
-    settings: Option<Settings>,
+    mut settings: Option<Settings>,
     set_active: bool)
     -> Result<(), Error>
 {
-    let palette = if no_history {
-        Palette::new()
-    } else {
-        Palette::new().with_history()
-    };
+    if !no_history { palette = palette.with_history(); }
+    if let Some(name) = name {
+        palette.inner_mut().assign_name(name, PositionSelector::ALL);
+    }
 
-    
+    if let Some(config) = config {
+        // config.write_to_load_path()?;
+    }
+    if let Some(mut settings) = settings {
+        if set_active {
+            settings.active_palette = palette
+                .load_path()
+                .map(ToOwned::to_owned);
+        }
+        // settings.write_to_load_path()?;
+    }
 
+    // palette.write_to_load_path()
+    //     .map(|_| ())
     unimplemented!()
 }

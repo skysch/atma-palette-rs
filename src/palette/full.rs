@@ -38,6 +38,15 @@ use std::path::Path;
 use std::path::PathBuf;
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+// DEFAULT_PALETTE_PATH
+////////////////////////////////////////////////////////////////////////////////
+/// The default path for the [`Palette`] file, relative to the application root.
+///
+/// [`Palette`]: struct.Palette.html
+pub const DEFAULT_PALETTE_PATH: &'static str = "palette.atma";
+
 ////////////////////////////////////////////////////////////////////////////////
 // Palette
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,7 +58,7 @@ pub struct Palette {
     #[serde(skip)]
     load_path: Option<PathBuf>,
     /// The internal palette data.
-    basic: BasicPalette,
+    inner: BasicPalette,
     /// The command history for the palette.
     history: Option<History>,
 }
@@ -60,7 +69,7 @@ impl Palette {
     pub fn new() -> Self {
         Palette {
             load_path: None,
-            basic: BasicPalette::new(),
+            inner: BasicPalette::new(),
             history: None,
         }
     }
@@ -77,6 +86,18 @@ impl Palette {
     {
         self.load_path = Some(path.as_ref().to_owned());
         self
+    }
+
+    /// Returns the `Palette`'s load path.
+    pub fn load_path(&self) -> Option<&Path> {
+        self.load_path.as_ref().map(AsRef::as_ref)
+    }
+
+    /// Sets the `Palette`'s load path.
+    pub fn set_load_path<P>(&mut self, path: P)
+        where P: AsRef<Path>
+    {
+        self.load_path = Some(path.as_ref().to_owned());
     }
 
     /// Constructs a new `Palette` by parsing data from the file at the given
@@ -181,13 +202,6 @@ impl Palette {
         Ok(())
     }
 
-    /// Sets the `Palette`'s load path.
-    pub fn set_load_path<P>(&mut self, path: P)
-        where P: AsRef<Path>
-    {
-        self.load_path = Some(path.as_ref().to_owned());
-    }
-
     ////////////////////////////////////////////////////////////////////////////
     // Accessors
     ////////////////////////////////////////////////////////////////////////////
@@ -196,7 +210,7 @@ impl Palette {
     pub fn cell<'name>(&self, cell_ref: &CellRef<'name>)
         -> Result<&Cell, Error>
     {
-        self.basic.cell(cell_ref)
+        self.inner.cell(cell_ref)
     }
 
     /// Retreives a mutable reference to the `Cell` associated with the given
@@ -204,7 +218,18 @@ impl Palette {
     pub fn cell_mut<'name>(&mut self, cell_ref: &CellRef<'name>)
         -> Result<&mut Cell, Error>
     {
-        self.basic.cell_mut(cell_ref)
+        self.inner.cell_mut(cell_ref)
+    }
+
+    #[allow(unused)] // TODO: Remove this.
+    /// Returns a reference to the inner `BasicPalette`.
+    pub(in crate) fn inner(&self) -> &BasicPalette {
+        &self.inner
+    }
+
+    /// Returns a `mut` reference to the inner `BasicPalette`.
+    pub(in crate) fn inner_mut(&mut self) -> &mut BasicPalette {
+        &mut self.inner
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -231,12 +256,12 @@ impl Palette {
     {
         use Operation::*;
         // Get start index.
-        let mut idx = self.basic
+        let mut idx = self.inner
             .unoccupied_index_or_next(0)
             .expect("no free indices"); // TODO: Handle with an error.
         // Get start position.
         let mut next = position.unwrap_or(Position::ZERO);
-        next = self.basic
+        next = self.inner
             .unoccupied_position_or_next(next)
             .expect("no free positions"); // TODO: Handle with an error.
 
@@ -262,10 +287,10 @@ impl Palette {
             }
 
             // Shift to next position.
-            idx = self.basic
+            idx = self.inner
                 .unoccupied_index_or_next(idx.wrapping_add(1))
                 .expect("no free indices"); 
-            next = self.basic
+            next = self.inner
                 .unoccupied_position_or_next(next.wrapping_succ())
                 .expect("no free positions");
         }
@@ -290,7 +315,7 @@ impl Palette {
     /// ### Parameters
     /// + `op`: The operation to apply.
     pub fn apply_operations(&mut self, ops: &[Operation]) -> Result<(), Error> {
-        self.basic.apply_operations(ops, self.history.as_mut())
+        self.inner.apply_operations(ops, self.history.as_mut())
     }
 
     /// Unapplies the latest set of applied operations.
@@ -300,7 +325,7 @@ impl Palette {
     /// recorded than requested.
     pub fn undo(&mut self, count: usize) -> usize {
         if let Some(history) = self.history.as_mut() {
-            self.basic.undo(history, count)
+            self.inner.undo(history, count)
         } else {
             0
         }
@@ -313,7 +338,7 @@ impl Palette {
     /// recorded than requested.
     pub fn redo(&mut self, count: usize) -> usize {
         if let Some(history) = self.history.as_mut() {
-            self.basic.redo(history, count)
+            self.inner.redo(history, count)
         } else {
             0
         }
@@ -329,7 +354,7 @@ impl Default for Palette {
 #[cfg(test)]
 impl PartialEq for Palette {
     fn eq(&self, other: &Self) -> bool {
-        self.basic == other.basic
+        self.inner == other.inner
         // NOTE: This comparison ignores the command history.
     }
 }

@@ -10,6 +10,9 @@
 
 pub use few::Few;
 
+use std::path::Path;
+use std::path::PathBuf;
+
 /// Performs a set intersection of the ranges bound (inclusively) by the given
 /// tuples.
 pub(in crate) fn split_intersect<T: Ord>(l: (T, T), r: (T, T)) -> Few<T> {
@@ -30,3 +33,15 @@ pub(in crate) fn split_intersect<T: Ord>(l: (T, T), r: (T, T)) -> Few<T> {
     }
 }
 
+/// Expands the given path relative to the base path if the path is relative,
+/// otherwise returns the path unaltered.
+pub fn normalize_path<B, P>(base: B, path: P) -> PathBuf
+    where B: AsRef<Path>, P: AsRef<Path>
+{
+    let path = path.as_ref();
+    if path.is_relative() {
+        return base.as_ref().to_owned().join(path);
+    } else {
+        path.to_owned()
+    }
+}
