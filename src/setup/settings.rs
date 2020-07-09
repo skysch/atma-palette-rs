@@ -191,7 +191,8 @@ impl Settings {
         let pretty = ron::ser::PrettyConfig::new()
             .with_depth_limit(2)
             .with_separate_tuple_members(true)
-            .with_enumerate_arrays(true);
+            .with_enumerate_arrays(true)
+            .with_extensions(ron::extensions::Extensions::IMPLICIT_SOME);
         let s = ron::ser::to_string_pretty(&self, pretty)
             .context("Failed to serialize RON file")?;
         file.write_all(s.as_bytes())

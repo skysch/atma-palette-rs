@@ -92,7 +92,7 @@ pub fn main_facade() -> Result<(), Error> {
 
     // Log any config loading errors.
     if let Err(e) = config_load_status { 
-        error!("{}", e);
+        error!("{}", Error::from(e));
         warn!("Using default config due to previous error.");
     };
 
@@ -117,7 +117,7 @@ pub fn main_facade() -> Result<(), Error> {
 
     // Log any settings loading errors.
     if let Err(e) = settings_load_status { 
-        error!("{}", e);
+        error!("{}", Error::from(e));
         warn!("Using default settings due to previous error.");
     };
 
