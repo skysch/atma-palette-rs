@@ -18,6 +18,7 @@ use crate::error::ParseError;
 use crate::error::FileError;
 use crate::palette::Palette;
 use crate::cell::PositionSelector;
+use crate::cell::CellRef;
 use crate::color::Color;
 use crate::parse::ParseResultExt as _;
 use crate::parse::color;
@@ -76,10 +77,24 @@ pub fn dispatch(
                     if no_config_file { None } else { Some(config) },
                     if no_settings_file { None } else { Some(settings) },
                     set_active)
-                .with_context(|| "Command 'new' failed"),
+                .context("Command 'new' failed"),
 
-            List => unimplemented!(),
-            Insert { insert_options } => match insert_options {
+            List { selection, index } => {
+                debug!("Start listing for selection {:?}", selection);
+                if let Some(selection) = selection {
+                    
+                    let index_selection = selection.resolve(palette.inner());
+                    debug!("Start listing for  {:?}", index_selection);
+                    for idx in index_selection {
+                        palette.inner()
+                            .color(&CellRef::Index(idx))
+                            .map(|c| println!("{:?}", c));
+                    }
+                }
+                Ok(())
+            },
+
+            Insert { insert_option } => match insert_option {
                 InsertOption::Colors { colors, name, at } => {
                     let colors: Vec<Color> = colors
                         .into_iter()
@@ -87,14 +102,15 @@ pub fn dispatch(
                         .collect::<Result<Vec<_>,_>>()?;
 
                     let res = palette.insert_colors(&colors[..], name, at);
-                    info!("{:?}", palette);
-                    res.with_context(|| "Command 'insert' failed")
+                    debug!("{:?}", palette);
+
+                    res.context("Command 'insert' failed")?;
+                    palette.write_to_load_path()
+                        .map(|_| ())
+                        .context("Failed to write palette")
                 },
 
-                InsertOption::Ramp { ..}=> //points, count, interpolate, name, at } => 
-                {
-                    unimplemented!()
-                },
+                InsertOption::Ramp { ..} => unimplemented!(),
             },
             Delete => unimplemented!(),
             Move => unimplemented!(),

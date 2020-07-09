@@ -11,6 +11,7 @@
 
 // Local library imports.
 use crate::cell::Position;
+use crate::cell::CellSelection;
 
 // External library imports.
 use serde::Deserialize;
@@ -39,6 +40,7 @@ pub struct AtmaOptions {
     #[structopt(subcommand)]
     pub command: Option<CommandOption>,
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // CommonOptions
@@ -84,6 +86,7 @@ pub struct CommonOptions {
     pub trace: bool,
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // CommandOption
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,15 +118,33 @@ pub enum CommandOption {
         set_active: bool,
     },
 
-    List,
+    List {
+        // TODO: Consider generalizing this to a string so we can parse simpler
+        // selection terms.
+        selection: Option<CellSelection<'static>>,
+
+        #[structopt(short = "i", long = "index")]
+        index: bool,
+
+        // Display width?
+        // Use colors?
+        // Print names and groups?
+        // Indicate expr types?
+        // Indicate names, groups, positions?
+        // Sort?
+        // Compact?
+    },
+
     Insert {
         #[structopt(subcommand)]
-        insert_options: InsertOption,
+        insert_option: InsertOption,
     },
+    
     Delete,
     Move,
     Set,
     Unset,
+    
     Undo {
         /// The number of times to undo.
         count: usize,
@@ -132,6 +153,7 @@ pub enum CommandOption {
         /// The number of times to redo.
         count: usize,
     },
+    
     Import,
     Export,
 }
@@ -147,6 +169,9 @@ impl CommandOption {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// InsertOption
+////////////////////////////////////////////////////////////////////////////////
 #[allow(missing_docs)]
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
@@ -189,4 +214,3 @@ pub enum InsertOption {
     },
     
 }
-

@@ -21,7 +21,7 @@ use crate::parse::ParseResultExt as _;
 use crate::parse::postfix;
 use crate::parse::prefix;
 use crate::parse::repeat;
-use crate::parse::repeat_collect;
+use crate::parse::intersperse_collect;
 use crate::parse::Success;
 use crate::parse::uint;
 use crate::parse::whitespace;
@@ -37,31 +37,20 @@ use crate::cell::REF_SEP_TOKEN;
 
 
 
-// ////////////////////////////////////////////////////////////////////////////////
-// // Parse cell selections.
-// ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Parse cell selections.
+////////////////////////////////////////////////////////////////////////////////
 
 /// Parses a CellSelection.
 pub fn cell_selection<'t>(text: &'t str) -> ParseResult<'t, CellSelection<'t>> {
-    let init_suc = repeat_collect(1, None,
-            postfix(
-                cell_selector,
-                circumfix(
-                    char(REF_SEP_TOKEN),
-                    maybe(whitespace))))
+    intersperse_collect(1, None,
+            cell_selector,
+            circumfix(
+                char(REF_SEP_TOKEN),
+                maybe(whitespace)))
         (text)
-        .source_for("cell selection")?;
-
-    let tail_suc = maybe(cell_selector)(init_suc.rest)
         .source_for("cell selection")
-        .with_join_context(&init_suc, text)?;
-
-    Ok(init_suc.join_with(tail_suc, text, |mut list, tail| {
-        if let Some(tail) = tail {
-            list.push(tail);
-        }; 
-        list.into()
-    }))
+        .map_value(CellSelection::from)
 }
 
 

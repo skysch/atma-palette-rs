@@ -41,6 +41,7 @@ pub fn main() {
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // main_facade
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,6 +139,7 @@ pub fn main_facade() -> Result<(), Error> {
     trace!("Palette: {:#?}", palette);
 
     // Dispatch to appropriate commands.
-    atma::command::dispatch(palette, opts, config, settings)
-        .map_err(Error::from)
+    atma::command::dispatch(palette, opts, config, settings)?;
+
+    Ok(())
 }
