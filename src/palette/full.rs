@@ -196,6 +196,7 @@ impl Palette {
 
     /// Generates a RON formatted `Palette` by serializing into the given file.
     fn generate_ron_into_file(&self, file: &mut File) -> Result<(), FileError> {
+        debug!("Serializing & writing Palette file.");
         let pretty = PrettyConfig::new()
             .with_depth_limit(2)
             .with_separate_tuple_members(true)
@@ -203,8 +204,8 @@ impl Palette {
             .with_extensions(ron::extensions::Extensions::IMPLICIT_SOME);
         let s = to_string_pretty(self, pretty)?;
 
-        file.write_all(s.as_bytes())?;
-        Ok(())
+        file.write_all(s.as_bytes())
+            .map_err(FileError::from)
     }
 
     ////////////////////////////////////////////////////////////////////////////

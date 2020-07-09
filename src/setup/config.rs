@@ -199,6 +199,7 @@ impl Config {
 
     /// Parses a `Config` from a file using the RON format.
     fn generate_ron_into_file(&self, file: &mut File) -> Result<(), FileError> {
+        debug!("Serializing & writing Config file.");
         let pretty = ron::ser::PrettyConfig::new()
             .with_depth_limit(2)
             .with_separate_tuple_members(true)
