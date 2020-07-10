@@ -43,6 +43,7 @@ use crate::cell::REF_SEP_TOKEN;
 
 /// Parses a CellSelection.
 pub fn cell_selection<'t>(text: &'t str) -> ParseResult<'t, CellSelection<'t>> {
+    // TODO: Permit empty selection?
     intersperse_collect(1, None,
             cell_selector,
             circumfix(

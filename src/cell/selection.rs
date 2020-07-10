@@ -72,16 +72,6 @@ impl<'name> CellSelection<'name> {
         self.0.is_empty()
     }
 
-    /// Moves all `CellSelector`s in `other` into `self`, leaving `other` empty.
-    pub fn append(&mut self, other: &mut Self) {
-        self.0.append(&mut other.0)
-    }
-
-    /// Pushes a `CellSelector` into the selection.
-    pub fn push(&mut self, selector: CellSelector<'name>) {
-        self.0.push(selector);
-    }
-
     /// Returns an iterator of `CellSelector`s.
     pub fn iter(&self) -> impl Iterator<Item=&CellSelector<'name>> {
         self.0.iter()
@@ -113,6 +103,7 @@ impl<'name> IntoIterator for CellSelection<'name> {
 
 impl<'name> std::fmt::Display for CellSelection<'name> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO: Dedicated syntax for empty selection?
         if self.is_empty() { return Ok(()); }
 
         let mut iter = self.iter();

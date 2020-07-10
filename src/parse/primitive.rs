@@ -374,7 +374,7 @@ pub fn float<'t, T>(float_type: &'static str)
         // Parse the sign.
         let sign_suc = maybe(char_in(FLOAT_SIGN))
             (text)
-            .unwrap();
+            .expect("infallible maybe parse");
 
         // Parse special literals.
         if let Ok(inf_suc) = literal(FLOAT_INF)(sign_suc.rest) {
@@ -406,16 +406,16 @@ pub fn float<'t, T>(float_type: &'static str)
         // Parse the digits.
         let l_digit_suc = repeat(0, None, char_matching(|c| c.is_digit(10)))
             (sign_suc.rest)
-            .unwrap();
+            .expect("infallible repeat parse");
 
         let decimal_suc = maybe(char(FLOAT_DECIMAL))
             (l_digit_suc.rest)
-            .unwrap();
+            .expect("infallible maybe parse");
         let decimal_suc = l_digit_suc.join(decimal_suc, text);
 
         let r_digit_suc = repeat(0, None, char_matching(|c| c.is_digit(10)))
             (decimal_suc.rest)
-            .unwrap();
+            .expect("infallible repeat parse");
         let r_digit_suc = decimal_suc.join(r_digit_suc, text);
 
         if r_digit_suc.token == FLOAT_DECIMAL_STR || r_digit_suc.token.is_empty() {
@@ -432,7 +432,7 @@ pub fn float<'t, T>(float_type: &'static str)
         // Parse the exponent.
         let exp_suc = maybe(float_exp)
             (full.rest)
-            .unwrap();
+            .expect("infallible maybe parse");
         let exp_suc = full.join(exp_suc, text);
 
         match T::from_str(exp_suc.token) {

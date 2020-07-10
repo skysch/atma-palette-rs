@@ -43,6 +43,9 @@ use std::path::PathBuf;
 /// [`Config`]: struct.Config.html
 pub const DEFAULT_CONFIG_PATH: &'static str = ".atma-config";
 
+/// Default value for load_default_palette.
+const DEFAULT_LOAD_DEFAULT_PALETTE: bool = true;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Config
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,6 +65,10 @@ pub struct Config {
     /// Module specific log levels.
     #[serde(default = "Config::default_log_levels")]
     pub log_levels: BTreeMap<Cow<'static, str>, LevelFilter>,
+
+    /// Attempt to load the default palette if no active palette is set.
+    #[serde(default = "Config::default_load_default_palette")]
+    pub load_default_palette: bool,
 }
 
 
@@ -72,6 +79,7 @@ impl Config {
             load_path: None,
             logger_config: Config::default_logger_config(),
             log_levels: Config::default_log_levels(),
+            load_default_palette: Config::default_load_default_palette(),
         }
     }
 
@@ -235,6 +243,12 @@ impl Config {
     fn default_log_levels() -> BTreeMap<Cow<'static, str>, LevelFilter> {
         Default::default()
     }
+
+    /// Returns the default value for load_default_palette.
+    #[inline(always)]
+    fn default_load_default_palette() -> bool {
+        DEFAULT_LOAD_DEFAULT_PALETTE
+    }
 }
 
 impl Default for Config {
@@ -248,6 +262,8 @@ impl std::fmt::Display for Config {
         writeln!(fmt, "\n\tlogger_config/stdout_log_output: {:?}",
             self.logger_config.stdout_log_output)?;
         writeln!(fmt, "\tlogger_config/level_filter: {:?}",
-            self.logger_config.level_filter)
+            self.logger_config.level_filter)?;
+        writeln!(fmt, "\tload_default_palette: {:?}",
+            self.load_default_palette)
     }
 }
