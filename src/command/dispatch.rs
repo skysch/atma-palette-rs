@@ -93,9 +93,11 @@ pub fn dispatch(
                     let index_selection = selection.resolve(pal.inner());
                     debug!("Start listing for {:?}", index_selection);
                     for idx in index_selection {
-                        pal.inner()
+                        if let Ok(Some(c)) = pal.inner()
                             .color(&CellRef::Index(idx))
-                            .map(|c| println!("{:?}", c));
+                        {
+                            println!("{:4X} {:X}", idx, c);
+                        }
                     }
                 }
                 Ok(())

@@ -105,22 +105,17 @@ pub fn main_facade() -> Result<(), Error> {
     };
 
     // Load the settings file.
-    let mut settings_load_status = Ok(());
     let mut settings = Settings::read_from_path(&settings_path)
         .with_context(|| format!("Unable to load settings file: {:?}", 
             settings_path))
         .unwrap_or_else(|e| {
-            settings_load_status = Err(e);
+            // Log any settings loading errors.
+            error!("{}", Error::from(e));
+            warn!("Using default settings due to previous error.");
             Settings::new().with_load_path(settings_path)
         });
     settings.normalize_paths(&cur_dir);
     trace!("{:#?}", settings); 
-
-    // Log any settings loading errors.
-    if let Err(e) = settings_load_status { 
-        error!("{}", Error::from(e));
-        warn!("Using default settings due to previous error.");
-    };
 
     // Load the palette.
     let palette = match &opts.common.palette {

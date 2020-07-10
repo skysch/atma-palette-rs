@@ -277,7 +277,7 @@ impl Palette {
 
         let mut ops = Vec::with_capacity(colors.len() * 2);
         for color in colors {
-            debug!("Inserting color {} at {}", color, next);
+            debug!("Inserting color {:X} at {}", color, next);
             // insert_cell
             ops.push(InsertCell {
                 idx,
