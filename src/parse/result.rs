@@ -170,6 +170,15 @@ impl<'t, V> Success<'t, V> {
         }
     }
 
+    /// Splits the parsed value from the Success.
+    pub fn split_value(self) -> (V, Success<'t, ()>) {
+        (self.value, Success {
+            value: (),
+            token: self.token,
+            rest: self.rest,
+        })
+    }
+
     /// Discards the parsed value.
     pub fn discard_value(self) -> Success<'t, ()> {
         Success {

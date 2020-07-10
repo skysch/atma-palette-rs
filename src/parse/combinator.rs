@@ -312,3 +312,33 @@ pub fn bracket<'t, F, G, H, V, U, T>(
         Ok(sub_suc.join_with(post_suc, text, |l, _| l))
     }
 }
+
+
+/// Returns a parser which will attempt to parse with the second argument, first
+/// argument, and then the third, joining the tokens while discarding the value
+/// of the second and third parser.
+pub fn dynamic_bracket<'t, F, G, H, V, U, T>(
+    mut parser: F,
+    mut prefix_parser: G,
+    mut postfix_parser: H)
+    -> impl FnMut(&'t str) -> ParseResult<'t, V>
+    where
+        F: FnMut(&'t str) -> ParseResult<'t, V>,
+        G: FnMut(&'t str) -> ParseResult<'t, U>,
+        H: FnMut(&'t str, U) -> ParseResult<'t, T>,
+{
+    move |text| {
+        let (val, pre_suc) = (prefix_parser)(text)
+            .with_new_context("", text)?
+            .split_value();
+        
+        let sub_suc = (parser)(pre_suc.rest)
+            .with_join_context(&pre_suc, text)?;
+        let sub_suc = pre_suc.join_with(sub_suc, text, |_, r| r);
+
+        let post_suc = (postfix_parser)(sub_suc.rest, val)
+            .with_join_context(&sub_suc, text)?;
+
+        Ok(sub_suc.join_with(post_suc, text, |l, _| l))
+    }
+}
