@@ -52,7 +52,7 @@ pub fn main_facade() -> Result<(), Error> {
 
     // Find the path for the config file.
     let cur_dir = std::env::current_dir()?;
-    let config_path = match &opts.common.config_file {
+    let config_path = match &opts.common.config {
         Some(path) => path.clone(),
         None       => cur_dir.join(DEFAULT_CONFIG_PATH),
     };
@@ -99,7 +99,7 @@ pub fn main_facade() -> Result<(), Error> {
 
     // Find the path for the settings file.
     let cur_dir = std::env::current_dir()?;
-    let settings_path = match &opts.common.settings_file {
+    let settings_path = match &opts.common.settings {
         Some(path) => path.clone(),
         None       => cur_dir.join(DEFAULT_SETTINGS_PATH),
     };

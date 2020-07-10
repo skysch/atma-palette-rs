@@ -59,12 +59,6 @@ pub fn dispatch(
     use CommandOption::*;
     use anyhow::Context as _;
 
-    if opts.common.dry_run {
-        // TODO: Implement this.
-        println!("Dry run is currently unsupported.");
-        return Ok(());
-    }
-
     match opts.command {
         None => unimplemented!(),
 
@@ -85,7 +79,7 @@ pub fn dispatch(
                     set_active)
                 .context("Command 'new' failed"),
 
-            List { selection, index } => {
+            List { selection } => {
                 let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
                 debug!("Start listing for selection {:?}", selection);
                 if let Some(selection) = selection {

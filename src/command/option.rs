@@ -50,38 +50,34 @@ pub struct AtmaOptions {
 #[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]
 pub struct CommonOptions {
-    /// The config file to use.
+    /// The application config file to load.
     #[structopt(
-        long = "config-file",
+        long = "config",
         parse(from_os_str))]
-    pub config_file: Option<PathBuf>,
+    pub config: Option<PathBuf>,
 
-    /// The settings file to use.
+    /// The user settings file to load.
     #[structopt(
-        long = "settings-file",
+        long = "settings",
         parse(from_os_str))]
-    pub settings_file: Option<PathBuf>,
+    pub settings: Option<PathBuf>,
 
-    /// The palette file to use.
+    /// The palette file to load.
     #[structopt(
         short = "p",
         long = "palette",
         parse(from_os_str))]
     pub palette: Option<PathBuf>,
-
-    /// Print palette operations instead of running them.
-    #[structopt(short = "n", long = "dry-run")]
-    pub dry_run: bool,
     
     /// Provides more detailed messages.
     #[structopt(short = "v", long = "verbose")]
     pub verbose: bool,
 
-    /// Silences all program output. This override --verbose if both are provided.
+    /// Silences all program output. (Overrides -v if both are provided.)
     #[structopt(short = "q", long = "quiet", alias = "silent")]
     pub quiet: bool,
 
-    /// Print trace messages. This override --quiet if both are provided.
+    /// Print trace messages. (Overrides -q if both are provided.)
     #[structopt(long = "ztrace", hidden(true))]
     pub trace: bool,
 }
@@ -90,12 +86,13 @@ pub struct CommonOptions {
 ////////////////////////////////////////////////////////////////////////////////
 // CommandOption
 ////////////////////////////////////////////////////////////////////////////////
-/// Command line subcommand options.
+/// Atma palette editing commands.
 #[allow(missing_docs)]
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]
 pub enum CommandOption {
+    /// Create a new palette.
     New {
         /// The name of the palette.
         #[structopt(long = "name")]
@@ -118,14 +115,14 @@ pub enum CommandOption {
         set_active: bool,
     },
 
+    /// List palette contents.
     List {
         // TODO: Consider generalizing this to a string so we can parse simpler
-        // selection terms.
+        // selection terms?
+        /// The selection of palette cells to list.
         selection: Option<CellSelection<'static>>,
 
-        #[structopt(short = "i", long = "index")]
-        index: bool,
-
+        // Print by index or by page?
         // Display width?
         // Use colors?
         // Print names and groups?
@@ -135,26 +132,36 @@ pub enum CommandOption {
         // Compact?
     },
 
+    /// Insert colors and ramps into a palette.
     Insert {
         #[structopt(subcommand)]
         insert_option: InsertOption,
     },
     
+    /// Delete colors and ramps from a palette.
     Delete,
+
+    /// Move colors and ramps in a palette.
     Move,
+    /// Set color expressions, names, or metadata for cells.
     Set,
+    /// Unset color expressions, names, or metadata for cells.
     Unset,
     
+    /// Revert previous operations.
     Undo {
-        /// The number of times to undo.
+        /// The number of operations to revert.
         count: usize,
     },
+    /// Reapply previously reverted operations.
     Redo {
-        /// The number of times to redo.
+        /// The number of operations to reapply.
         count: usize,
     },
     
+    /// Import color data into a palette.
     Import,
+    /// Export palette data.
     Export,
 }
 
@@ -186,7 +193,7 @@ pub enum InsertOption {
         #[structopt(long = "name")]
         name: Option<String>,
 
-        /// The position of the ramp start
+        /// The position of the ramp start.
         #[structopt(long = "at")]
         at: Option<Position>
     },
