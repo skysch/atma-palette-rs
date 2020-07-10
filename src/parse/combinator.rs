@@ -259,7 +259,6 @@ pub fn postfix<'t, F, G, V, U>(mut parser: F, mut postfix_parser: G)
     }
 }
 
-
 /// Returns a parser which will attempt to parse with the second argument and
 /// then the first, then the second agin, joining the tokens while discarding
 /// the values from the second parser.
@@ -283,7 +282,6 @@ pub fn circumfix<'t, F, G, V, U>(mut parser: F, mut circumfix_parser: G)
         Ok(sub_suc.join_with(post_suc, text, |l, _| l))
     }
 }
-
 
 /// Returns a parser which will attempt to parse with the second argument, first
 /// argument, and then the third, joining the tokens while discarding the value
@@ -313,7 +311,6 @@ pub fn bracket<'t, F, G, H, V, U, T>(
     }
 }
 
-
 /// Returns a parser which will attempt to parse with the second argument, first
 /// argument, and then the third, joining the tokens while discarding the value
 /// of the second and third parser.
@@ -330,7 +327,7 @@ pub fn dynamic_bracket<'t, F, G, H, V, U, T>(
     move |text| {
         let (val, pre_suc) = (prefix_parser)(text)
             .with_new_context("", text)?
-            .split_value();
+            .extract_value();
         
         let sub_suc = (parser)(pre_suc.rest)
             .with_join_context(&pre_suc, text)?;

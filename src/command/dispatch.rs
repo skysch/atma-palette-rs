@@ -10,28 +10,32 @@
 #![allow(unused)] // TODO: Remove this.
 
 // Local imports.
+use crate::cell::CellRef;
+use crate::cell::PositionSelector;
+use crate::color::Color;
 use crate::command::AtmaOptions;
-use crate::command::InsertOption;
 use crate::command::CommandOption;
+use crate::command::InsertOption;
+use crate::Config;
+use crate::DEFAULT_PALETTE_PATH;
+use crate::error::FileError;
 use crate::error::PaletteError;
 use crate::error::ParseError;
-use crate::error::FileError;
 use crate::palette::Palette;
-use crate::cell::PositionSelector;
-use crate::cell::CellRef;
-use crate::color::Color;
-use crate::parse::ParseResultExt as _;
 use crate::parse::color;
-use crate::Config;
+use crate::parse::ParseResultExt as _;
 use crate::Settings;
 
 // External library imports.
 use log::*;
+use anyhow::anyhow;
 
 // Standard library imports.
 use std::path::PathBuf;
 use std::path::Path;
 
+/// Error message returned when no active palette is loaded.
+const NO_PALETTE: &'static str = "No active palette loaded.";
 
 
 fn parse_color(text: String) -> Result<Color, ParseError> {
@@ -45,10 +49,11 @@ fn parse_color(text: String) -> Result<Color, ParseError> {
 ////////////////////////////////////////////////////////////////////////////////
 /// Executes the given `AtmaOptions` on the given `Palette`.
 pub fn dispatch(
-    mut palette: Palette,
+    mut palette: Option<Palette>,
     opts: AtmaOptions,
     config: Config,
-    settings: Settings)
+    settings: Settings,
+    cur_dir: PathBuf)
     -> Result<(), anyhow::Error>
 {
     use CommandOption::*;
@@ -71,7 +76,8 @@ pub fn dispatch(
                 no_settings_file,
                 set_active,
             } => new_palette(
-                    palette,
+                    palette.unwrap_or(Palette::new()
+                        .with_load_path(cur_dir.join(DEFAULT_PALETTE_PATH))),
                     name,
                     no_history,
                     if no_config_file { None } else { Some(config) },
@@ -80,13 +86,14 @@ pub fn dispatch(
                 .context("Command 'new' failed"),
 
             List { selection, index } => {
+                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
                 debug!("Start listing for selection {:?}", selection);
                 if let Some(selection) = selection {
                     
-                    let index_selection = selection.resolve(palette.inner());
-                    debug!("Start listing for  {:?}", index_selection);
+                    let index_selection = selection.resolve(pal.inner());
+                    debug!("Start listing for {:?}", index_selection);
                     for idx in index_selection {
-                        palette.inner()
+                        pal.inner()
                             .color(&CellRef::Index(idx))
                             .map(|c| println!("{:?}", c));
                     }
@@ -96,16 +103,17 @@ pub fn dispatch(
 
             Insert { insert_option } => match insert_option {
                 InsertOption::Colors { colors, name, at } => {
+                    let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
                     let colors: Vec<Color> = colors
                         .into_iter()
                         .map(parse_color)
                         .collect::<Result<Vec<_>,_>>()?;
 
-                    let res = palette.insert_colors(&colors[..], name, at);
-                    debug!("{:?}", palette);
+                    let res = pal.insert_colors(&colors[..], name, at);
+                    debug!("{:?}", pal);
 
                     res.context("Command 'insert' failed")?;
-                    palette.write_to_load_path()
+                    pal.write_to_load_path()
                         .map(|_| ())
                         .context("Failed to write palette")
                 },
@@ -117,12 +125,14 @@ pub fn dispatch(
             Set => unimplemented!(),
             Unset => unimplemented!(),
             Undo { count } => {
-                let performed = palette.undo(count);
+                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                let performed = pal.undo(count);
                 println!("{} undo operations performed.", performed);
                 Ok(())
             },
             Redo { count } => {
-                let performed = palette.redo(count);
+                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                let performed = pal.redo(count);
                 println!("{} redo operations performed.", performed);
                 Ok(())
             },
