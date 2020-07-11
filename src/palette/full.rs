@@ -335,6 +335,39 @@ impl Palette {
         self.apply_operations(&ops[..])
     }
 
+
+    /// Moves the selected cells within the palette.
+    pub fn move_selection<'name>(
+        &mut self,
+        selection: CellSelection<'name>,
+        to: Position)
+        -> Result<(), PaletteError>
+    {
+        use Operation::*;
+        // TODO: Fix this method so it doesn't misbehave for overlapping moves.
+        // Maybe apply operations directly and build the undo ourselves?
+
+        let index_selection = selection.resolve(self.inner());    
+        let mut ops = Vec::new();
+        let mut position = to;
+        for idx in index_selection {
+            match self.inner()
+                .unoccupied_position_or_next(position)
+            {
+                Some(pos) => {
+                    ops.push(AssignPosition {
+                        cell_ref: CellRef::Index(idx),
+                        position: pos,
+                    });
+                    position = pos.succ();
+                },
+                None => return Err(PaletteError::AllPositionsAssigned),
+            }
+        }
+
+        self.apply_operations(&ops[..])
+    }
+
     ////////////////////////////////////////////////////////////////////////////
     // Operations
     ////////////////////////////////////////////////////////////////////////////

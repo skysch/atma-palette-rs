@@ -141,7 +141,20 @@ pub fn dispatch(
 
         // Move
         ////////////////////////////////////////////////////////////////////////
-        Move => unimplemented!(),
+        Move { selection, to } => match selection {
+            Some(selection) => {
+                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                pal.move_selection(selection, to)?;
+
+                pal.write_to_load_path()
+                    .map(|_| ())
+                    .context("Failed to write palette")
+            },
+            None => {
+                println!("No cell selection; nothing to move.");
+                Ok(())
+            },
+        },
 
         // Set
         ////////////////////////////////////////////////////////////////////////

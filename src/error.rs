@@ -201,6 +201,9 @@ pub enum PaletteError {
         /// Whether the color is undefined due to a circular reference.
         circular: bool,
     },
+
+    /// All available positions in the palette are assigned.
+    AllPositionsAssigned,
 }
 
 impl std::fmt::Display for PaletteError {
@@ -225,6 +228,9 @@ impl std::fmt::Display for PaletteError {
                     if *circular { "due to circular" } else { "for" },
                     cell_ref)
             },
+
+            PaletteError::AllPositionsAssigned => write!(f,
+                "All palette positions are already assigned.")
         }
     }
 }

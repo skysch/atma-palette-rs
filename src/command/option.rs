@@ -147,7 +147,17 @@ pub enum CommandOption {
     },
 
     /// Move colors and ramps in a palette.
-    Move,
+    Move {
+        // TODO: Consider generalizing this to a string so we can parse simpler
+        // selection terms?
+        /// The selection of palette cells to export.
+        selection: Option<CellSelection<'static>>,
+
+        /// The position to move the cells to.
+        #[structopt(long = "to")]
+        to: Position
+    },
+
     /// Set color expressions, names, or metadata for cells.
     Set,
     /// Unset color expressions, names, or metadata for cells.
