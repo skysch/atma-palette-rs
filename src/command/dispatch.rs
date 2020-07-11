@@ -18,6 +18,7 @@ use crate::color::Color;
 use crate::command::AtmaOptions;
 use crate::command::CommandOption;
 use crate::command::InsertOption;
+use crate::command::ExportOption;
 use crate::Config;
 use crate::DEFAULT_PALETTE_PATH;
 use crate::error::FileError;
@@ -134,12 +135,16 @@ pub fn dispatch(
                 Ok(())
             },
             Import => unimplemented!(),
-            Export { selection } => {
+            Export { export_option } => {
                 let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
-                write_png(
-                    &pal,
-                    selection.unwrap_or(CellSelector::All.into()),
-                    &cur_dir.clone().join("test.png"))
+                match export_option {
+                    ExportOption::Png { selection, output } => {
+                        write_png(
+                            &pal,
+                            selection.unwrap_or(CellSelector::All.into()),
+                            &cur_dir.clone().join(output))
+                    },
+                }
             },
         },
     }
@@ -225,10 +230,8 @@ fn write_png<'a>(palette: &Palette, selection: CellSelection<'a>, path: &Path)
 {
     let mut pal_data = Vec::new();
     let index_selection = selection.resolve(palette.inner());    
-    println!("{:?}", selection);
     for idx in index_selection {
         if let Ok(Some(c)) = palette.inner().color(&CellRef::Index(idx)) {
-            println!("{:?}", c.rgb_octets());
             pal_data.extend(&c.rgb_octets());
         }
     }
@@ -242,6 +245,7 @@ fn write_png<'a>(palette: &Palette, selection: CellSelection<'a>, path: &Path)
     encoder.set_palette(pal_data);
     let mut writer = encoder.write_header()?;
     writer.write_image_data(&[0])?;
+    println!("Palette exported to {}", path.display());
     Ok(())
 }
 
@@ -249,5 +253,5 @@ fn write_png<'a>(palette: &Palette, selection: CellSelection<'a>, path: &Path)
 fn write_png<'a>(palette: &Palette, selection: CellSelection<'a>, path: &Path)
     -> Result<(), anyhow::Error>
 {
-    Err(anyhow!("png export not supported."))
+    Err(anyhow!("Export using PNG format is unsupported."))
 }

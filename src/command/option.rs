@@ -163,11 +163,9 @@ pub enum CommandOption {
     Import,
     /// Export palette data.
     Export {
-        // TODO: Consider generalizing this to a string so we can parse simpler
-        // selection terms?
-        /// The selection of palette cells to export.
-        selection: Option<CellSelection<'static>>,
-    }
+        #[structopt(subcommand)]
+        export_option: ExportOption,
+    },
 }
 
 impl CommandOption {
@@ -184,6 +182,7 @@ impl CommandOption {
 ////////////////////////////////////////////////////////////////////////////////
 // InsertOption
 ////////////////////////////////////////////////////////////////////////////////
+/// Options for the insert command.
 #[allow(missing_docs)]
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
@@ -224,5 +223,29 @@ pub enum InsertOption {
         #[structopt(long = "at")]
         at: Option<Position>
     },
-    
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// ExportOption
+////////////////////////////////////////////////////////////////////////////////
+/// Options for the export command.
+#[allow(missing_docs)]
+#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
+#[derive(StructOpt)]
+pub enum ExportOption {
+    /// Export palette data as a PNG file.
+    Png {
+        // TODO: Consider generalizing this to a string so we can parse simpler
+        // selection terms?
+        /// The selection of palette cells to export.
+        selection: Option<CellSelection<'static>>,
+
+        /// The output file name.
+        #[structopt(
+            short = "o",
+            long = "output",
+            parse(from_os_str))]
+        output: PathBuf,
+    },
 }
