@@ -44,6 +44,7 @@
 mod test;
 
 // Public modules.
+pub mod bimap;
 pub mod cell;
 pub mod command;
 pub mod error;

@@ -9,14 +9,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
+use crate::bimap::BiMap;
 use crate::cell::Cell;
 use crate::cell::CellRef;
 use crate::cell::Position;
 use crate::cell::PositionSelector;
 use crate::color::Color;
-use crate::error::PaletteError;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
+use crate::error::PaletteError;
 use crate::palette::Expr;
 use crate::palette::History;
 use crate::palette::Operation;
@@ -24,7 +25,6 @@ use crate::utility::Few;
 use crate::utility::split_intersect;
 
 // External library imports.
-use bimap::BiBTreeMap;
 use serde::Deserialize;
 use serde::Serialize;
 use ron::ser::PrettyConfig;
@@ -58,7 +58,7 @@ pub struct BasicPalette {
     /// The next free cell index.
     next_index: u32,
     /// A map of assigned names.
-    names: BiBTreeMap<Cow<'static, str>, PositionSelector>,
+    names: BiMap<Cow<'static, str>, PositionSelector>,
     /// A map of positions assigned to cells.
     positions: BTreeMap<Position, u32>,
     /// A map of names assigned to groups of cells.
@@ -77,7 +77,7 @@ impl BasicPalette {
         BasicPalette {
             cells: BTreeMap::new(),
             next_index: 0,
-            names: BiBTreeMap::new(),
+            names: BiMap::new(),
             positions: BTreeMap::new(),
             groups: BTreeMap::new(),
         }
@@ -234,7 +234,7 @@ impl BasicPalette {
     }
 
     fn resolve_ref_to_index_using<'name>(
-        names: &BiBTreeMap<Cow<'static, str>, PositionSelector>,
+        names: &BiMap<Cow<'static, str>, PositionSelector>,
         positions: &BTreeMap<Position, u32>,
         groups: &BTreeMap<Cow<'static, str>, Vec<u32>>,
         cell_ref: &CellRef<'name>)
@@ -674,7 +674,7 @@ impl BasicPalette {
     {
         let name = name.into();
 
-        use bimap::Overwritten::*;
+        use crate::bimap::Overwritten::*;
         match self.names.insert(name.clone(), selector) {
             Left(old_name, old_selector) |
             Right(old_name, old_selector) |
