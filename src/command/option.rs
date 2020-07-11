@@ -38,7 +38,7 @@ pub struct AtmaOptions {
     pub common: CommonOptions,
     /// Subcommand options.
     #[structopt(subcommand)]
-    pub command: Option<CommandOption>,
+    pub command: CommandOption,
 }
 
 

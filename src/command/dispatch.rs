@@ -63,89 +63,116 @@ pub fn dispatch(
     use anyhow::Context as _;
 
     match opts.command {
-        None => unimplemented!(),
-
-        Some(command) => match command {
-            New {
+        
+        // New
+        ////////////////////////////////////////////////////////////////////
+        New {
+            name,
+            no_history,
+            no_config_file,
+            no_settings_file,
+            set_active,
+        } => new_palette(
+                palette.unwrap_or(Palette::new()
+                    .with_load_path(cur_dir.join(DEFAULT_PALETTE_PATH))),
                 name,
                 no_history,
-                no_config_file,
-                no_settings_file,
-                set_active,
-            } => new_palette(
-                    palette.unwrap_or(Palette::new()
-                        .with_load_path(cur_dir.join(DEFAULT_PALETTE_PATH))),
-                    name,
-                    no_history,
-                    if no_config_file { None } else { Some(config) },
-                    if no_settings_file { None } else { Some(settings) },
-                    set_active)
-                .context("Command 'new' failed"),
+                if no_config_file { None } else { Some(config) },
+                if no_settings_file { None } else { Some(settings) },
+                set_active)
+            .context("Command 'new' failed"),
 
-            List { selection } => {
-                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
-                debug!("Start listing for selection {:?}", selection);
-                let selection = selection.unwrap_or(CellSelector::All.into());
-                let index_selection = selection.resolve(pal.inner());
-                debug!("Start listing for {:?}", index_selection);
+        // List
+        ////////////////////////////////////////////////////////////////////
+        List { selection } => {
+            let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+            debug!("Start listing for selection {:?}", selection);
+            let selection = selection.unwrap_or(CellSelector::All.into());
+            let index_selection = selection.resolve(pal.inner());
+            debug!("Start listing for {:?}", index_selection);
 
-                for idx in index_selection {
-                    if let Ok(Some(c)) = pal.inner()
-                        .color(&CellRef::Index(idx))
-                    {
-                        println!("{:4X} {:X}", idx, c);
-                    }
+            for idx in index_selection {
+                if let Ok(Some(c)) = pal.inner()
+                    .color(&CellRef::Index(idx))
+                {
+                    println!("{:4X} {:X}", idx, c);
                 }
-                Ok(())
+            }
+            Ok(())
+        },
+
+        // Insert
+        ////////////////////////////////////////////////////////////////////
+        Insert { insert_option } => match insert_option {
+            InsertOption::Colors { colors, name, at } => {
+                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                let colors: Vec<Color> = colors
+                    .into_iter()
+                    .map(parse_color)
+                    .collect::<Result<Vec<_>,_>>()?;
+
+                let res = pal.insert_colors(&colors[..], name, at);
+                debug!("{:?}", pal);
+
+                res.context("Command 'insert' failed")?;
+                pal.write_to_load_path()
+                    .map(|_| ())
+                    .context("Failed to write palette")
             },
 
-            Insert { insert_option } => match insert_option {
-                InsertOption::Colors { colors, name, at } => {
-                    let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
-                    let colors: Vec<Color> = colors
-                        .into_iter()
-                        .map(parse_color)
-                        .collect::<Result<Vec<_>,_>>()?;
+            InsertOption::Ramp { ..} => unimplemented!(),
+        },
 
-                    let res = pal.insert_colors(&colors[..], name, at);
-                    debug!("{:?}", pal);
+        // Delete
+        ////////////////////////////////////////////////////////////////////
+        Delete => unimplemented!(),
 
-                    res.context("Command 'insert' failed")?;
-                    pal.write_to_load_path()
-                        .map(|_| ())
-                        .context("Failed to write palette")
+        // Move
+        ////////////////////////////////////////////////////////////////////
+        Move => unimplemented!(),
+
+        // Set
+        ////////////////////////////////////////////////////////////////////
+        Set => unimplemented!(),
+
+        // Unset
+        ////////////////////////////////////////////////////////////////////
+        Unset => unimplemented!(),
+
+        // Undo
+        ////////////////////////////////////////////////////////////////////
+        Undo { count } => {
+            let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+            let performed = pal.undo(count);
+            println!("{} undo operations performed.", performed);
+            Ok(())
+        },
+
+        // Redo
+        ////////////////////////////////////////////////////////////////////
+        Redo { count } => {
+            let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+            let performed = pal.redo(count);
+            println!("{} redo operations performed.", performed);
+            Ok(())
+        },
+
+        // Import
+        ////////////////////////////////////////////////////////////////////
+        Import => unimplemented!(),
+
+        // Export
+        ////////////////////////////////////////////////////////////////////
+        Export { export_option } => {
+            let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+            match export_option {
+                ExportOption::Png { selection, output } => {
+                    write_png(
+                        &pal,
+                        selection.unwrap_or(CellSelector::All.into()),
+                        &cur_dir.clone().join(output))
                 },
-
-                InsertOption::Ramp { ..} => unimplemented!(),
-            },
-            Delete => unimplemented!(),
-            Move => unimplemented!(),
-            Set => unimplemented!(),
-            Unset => unimplemented!(),
-            Undo { count } => {
-                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
-                let performed = pal.undo(count);
-                println!("{} undo operations performed.", performed);
-                Ok(())
-            },
-            Redo { count } => {
-                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
-                let performed = pal.redo(count);
-                println!("{} redo operations performed.", performed);
-                Ok(())
-            },
-            Import => unimplemented!(),
-            Export { export_option } => {
-                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
-                match export_option {
-                    ExportOption::Png { selection, output } => {
-                        write_png(
-                            &pal,
-                            selection.unwrap_or(CellSelector::All.into()),
-                            &cur_dir.clone().join(output))
-                    },
-                }
-            },
+            }
         },
     }
 }
@@ -224,6 +251,14 @@ fn new_palette(
 }
 
 
+
+#[cfg(not(feature = "png"))]
+fn write_png<'a>(palette: &Palette, selection: CellSelection<'a>, path: &Path)
+    -> Result<(), anyhow::Error>
+{
+    Err(anyhow!("Export using PNG format is unsupported."))
+}
+
 #[cfg(feature = "png")]
 fn write_png<'a>(palette: &Palette, selection: CellSelection<'a>, path: &Path)
     -> Result<(), anyhow::Error>
@@ -247,11 +282,4 @@ fn write_png<'a>(palette: &Palette, selection: CellSelection<'a>, path: &Path)
     writer.write_image_data(&[0])?;
     println!("Palette exported to {}", path.display());
     Ok(())
-}
-
-#[cfg(not(feature = "png"))]
-fn write_png<'a>(palette: &Palette, selection: CellSelection<'a>, path: &Path)
-    -> Result<(), anyhow::Error>
-{
-    Err(anyhow!("Export using PNG format is unsupported."))
 }
