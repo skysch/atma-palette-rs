@@ -171,7 +171,7 @@ impl BasicPalette {
     }
 
     /// Retreives a copy of the color associated with the given `CellRef`.
-    pub(in crate) fn cycle_detect_color<'name>(
+    pub(in super) fn cycle_detect_color<'name>(
         &self,
         cell_ref: &CellRef<'name>,
         index_list: &mut HashSet<u32>)
@@ -298,7 +298,6 @@ impl BasicPalette {
         Some(next)
     }
 
-
     ////////////////////////////////////////////////////////////////////////////
     // Range and usability queries
     ////////////////////////////////////////////////////////////////////////////
@@ -332,6 +331,15 @@ impl BasicPalette {
         }
     }
 
+    /// Returns the name assigned to the given cell reference.
+    pub fn assigned_name<'name>(&self, cell_ref: &CellRef<'name>)
+        -> Option<&Cow<'static, str>>
+    {
+        let pos = self.assigned_position(cell_ref)?;
+        let pos_sel: PositionSelector = pos.clone().into();
+        self.names
+            .get_by_right(&pos_sel)
+    }
 
     /// Returns true if the given name is assigned in the palette.
     pub fn is_assigned_name(&self, name: &str) -> bool {
@@ -435,6 +443,16 @@ impl BasicPalette {
             } else {
                 None
             })
+    }
+
+    /// Returns the position assigned to the given cell reference.
+    pub fn assigned_position<'name>(&self, cell_ref: &CellRef<'name>)
+        -> Option<&Position>
+    {
+        let idx = self.resolve_ref_to_index(cell_ref).ok()?;
+
+        self.positions
+            .get_by_right(&idx)
     }
 
     /// Returns true if the given position is assigned in the palette.
