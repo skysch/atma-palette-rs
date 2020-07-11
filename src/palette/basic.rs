@@ -244,11 +244,11 @@ impl BasicPalette {
             CellRef::Index(idx) => Ok(*idx),
 
             CellRef::Name(name) => names
-                .get_by_left(&*name)
+                .get_left(&*name)
                 .and_then(|pos_sel| {
                     match Position::try_from(pos_sel.clone()) {
                         Err(_) => None,
-                        Ok(pos) => positions.get_by_left(&pos).cloned(),
+                        Ok(pos) => positions.get_left(&pos).cloned(),
                     }
                 })
                 .ok_or(PaletteError::UndefinedCellReference { 
@@ -256,7 +256,7 @@ impl BasicPalette {
                 }),
 
             CellRef::Position(position) => positions
-                .get_by_left(position)
+                .get_left(position)
                 .cloned()
                 .ok_or(PaletteError::UndefinedCellReference { 
                     cell_ref: cell_ref.clone().into_static(),
@@ -338,24 +338,24 @@ impl BasicPalette {
         let pos = self.assigned_position(cell_ref)?;
         let pos_sel: PositionSelector = pos.clone().into();
         self.names
-            .get_by_right(&pos_sel)
+            .get_right(&pos_sel)
     }
 
     /// Returns true if the given name is assigned in the palette.
     pub fn is_assigned_name(&self, name: &str) -> bool {
         self.names
-            .get_by_left(&Cow::Borrowed(name))
+            .get_left(&Cow::Borrowed(name))
             .is_some()
     }
 
     /// Returns true if the given name is occupied in the palette.
     pub fn is_occupied_name(&self, name: &str) -> bool {
         self.names
-            .get_by_left(&Cow::Borrowed(name))
+            .get_left(&Cow::Borrowed(name))
             .and_then(|pos_sel| {
                 match Position::try_from(pos_sel.clone()) {
                     Err(_) => None,
-                    Ok(pos) => self.positions.get_by_left(&pos).cloned(),
+                    Ok(pos) => self.positions.get_left(&pos).cloned(),
                 }
             })
             .and_then(|idx| self.cells.get(&idx))
@@ -365,11 +365,11 @@ impl BasicPalette {
     /// Returns the index associated with the given name if it is occupied.
     pub fn resolve_name_if_occupied(&self, name: &str) -> Option<u32> {
         self.names
-            .get_by_left(&Cow::Borrowed(name))
+            .get_left(&Cow::Borrowed(name))
             .and_then(|pos_sel| {
                 match Position::try_from(pos_sel.clone()) {
                     Err(_) => None,
-                    Ok(pos) => self.positions.get_by_left(&pos).cloned(),
+                    Ok(pos) => self.positions.get_left(&pos).cloned(),
                 }
             })
             .and_then(|idx| if self.cells.contains_key(&idx) {
@@ -452,7 +452,7 @@ impl BasicPalette {
         let idx = self.resolve_ref_to_index(cell_ref).ok()?;
 
         self.positions
-            .get_by_right(&idx)
+            .get_right(&idx)
     }
 
     /// Returns true if the given position is assigned in the palette.
@@ -464,7 +464,7 @@ impl BasicPalette {
     /// Returns true if the given position is occupied in the palette.
     pub fn is_occupied_position(&self, pos: &Position) -> bool {
         self.positions
-            .get_by_left(pos)
+            .get_left(pos)
             .and_then(|idx| self.cells.get(idx))
             .is_some()
     }
@@ -502,7 +502,7 @@ impl BasicPalette {
         -> Option<u32>
     {
         self.positions
-            .get_by_left(position)
+            .get_left(position)
             .and_then(|idx| if self.cells.contains_key(idx) {
                 Some(*idx)
             } else {
@@ -735,7 +735,7 @@ impl BasicPalette {
     {
         let name = name.into();
         
-        match self.names.get_by_left(&name) {
+        match self.names.get_left(&name) {
             Some(cur_selector) if *cur_selector == selector => {
                 let _ = self.names.remove_by_left(&name);
                 Ok(vec![
@@ -802,7 +802,7 @@ impl BasicPalette {
     {
         let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
         
-        match self.positions.get_by_left(&position) {
+        match self.positions.get_left(&position) {
             Some(cur_idx) if *cur_idx == idx => {
                 let _ = self.positions.remove_by_left(&position);
                 Ok(vec![

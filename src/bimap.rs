@@ -35,6 +35,11 @@ pub struct BiMap<L, R> {
     reverse: BTreeMap<Rc<R>, Rc<L>>,
 }
 
+// NOTE: These impls are safe as long as the internal Rc's are never exposed
+// externally, and they are only cloned in &mut methods.
+unsafe impl<L, R> Send for BiMap<L, R> where L: Send, R: Send {}
+unsafe impl<L, R> Sync for BiMap<L, R> where L: Sync, R: Sync {}
+
 impl<L, R> BiMap<L, R> {
     /// Returns the number of elements in the map.
     pub fn len(&self) -> usize {
@@ -66,7 +71,7 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
     ///
     /// The key may be any borrowed form of the map's left key type, but the
     /// ordering on the borrowed form must match the ordering on the key type.
-    pub fn get_by_left<Q>(&self, left: &Q) -> Option<&R> 
+    pub fn get_left<Q>(&self, left: &Q) -> Option<&R> 
         where
             Rc<L>: Borrow<Q>,
             Q: Ord + ?Sized, 
@@ -80,7 +85,7 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
     ///
     /// The key may be any borrowed form of the map's right key type, but the
     /// ordering on the borrowed form must match the ordering on the key type.
-    pub fn get_by_right<Q>(&self, right: &Q) -> Option<&L> 
+    pub fn get_right<Q>(&self, right: &Q) -> Option<&L> 
         where
             Rc<R>: Borrow<Q>,
             Q: Ord + ?Sized,

@@ -94,7 +94,18 @@ pub fn dispatch(
                 if let Ok(Some(c)) = pal.inner()
                     .color(&CellRef::Index(idx))
                 {
-                    println!("{:4X} {:X}", idx, c);
+                    print!("{:4X} {:X}", idx, c);
+                    if let Some(pos) = pal.inner()
+                        .assigned_position(&CellRef::Index(idx))
+                    {
+                        print!(" {}", pos);
+                    }
+                    if let Some(name) = pal.inner()
+                        .assigned_name(&CellRef::Index(idx))
+                    {
+                        print!(" \"{}\"", name);
+                    }
+                    println!();
                 }
             }
             Ok(())
