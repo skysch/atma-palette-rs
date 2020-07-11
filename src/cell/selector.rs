@@ -48,7 +48,7 @@ pub const REF_SEP_TOKEN: char = ',';
 ////////////////////////////////////////////////////////////////////////////////
 // CellSelector
 ////////////////////////////////////////////////////////////////////////////////
-/// A reference to a `Cell` in a palette.
+/// A reference to a set of `Cell`s in a palette.
 ///
 /// The lifetime of the CellSelector is the lifetime of any names.
 #[derive(Debug, Clone, PartialEq, Eq)]

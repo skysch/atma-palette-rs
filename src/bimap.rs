@@ -7,28 +7,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! A bijective map.
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: This module is currently under development.
-#![allow(unused_variables)]
-#![allow(unused_imports)]
-#![allow(missing_docs)]
 
 // External library imports.
-use serde::Deserialize;
-use serde::Serialize;
 use serde::de::MapAccess;
 use serde::de::Visitor;
-
+use serde::Deserialize;
 use serde::Deserializer;
+use serde::Serialize;
 use serde::Serializer;
 
 // Standard library imports.
-use std::collections::BTreeMap;
-use std::collections::btree_map;
-use std::rc::Rc;
 use std::borrow::Borrow;
+use std::collections::btree_map;
+use std::collections::BTreeMap;
 use std::fmt::Debug;
-use std::iter::FusedIterator;
 use std::iter::FromIterator;
+use std::iter::FusedIterator;
+use std::rc::Rc;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // BiMap
@@ -40,10 +36,12 @@ pub struct BiMap<L, R> {
 }
 
 impl<L, R> BiMap<L, R> {
+    /// Returns the number of elements in the map.
     pub fn len(&self) -> usize {
         self.forward.len()
     }
 
+    /// Returns true if the map is empty.
     pub fn is_empty(&self) -> bool {
         self.forward.is_empty()
     }
@@ -116,6 +114,15 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
         self.reverse.contains_key(right)
     }
 
+    /// Inserts the given left-right pair into the bimap.
+    ///
+    /// Returns an enum `Overwritten` representing any left-right pairs that
+    /// were overwritten by the call to `insert`. The example below details all
+    /// possible enum variants that can be returned.
+    ///
+    /// Somewhat paradoxically, calling `insert` can actually reduce the size of
+    /// the bimap. This is because of the invariant that each left value maps
+    /// to exactly one right value and vice versa.
     pub fn insert(&mut self, left: L, right: R) -> Overwritten<L, R> {
         use Overwritten::*;
         let overwritten = match (
@@ -151,7 +158,6 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
             Ok(())
         }
     }
-
 
     /// Inserts the given left-right pair into the bimap without checking if the
     /// pair already exists.
@@ -336,6 +342,7 @@ where
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // IntoIter
 ////////////////////////////////////////////////////////////////////////////////
@@ -489,6 +496,7 @@ impl<'a, L, R> ExactSizeIterator for RightValues<'a, L, R> {}
 
 impl<'a, L, R> FusedIterator for RightValues<'a, L, R> {}
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // LeftRange
 ////////////////////////////////////////////////////////////////////////////////
@@ -523,6 +531,7 @@ impl<'a, L, R> DoubleEndedIterator for LeftRange<'a, L, R> {
 impl<'a, L, R> ExactSizeIterator for LeftRange<'a, L, R> {}
 
 impl<'a, L, R> FusedIterator for LeftRange<'a, L, R> {}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // RightRange
