@@ -28,9 +28,11 @@ use std::rc::Rc;
 use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::iter::FusedIterator;
+use std::iter::FromIterator;
 
-
-#[derive(Clone)]
+////////////////////////////////////////////////////////////////////////////////
+// BiMap
+////////////////////////////////////////////////////////////////////////////////
 pub struct BiMap<L, R> {
     forward: BTreeMap<Rc<L>, Rc<R>>,
     reverse: BTreeMap<Rc<R>, Rc<L>>,
@@ -232,6 +234,16 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
 }
 
 
+impl<L, R> Clone for BiMap<L, R>
+    where
+        L: Clone + Ord,
+        R: Clone + Ord,
+{
+    fn clone(&self) -> BiMap<L, R> {
+        self.iter().map(|(l, r)| (l.clone(), r.clone())).collect()
+    }
+}
+
 impl<L, R> Debug for BiMap<L, R>
     where
         L: Debug + Ord,
@@ -248,6 +260,60 @@ impl<L, R> Debug for BiMap<L, R>
     }
 }
 
+impl<L, R> Default for BiMap<L, R>
+    where
+        L: Ord,
+        R: Ord,
+{
+    fn default() -> BiMap<L, R> {
+        BiMap::new()
+    }
+}
+
+impl<L, R> FromIterator<(L, R)> for BiMap<L, R>
+where
+    L: Ord,
+    R: Ord,
+{
+    fn from_iter<I>(iter: I) -> BiMap<L, R>
+    where
+        I: IntoIterator<Item = (L, R)>,
+    {
+        let mut bimap = BiMap::new();
+        for (left, right) in iter {
+            let _ = bimap.insert(left, right);
+        }
+        bimap
+    }
+}
+
+impl<'a, L, R> IntoIterator for &'a BiMap<L, R>
+where
+    L: Ord,
+    R: Ord,
+{
+    type Item = (&'a L, &'a R);
+    type IntoIter = Iter<'a, L, R>;
+
+    fn into_iter(self) -> Iter<'a, L, R> {
+        self.iter()
+    }
+}
+
+impl<L, R> IntoIterator for BiMap<L, R>
+where
+    L: Ord,
+    R: Ord,
+{
+    type Item = (L, R);
+    type IntoIter = IntoIter<L, R>;
+
+    fn into_iter(self) -> IntoIter<L, R> {
+        IntoIter {
+            inner: self.forward.into_iter(),
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // IntoIter
@@ -477,27 +543,4 @@ pub enum Overwritten<L, R> {
     /// first tuple is the left-right pair of the previous left value, and the second is the
     /// left-right pair of the previous right value.
     Both((L, R), (L, R)),
-}
-
-impl<L, R> Overwritten<L, R> {
-    /// Returns a boolean indicating if the `Overwritten` variant implies any values were
-    /// overwritten.
-    ///
-    /// This method is `true` for all variants other than `Neither`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use bimap::{BiMap, Overwritten};
-    ///
-    /// let mut bimap = BiMap::new();
-    /// assert!(!bimap.insert('a', 1).did_overwrite());
-    /// assert!(bimap.insert('a', 2).did_overwrite());
-    /// ```
-    pub fn did_overwrite(&self) -> bool {
-        match self {
-            Overwritten::Neither => false,
-            _ => true,
-        }
-    }
 }
