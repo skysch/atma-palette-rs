@@ -130,7 +130,7 @@ pub fn main_facade() -> Result<(), Error> {
             None => if config.load_default_palette {
                 debug!("No active palette, loading default palette.");
                 let default_path = cur_dir.clone().join(DEFAULT_PALETTE_PATH);
-                Some(Palette::read_from_path(&default_path)?)
+                Palette::read_from_path(&default_path).ok()
             } else {
                 debug!("No active palette.");
                 None

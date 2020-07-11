@@ -148,6 +148,7 @@ impl Palette {
     {
         let mut file = OpenOptions::new()
             .write(true)
+            .truncate(true)
             .create(true)
             .open(path)
             .with_context(|| format!("Failed to open file {:?}", path))?;
@@ -160,6 +161,7 @@ impl Palette {
     {
         let mut file = OpenOptions::new()
             .write(true)
+            .truncate(true)
             .create_new(true)
             .open(path)
             .with_context(|| format!("Failed to open file {:?}", path))?;
@@ -199,7 +201,7 @@ impl Palette {
     fn generate_ron_into_file(&self, file: &mut File) -> Result<(), FileError> {
         debug!("Serializing & writing Palette file.");
         let pretty = PrettyConfig::new()
-            .with_depth_limit(2)
+            .with_depth_limit(3)
             .with_separate_tuple_members(true)
             .with_enumerate_arrays(true)
             .with_extensions(ron::extensions::Extensions::IMPLICIT_SOME);

@@ -129,6 +129,7 @@ impl Settings {
         let path = path.as_ref().to_owned();
         let file = OpenOptions::new()
             .write(true)
+            .truncate(true)
             .create(true)
             .open(path)
             .context("Failed to open config file.")?;
@@ -145,6 +146,7 @@ impl Settings {
         let path = path.as_ref().to_owned();
         let file = OpenOptions::new()
             .write(true)
+            .truncate(true)
             .create_new(true)
             .open(path)
             .context("Failed to open config file.")?;

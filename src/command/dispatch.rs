@@ -156,18 +156,46 @@ pub fn dispatch(
         ////////////////////////////////////////////////////////////////////////
         Undo { count } => {
             let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+            let count = count.unwrap_or(1);
+            if count == 0 {
+                println!("0 undo operations performed.");
+                return Ok(());
+            };
             let performed = pal.undo(count);
-            println!("{} undo operations performed.", performed);
-            Ok(())
+            match performed {
+                0 => {
+                    println!("No undo operations recorded.");
+                    return Ok(());
+                },
+                1 => println!("Undo operation completed."),
+                _ => println!("{} undo operations performed.", performed),
+            }
+            pal.write_to_load_path()
+                .map(|_| ())
+                .context("Failed to write palette")
         },
 
         // Redo
         ////////////////////////////////////////////////////////////////////////
         Redo { count } => {
             let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+            let count = count.unwrap_or(1);
+            if count == 0 {
+                println!("0 redo operations performed.");
+                return Ok(());
+            };
             let performed = pal.redo(count);
-            println!("{} redo operations performed.", performed);
-            Ok(())
+            match performed {
+                0 => {
+                    println!("No redo operations recorded.");
+                    return Ok(());
+                },
+                1 => println!("Redo operation completed."),
+                _ => println!("{} redo operations performed.", performed),
+            }
+            pal.write_to_load_path()
+                .map(|_| ())
+                .context("Failed to write palette")
         },
 
         // Import

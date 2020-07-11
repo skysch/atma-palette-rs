@@ -14,6 +14,7 @@ use crate::palette::Operation;
 // External library imports.
 use serde::Serialize;
 use serde::Deserialize;
+use log::*;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,10 +79,11 @@ impl History {
     /// beyond the cursor.
     pub fn push_undo_ops(&mut self, ops: Vec<Operation>) {
         assert_eq!(self.cursor_state, CursorState::Valid);
+        trace!("History: cursor: {}, len: {}", self.cursor, self.ops.len());
 
-        if self.cursor < ops.len() {
+        if self.cursor >= self.ops.len() {
             self.ops.push(ops);
-            self.cursor += 1;
+            self.cursor = self.ops.len();
         } else {
             self.ops[self.cursor] = ops;
             self.ops.truncate(self.cursor);
@@ -154,7 +156,7 @@ impl History {
     pub fn set_current_redo_ops(&mut self, redo: Vec<Operation>) {
         assert_eq!(self.cursor_state, CursorState::AwaitingSetRedo);
 
-        self.ops[self.cursor + 1] = redo;
+        self.ops[self.cursor] = redo;
         self.cursor_state = CursorState::Valid;
     }
 
@@ -168,7 +170,7 @@ impl History {
         self.cursor_state = CursorState::AwaitingSetUndo;
         self.cursor += 1;
         self.ops
-            .get(self.cursor)
+            .get(self.cursor - 1)
             .map(|ops| &ops[..])
     }
 

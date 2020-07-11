@@ -1,9 +1,0 @@
-#![enable(implicit_some)]
-Config(
-    // logger_config: (
-    //     log_path: ".log",
-    // ),
-    log_levels: {
-        "atma::dispatch": debug,
-    },
-)

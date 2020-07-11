@@ -1,5 +1,5 @@
-# .atma-settings
-# .atma-config
+.atma-settings
+.atma-config
 *.atma
 
 # Ignore this in libraries.

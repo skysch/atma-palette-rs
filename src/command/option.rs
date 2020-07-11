@@ -156,12 +156,12 @@ pub enum CommandOption {
     /// Revert previous operations.
     Undo {
         /// The number of operations to revert.
-        count: usize,
+        count: Option<usize>,
     },
     /// Reapply previously reverted operations.
     Redo {
         /// The number of operations to reapply.
-        count: usize,
+        count: Option<usize>,
     },
     
     /// Import color data into a palette.
