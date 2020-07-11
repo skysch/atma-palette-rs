@@ -203,12 +203,7 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
         })
     }
 
-    // TODO: append
-    // TODO: range
-    // TODO: split_off
-    // iter
-
-    /// Creates an iterator over the left-right pairs in the bimap in ascending
+    /// Returns an iterator over the left-right pairs in the bimap in ascending
     /// order by left value.
     pub fn iter(&self) -> Iter<'_, L, R> {
         Iter {
@@ -216,7 +211,7 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
         }
     }
 
-    /// Creates an iterator over the left values in the bimap in ascending
+    /// Returns an iterator over the left values in the bimap in ascending
     /// order.
     pub fn left_values(&self) -> LeftValues<'_, L, R> {
         LeftValues {
@@ -224,15 +219,40 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
         }
     }
 
-    /// Creates an iterator over the right values in the bimap in ascending
+    /// Returns an iterator over the right values in the bimap in ascending
     /// order.
     pub fn right_values(&self) -> RightValues<'_, L, R> {
         RightValues {
             inner: self.reverse.iter(),
         }
     }
-}
 
+    /// Returns an iterator over the left-right pairs within the range keyed by
+    /// the left in left-ascending order.
+    pub fn left_range<'a, Q, A>(&'a self, range: A) -> LeftRange<'a, L, R>
+    where
+        Rc<L>: Borrow<Q>,
+        A: std::ops::RangeBounds<Q>,
+        Q: Ord + ?Sized,
+    {
+        LeftRange {
+            inner: self.forward.range(range),
+        }
+    }
+
+    /// Returns an iterator over the left-right pairs within the range keyed by
+    /// the right in right-ascending order.
+    pub fn right_range<'a, Q, A>(&'a self, range: A) -> RightRange<'a, L, R>
+    where
+        Rc<R>: Borrow<Q>,
+        A: std::ops::RangeBounds<Q>,
+        Q: Ord + ?Sized,
+    {
+        RightRange {
+            inner: self.reverse.range(range),
+        }
+    }
+}
 
 impl<L, R> Clone for BiMap<L, R>
     where
@@ -324,22 +344,6 @@ pub struct IntoIter<L, R> {
     inner: btree_map::IntoIter<Rc<L>, Rc<R>>,
 }
 
-impl<L, R> DoubleEndedIterator for IntoIter<L, R> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        // unwraps are safe because right2left is gone
-        self.inner.next_back().map(|(l, r)| {
-            (
-                Rc::try_unwrap(l).ok().unwrap(),
-                Rc::try_unwrap(r).ok().unwrap(),
-            )
-        })
-    }
-}
-
-impl<L, R> ExactSizeIterator for IntoIter<L, R> {}
-
-impl<L, R> FusedIterator for IntoIter<L, R> {}
-
 impl<L, R> Iterator for IntoIter<L, R> {
     type Item = (L, R);
 
@@ -358,6 +362,22 @@ impl<L, R> Iterator for IntoIter<L, R> {
     }
 }
 
+impl<L, R> DoubleEndedIterator for IntoIter<L, R> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        // unwraps are safe because right2left is gone
+        self.inner.next_back().map(|(l, r)| {
+            (
+                Rc::try_unwrap(l).ok().unwrap(),
+                Rc::try_unwrap(r).ok().unwrap(),
+            )
+        })
+    }
+}
+
+impl<L, R> ExactSizeIterator for IntoIter<L, R> {}
+
+impl<L, R> FusedIterator for IntoIter<L, R> {}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Iter
 ////////////////////////////////////////////////////////////////////////////////
@@ -371,16 +391,6 @@ pub struct Iter<'a, L, R> {
     inner: btree_map::Iter<'a, Rc<L>, Rc<R>>,
 }
 
-impl<'a, L, R> DoubleEndedIterator for Iter<'a, L, R> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        self.inner.next_back().map(|(l, r)| (&**l, &**r))
-    }
-}
-
-impl<'a, L, R> ExactSizeIterator for Iter<'a, L, R> {}
-
-impl<'a, L, R> FusedIterator for Iter<'a, L, R> {}
-
 impl<'a, L, R> Iterator for Iter<'a, L, R> {
     type Item = (&'a L, &'a R);
 
@@ -392,6 +402,17 @@ impl<'a, L, R> Iterator for Iter<'a, L, R> {
         self.inner.size_hint()
     }
 }
+
+impl<'a, L, R> DoubleEndedIterator for Iter<'a, L, R> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.inner.next_back().map(|(l, r)| (&**l, &**r))
+    }
+}
+
+impl<'a, L, R> ExactSizeIterator for Iter<'a, L, R> {}
+
+impl<'a, L, R> FusedIterator for Iter<'a, L, R> {}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // LeftValues
@@ -406,16 +427,6 @@ pub struct LeftValues<'a, L, R> {
     inner: btree_map::Iter<'a, Rc<L>, Rc<R>>,
 }
 
-impl<'a, L, R> DoubleEndedIterator for LeftValues<'a, L, R> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        self.inner.next_back().map(|(l, _)| &**l)
-    }
-}
-
-impl<'a, L, R> ExactSizeIterator for LeftValues<'a, L, R> {}
-
-impl<'a, L, R> FusedIterator for LeftValues<'a, L, R> {}
-
 impl<'a, L, R> Iterator for LeftValues<'a, L, R> {
     type Item = &'a L;
 
@@ -427,6 +438,17 @@ impl<'a, L, R> Iterator for LeftValues<'a, L, R> {
         self.inner.size_hint()
     }
 }
+
+impl<'a, L, R> DoubleEndedIterator for LeftValues<'a, L, R> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.inner.next_back().map(|(l, _)| &**l)
+    }
+}
+
+impl<'a, L, R> ExactSizeIterator for LeftValues<'a, L, R> {}
+
+impl<'a, L, R> FusedIterator for LeftValues<'a, L, R> {}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // RightValues
@@ -441,16 +463,6 @@ pub struct RightValues<'a, L, R> {
     inner: btree_map::Iter<'a, Rc<R>, Rc<L>>,
 }
 
-impl<'a, L, R> DoubleEndedIterator for RightValues<'a, L, R> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        self.inner.next_back().map(|(r, _)| &**r)
-    }
-}
-
-impl<'a, L, R> ExactSizeIterator for RightValues<'a, L, R> {}
-
-impl<'a, L, R> FusedIterator for RightValues<'a, L, R> {}
-
 impl<'a, L, R> Iterator for RightValues<'a, L, R> {
     type Item = &'a R;
 
@@ -462,6 +474,76 @@ impl<'a, L, R> Iterator for RightValues<'a, L, R> {
         self.inner.size_hint()
     }
 }
+
+impl<'a, L, R> DoubleEndedIterator for RightValues<'a, L, R> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.inner.next_back().map(|(r, _)| &**r)
+    }
+}
+
+impl<'a, L, R> ExactSizeIterator for RightValues<'a, L, R> {}
+
+impl<'a, L, R> FusedIterator for RightValues<'a, L, R> {}
+
+////////////////////////////////////////////////////////////////////////////////
+// LeftRange
+////////////////////////////////////////////////////////////////////////////////
+#[derive(Debug)]
+pub struct LeftRange<'a, L, R> {
+    inner: btree_map::Range<'a, Rc<L>, Rc<R>>,
+}
+
+impl<'a, L, R> Iterator for LeftRange<'a, L, R> {
+    type Item = (&'a L, &'a R);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(|(l, r)| (&**l, &**r))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl<'a, L, R> DoubleEndedIterator for LeftRange<'a, L, R> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.inner.next_back().map(|(l, r)| (&**l, &**r))
+    }
+}
+
+impl<'a, L, R> ExactSizeIterator for LeftRange<'a, L, R> {}
+
+impl<'a, L, R> FusedIterator for LeftRange<'a, L, R> {}
+
+////////////////////////////////////////////////////////////////////////////////
+// RightRange
+////////////////////////////////////////////////////////////////////////////////
+#[derive(Debug)]
+pub struct RightRange<'a, L, R> {
+    inner: btree_map::Range<'a, Rc<R>, Rc<L>>,
+}
+
+impl<'a, L, R> Iterator for RightRange<'a, L, R> {
+    type Item = (&'a L, &'a R);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(|(r, l)| (&**l, &**r))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl<'a, L, R> DoubleEndedIterator for RightRange<'a, L, R> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.inner.next_back().map(|(r, l)| (&**l, &**r))
+    }
+}
+
+impl<'a, L, R> ExactSizeIterator for RightRange<'a, L, R> {}
+
+impl<'a, L, R> FusedIterator for RightRange<'a, L, R> {}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -522,25 +604,28 @@ impl<'de, L, R> Deserialize<'de> for BiMap<L, R>
 ////////////////////////////////////////////////////////////////////////////////
 // Overwritten
 ////////////////////////////////////////////////////////////////////////////////
-/// The previous left-right pairs, if any, that were overwritten by a call to the
-/// [`insert`](BiHashMap::insert) method of a bimap.
+/// The previous left-right pairs, if any, that were overwritten by a call to
+/// the [`insert`](BiHashMap::insert) method of a bimap.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Overwritten<L, R> {
     /// Neither the left nor the right value previously existed in the bimap.
     Neither,
 
-    /// The left value existed in the bimap, and the previous left-right pair is returned.
+    /// The left value existed in the bimap, and the previous left-right pair
+    /// is returned.
     Left(L, R),
 
-    /// The right value existed in the bimap, and the previous left-right pair is returned.
+    /// The right value existed in the bimap, and the previous left-right pair
+    /// is returned.
     Right(L, R),
 
-    /// The left-right pair already existed in the bimap, and the previous left-right pair is
-    /// returned.
+    /// The left-right pair already existed in the bimap, and the previous
+    /// left-right pair is returned.
     Pair(L, R),
 
-    /// Both the left and the right value existed in the bimap, but as part of separate pairs. The
-    /// first tuple is the left-right pair of the previous left value, and the second is the
-    /// left-right pair of the previous right value.
+    /// Both the left and the right value existed in the bimap, but as part of
+    /// separate pairs. The first tuple is the left-right pair of the previous
+    /// left value, and the second is the left-right pair of the previous right
+    /// value.
     Both((L, R), (L, R)),
 }
