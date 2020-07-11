@@ -33,6 +33,7 @@ use std::iter::FromIterator;
 ////////////////////////////////////////////////////////////////////////////////
 // BiMap
 ////////////////////////////////////////////////////////////////////////////////
+/// A bijective map between left and right keys.
 pub struct BiMap<L, R> {
     forward: BTreeMap<Rc<L>, Rc<R>>,
     reverse: BTreeMap<Rc<R>, Rc<L>>,
@@ -348,13 +349,14 @@ impl<L, R> Iterator for IntoIter<L, R> {
     type Item = (L, R);
 
     fn next(&mut self) -> Option<Self::Item> {
-        // unwraps are safe because right2left is gone
-        self.inner.next().map(|(l, r)| {
-            (
-                Rc::try_unwrap(l).ok().unwrap(),
-                Rc::try_unwrap(r).ok().unwrap(),
-            )
-        })
+        self.inner
+            .next()
+            .map(|(l, r)| {
+                (
+                    Rc::try_unwrap(l).ok().unwrap(),
+                    Rc::try_unwrap(r).ok().unwrap(),
+                )
+            })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -364,19 +366,21 @@ impl<L, R> Iterator for IntoIter<L, R> {
 
 impl<L, R> DoubleEndedIterator for IntoIter<L, R> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        // unwraps are safe because right2left is gone
-        self.inner.next_back().map(|(l, r)| {
-            (
-                Rc::try_unwrap(l).ok().unwrap(),
-                Rc::try_unwrap(r).ok().unwrap(),
-            )
-        })
+        self.inner
+            .next_back()
+            .map(|(l, r)| {
+                (
+                    Rc::try_unwrap(l).ok().unwrap(),
+                    Rc::try_unwrap(r).ok().unwrap(),
+                )
+            })
     }
 }
 
 impl<L, R> ExactSizeIterator for IntoIter<L, R> {}
 
 impl<L, R> FusedIterator for IntoIter<L, R> {}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Iter
@@ -488,6 +492,11 @@ impl<'a, L, R> FusedIterator for RightValues<'a, L, R> {}
 ////////////////////////////////////////////////////////////////////////////////
 // LeftRange
 ////////////////////////////////////////////////////////////////////////////////
+/// An iterator over a range of left-key values in a `BiMap`.
+///
+/// This struct is created by the [`left_range`] method of `BiMap`.
+///
+/// [`left_range`]: BiMap::left_range
 #[derive(Debug)]
 pub struct LeftRange<'a, L, R> {
     inner: btree_map::Range<'a, Rc<L>, Rc<R>>,
@@ -518,6 +527,11 @@ impl<'a, L, R> FusedIterator for LeftRange<'a, L, R> {}
 ////////////////////////////////////////////////////////////////////////////////
 // RightRange
 ////////////////////////////////////////////////////////////////////////////////
+/// An iterator over a range of right-key values in a `BiMap`.
+///
+/// This struct is created by the [`right_range`] method of `BiMap`.
+///
+/// [`right_range`]: BiMap::right_range
 #[derive(Debug)]
 pub struct RightRange<'a, L, R> {
     inner: btree_map::Range<'a, Rc<R>, Rc<L>>,
