@@ -78,6 +78,11 @@ impl<'name> CellSelection<'name> {
     }
 }
 
+impl<'name> From<CellSelector<'name>> for CellSelection<'name> {
+    fn from(selector: CellSelector<'name>) -> Self {
+        CellSelection(vec![selector])
+    }
+}
 impl<'name> From<Vec<CellSelector<'name>>> for CellSelection<'name> {
     fn from(selectors: Vec<CellSelector<'name>>) -> Self {
         CellSelection(selectors)

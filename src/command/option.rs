@@ -162,7 +162,12 @@ pub enum CommandOption {
     /// Import color data into a palette.
     Import,
     /// Export palette data.
-    Export,
+    Export {
+        // TODO: Consider generalizing this to a string so we can parse simpler
+        // selection terms?
+        /// The selection of palette cells to export.
+        selection: Option<CellSelection<'static>>,
+    }
 }
 
 impl CommandOption {

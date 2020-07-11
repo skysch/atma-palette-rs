@@ -1,6 +1,6 @@
 [package]
 name = "atma"
-version = "0.0.111"
+version = "0.0.112"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT or Apache-2.0"
@@ -23,7 +23,7 @@ exclude = [
 name = "atma"
 
 [features]
-default = []
+default = ["png"]
 
 # Required dependencies
 [dependencies]
@@ -38,7 +38,7 @@ rustc_version_runtime = "*"
 serde = { version = "*", features = ["derive"] }
 structopt = { version = "0.3", features = ["suggestions", "color"] }
 bimap = { version = "0.4", features = [ "serde" ]}
-
+png = { version = "0.16", optional = true}
 
 # Dependencies used for tests, examples, and benches.
 [dev-dependencies]

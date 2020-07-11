@@ -12,6 +12,8 @@
 // Local imports.
 use crate::cell::CellRef;
 use crate::cell::PositionSelector;
+use crate::cell::CellSelection;
+use crate::cell::CellSelector;
 use crate::color::Color;
 use crate::command::AtmaOptions;
 use crate::command::CommandOption;
@@ -82,16 +84,15 @@ pub fn dispatch(
             List { selection } => {
                 let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
                 debug!("Start listing for selection {:?}", selection);
-                if let Some(selection) = selection {
-                    
-                    let index_selection = selection.resolve(pal.inner());
-                    debug!("Start listing for {:?}", index_selection);
-                    for idx in index_selection {
-                        if let Ok(Some(c)) = pal.inner()
-                            .color(&CellRef::Index(idx))
-                        {
-                            println!("{:4X} {:X}", idx, c);
-                        }
+                let selection = selection.unwrap_or(CellSelector::All.into());
+                let index_selection = selection.resolve(pal.inner());
+                debug!("Start listing for {:?}", index_selection);
+
+                for idx in index_selection {
+                    if let Ok(Some(c)) = pal.inner()
+                        .color(&CellRef::Index(idx))
+                    {
+                        println!("{:4X} {:X}", idx, c);
                     }
                 }
                 Ok(())
@@ -133,7 +134,13 @@ pub fn dispatch(
                 Ok(())
             },
             Import => unimplemented!(),
-            Export => unimplemented!(),
+            Export { selection } => {
+                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                write_png(
+                    &pal,
+                    selection.unwrap_or(CellSelector::All.into()),
+                    &cur_dir.clone().join("test.png"))
+            },
         },
     }
 }
@@ -209,4 +216,38 @@ fn new_palette(
             })?;
     }
     Ok(())
+}
+
+
+#[cfg(feature = "png")]
+fn write_png<'a>(palette: &Palette, selection: CellSelection<'a>, path: &Path)
+    -> Result<(), anyhow::Error>
+{
+    let mut pal_data = Vec::new();
+    let index_selection = selection.resolve(palette.inner());    
+    println!("{:?}", selection);
+    for idx in index_selection {
+        if let Ok(Some(c)) = palette.inner().color(&CellRef::Index(idx)) {
+            println!("{:?}", c.rgb_octets());
+            pal_data.extend(&c.rgb_octets());
+        }
+    }
+
+    let file = std::fs::File::create(path)?;
+    let ref mut w = std::io::BufWriter::new(file);
+
+    let mut encoder = png::Encoder::new(w, 1, 1);
+    encoder.set_color(png::ColorType::Indexed);
+    encoder.set_depth(png::BitDepth::Eight);
+    encoder.set_palette(pal_data);
+    let mut writer = encoder.write_header()?;
+    writer.write_image_data(&[0])?;
+    Ok(())
+}
+
+#[cfg(not(feature = "png"))]
+fn write_png<'a>(palette: &Palette, selection: CellSelection<'a>, path: &Path)
+    -> Result<(), anyhow::Error>
+{
+    Err(anyhow!("png export not supported."))
 }
