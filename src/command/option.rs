@@ -139,7 +139,12 @@ pub enum CommandOption {
     },
     
     /// Delete colors and ramps from a palette.
-    Delete,
+    Delete {
+        // TODO: Consider generalizing this to a string so we can parse simpler
+        // selection terms?
+        /// The selection of palette cells to export.
+        selection: Option<CellSelection<'static>>,
+    },
 
     /// Move colors and ramps in a palette.
     Move,
@@ -183,7 +188,6 @@ impl CommandOption {
 // InsertOption
 ////////////////////////////////////////////////////////////////////////////////
 /// Options for the insert command.
-#[allow(missing_docs)]
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]
@@ -229,7 +233,6 @@ pub enum InsertOption {
 // ExportOption
 ////////////////////////////////////////////////////////////////////////////////
 /// Options for the export command.
-#[allow(missing_docs)]
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]

@@ -11,6 +11,7 @@
 // Local imports.
 use crate::cell::Cell;
 use crate::cell::CellRef;
+use crate::cell::CellSelection;
 use crate::cell::Position;
 use crate::cell::PositionSelector;
 use crate::color::Color;
@@ -307,6 +308,23 @@ impl Palette {
                 name,
             }),
             _ => (),
+        }
+
+        self.apply_operations(&ops[..])
+    }
+    
+    /// Deletes the selected cells from the palette.
+    pub fn delete_selection<'name>(
+        &mut self,
+        selection: CellSelection<'name>)
+        -> Result<(), PaletteError>
+    {
+        use Operation::*;
+
+        let index_selection = selection.resolve(self.inner());    
+        let mut ops = Vec::new();
+        for idx in index_selection {
+            ops.push(RemoveCell { cell_ref: CellRef::Index(idx) });
         }
 
         self.apply_operations(&ops[..])
