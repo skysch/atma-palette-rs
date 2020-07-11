@@ -152,8 +152,7 @@ impl BasicPalette {
     fn generate_ron_into_file(&self, file: &mut File) -> Result<(), FileError> {
         let pretty = PrettyConfig::new()
             .with_depth_limit(2)
-            .with_separate_tuple_members(true)
-            .with_enumerate_arrays(true);
+            .with_separate_tuple_members(true);
         let s = to_string_pretty(self, pretty)?;
 
         file.write_all(s.as_bytes())?;
@@ -255,7 +254,6 @@ impl BasicPalette {
                 .ok_or(PaletteError::UndefinedCellReference { 
                     cell_ref: cell_ref.clone().into_static(),
                 }),
-
 
             CellRef::Position(position) => positions
                 .get(position)

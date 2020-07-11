@@ -7,22 +7,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Command line dispatching.
 ////////////////////////////////////////////////////////////////////////////////
-#![allow(unused)] // TODO: Remove this.
 
 // Local imports.
 use crate::cell::CellRef;
-use crate::cell::PositionSelector;
 use crate::cell::CellSelection;
 use crate::cell::CellSelector;
+use crate::cell::PositionSelector;
 use crate::color::Color;
 use crate::command::AtmaOptions;
 use crate::command::CommandOption;
-use crate::command::InsertOption;
 use crate::command::ExportOption;
+use crate::command::InsertOption;
 use crate::Config;
 use crate::DEFAULT_PALETTE_PATH;
 use crate::error::FileError;
-use crate::error::PaletteError;
 use crate::error::ParseError;
 use crate::palette::Palette;
 use crate::parse::color;
@@ -47,12 +45,13 @@ fn parse_color(text: String) -> Result<Color, ParseError> {
         .map_err(ParseError::from)
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // dispatch
 ////////////////////////////////////////////////////////////////////////////////
 /// Executes the given `AtmaOptions` on the given `Palette`.
 pub fn dispatch(
-    mut palette: Option<Palette>,
+    palette: Option<Palette>,
     opts: AtmaOptions,
     config: Config,
     settings: Settings,
@@ -85,7 +84,7 @@ pub fn dispatch(
         // List
         ////////////////////////////////////////////////////////////////////////
         List { selection } => {
-            let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+            let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
             debug!("Start listing for selection {:?}", selection);
             let selection = selection.unwrap_or(CellSelector::All.into());
             let index_selection = selection.resolve(pal.inner());
@@ -205,7 +204,7 @@ pub fn dispatch(
         // Export
         ////////////////////////////////////////////////////////////////////////
         Export { export_option } => {
-            let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+            let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
             match export_option {
                 ExportOption::Png { selection, output } => {
                     write_png(
@@ -225,9 +224,9 @@ fn new_palette(
     name: Option<String>,
     no_history: bool,
     config: Option<Config>,
-    mut settings: Option<Settings>,
+    settings: Option<Settings>,
     set_active: bool)
-    -> Result<(), FileError>
+    -> Result<(), anyhow::Error>
 {
     use crate::error::FileErrorContext as _;
 
@@ -237,7 +236,7 @@ fn new_palette(
 
     if !no_history { palette = palette.with_history(); }
     if let Some(name) = name {
-        palette.inner_mut().assign_name(name, PositionSelector::ALL);
+        let _ = palette.inner_mut().assign_name(name, PositionSelector::ALL)?;
     }
 
     if let Some(config) = config {

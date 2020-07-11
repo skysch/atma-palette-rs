@@ -105,66 +105,46 @@ impl Palette {
 
     /// Constructs a new `Palette` by parsing data from the file at the given
     /// path.
-    pub fn read_from_path<P>(path: &P) -> Result<Self, FileError>
+    pub fn read_from_path<P>(path: P) -> Result<Self, FileError>
         where P: AsRef<Path> + Debug
     {
-        let path = path.as_ref().to_owned();
+        let path = path.as_ref();
         let mut file = OpenOptions::new()
             .read(true)
-            .open(&path)
+            .open(path)
             .with_context(|| format!("Failed to open file {:?}", path))?;
         let mut palette = Palette::read_from_file(&mut file)?;
-        palette.load_path = Some(path);
-        Ok(palette)
-    }
-
-    /// Constructs a new `Palette` by parsing data from the given file.
-    pub fn read_from_file(file: &mut File) -> Result<Self, FileError> {
-        Palette::parse_ron_from_file(file)
-    }
-
-    /// Parses a `Palette` from a file using the RON format.
-    fn parse_ron_from_file(file: &mut File) -> Result<Self, FileError> {
-        let len = file.metadata()
-            .context("Failed to read file metadata")?
-            .len();
-        let mut buf = Vec::with_capacity(len as usize);
-        let _ = file.read_to_end(&mut buf)
-            .context("Failed to read palette file")?;
-
-        use ron::de::Deserializer;
-        let mut d = Deserializer::from_bytes(&buf)
-            .context("Failed deserializing RON file")?;
-        let palette = Palette::deserialize(&mut d)
-            .context("Failed parsing RON file")?;
-        d.end()
-            .context("Failed parsing RON file")?;
+        palette.load_path = Some(path.to_owned());
         Ok(palette)
     }
 
     /// Writes the `Palette` to the file at the given path.
-    pub fn write_to_path<P>(&self, path: &P) -> Result<(), FileError>
+    pub fn write_to_path<P>(&self, path: P) -> Result<(), FileError>
         where P: AsRef<Path> + Debug
     {
+        let path = path.as_ref();
         let mut file = OpenOptions::new()
             .write(true)
             .truncate(true)
             .create(true)
             .open(path)
-            .with_context(|| format!("Failed to open file {:?}", path))?;
+            .with_context(|| format!(
+                "Failed to create/open file {:?} for writing",
+                path))?;
         self.write_to_file(&mut file)
     }
 
     /// Writes the `Palette` to a new file at the given path.
-    pub fn write_to_path_if_new<P>(&self, path: &P) -> Result<(), FileError>
+    pub fn write_to_path_if_new<P>(&self, path: P) -> Result<(), FileError>
         where P: AsRef<Path> + Debug
     {
+        let path = path.as_ref();
         let mut file = OpenOptions::new()
             .write(true)
             .truncate(true)
             .create_new(true)
             .open(path)
-            .with_context(|| format!("Failed to open file {:?}", path))?;
+            .with_context(|| format!("Failed to create file {:?}.", path))?;
         self.write_to_file(&mut file)
     }
 
@@ -192,6 +172,30 @@ impl Palette {
         }
     }
 
+    /// Constructs a new `Palette` by parsing data from the given file.
+    pub fn read_from_file(file: &mut File) -> Result<Self, FileError> {
+        Palette::parse_ron_from_file(file)
+    }
+
+    /// Parses a `Palette` from a file using the RON format.
+    fn parse_ron_from_file(file: &mut File) -> Result<Self, FileError> {
+        let len = file.metadata()
+            .context("Failed to read file metadata")?
+            .len();
+        let mut buf = Vec::with_capacity(len as usize);
+        let _ = file.read_to_end(&mut buf)
+            .context("Failed to read palette file")?;
+
+        use ron::de::Deserializer;
+        let mut d = Deserializer::from_bytes(&buf)
+            .context("Failed deserializing RON file")?;
+        let palette = Palette::deserialize(&mut d)
+            .context("Failed parsing RON file")?;
+        d.end()
+            .context("Failed parsing RON file")?;
+        Ok(palette)
+    }
+    
     /// Writes the `Palette` to the given file.
     pub fn write_to_file(&self, file: &mut File) -> Result<(), FileError> {
         self.generate_ron_into_file(file)
@@ -203,7 +207,6 @@ impl Palette {
         let pretty = PrettyConfig::new()
             .with_depth_limit(3)
             .with_separate_tuple_members(true)
-            .with_enumerate_arrays(true)
             .with_extensions(ron::extensions::Extensions::IMPLICIT_SOME);
         let s = to_string_pretty(self, pretty)?;
 

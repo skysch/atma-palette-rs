@@ -88,53 +88,32 @@ impl Settings {
     pub fn read_from_path<P>(path: P) -> Result<Self, FileError> 
         where P: AsRef<Path>
     {
-        let path = path.as_ref().to_owned();
-        let file = File::open(&path)
-            .context("Failed to open settings file.")?;
+        let path = path.as_ref();
+        let file = File::open(path)
+            .with_context(|| format!(
+                "Failed to open settings file for reading: {}",
+                path.display()))?;
         let mut settings = Settings::read_from_file(file)?;
-        settings.load_path = Some(path);
+        settings.load_path = Some(path.to_owned());
         Ok(settings)
     }
 
-    /// Constructs a new `Settings` with options parsed from the given file.
-    pub fn read_from_file(mut file: File) -> Result<Self, FileError>  {
-        Settings::parse_ron_from_file(&mut file)
-    }
-
-    /// Parses a `Settings` from a file using the RON format.
-    fn parse_ron_from_file(file: &mut File) -> Result<Self, FileError> {
-        let len = file.metadata()
-            .context("Failed to recover file metadata.")?
-            .len();
-        let mut buf = Vec::with_capacity(len as usize);
-        let _ = file.read_to_end(&mut buf)
-            .context("Failed to read settings file")?;
-
-        use ron::de::Deserializer;
-        let mut d = Deserializer::from_bytes(&buf)
-            .context("Failed deserializing RON file")?;
-        let settings = Settings::deserialize(&mut d)
-            .context("Failed parsing Ron file")?;
-        d.end()
-            .context("Failed parsing Ron file")?;
-
-        Ok(settings) 
-    }
-    
     /// Open a file at the given path and write the `Settings` into it.
     pub fn write_to_path<P>(&self, path: P)
         -> Result<(), FileError>
         where P: AsRef<Path>
     {
-        let path = path.as_ref().to_owned();
+        let path = path.as_ref();
         let file = OpenOptions::new()
             .write(true)
             .truncate(true)
             .create(true)
             .open(path)
-            .context("Failed to open config file.")?;
+            .with_context(|| format!(
+                "Failed to create/open settings file for writing: {}",
+                path.display()))?;
         self.write_to_file(file)
-            .context("Failed to write config file.")?;
+            .context("Failed to write settings file")?;
         Ok(())
     }
 
@@ -143,15 +122,17 @@ impl Settings {
         -> Result<(), FileError>
         where P: AsRef<Path>
     {
-        let path = path.as_ref().to_owned();
+        let path = path.as_ref();
         let file = OpenOptions::new()
             .write(true)
             .truncate(true)
             .create_new(true)
             .open(path)
-            .context("Failed to open config file.")?;
+            .with_context(|| format!(
+                "Failed to create settings file: {}",
+                path.display()))?;
         self.write_to_file(file)
-            .context("Failed to write config file.")?;
+            .context("Failed to write settings file")?;
         Ok(())
     }
 
@@ -183,6 +164,31 @@ impl Settings {
         }
     }
 
+    /// Constructs a new `Settings` with options parsed from the given file.
+    pub fn read_from_file(mut file: File) -> Result<Self, FileError>  {
+        Settings::parse_ron_from_file(&mut file)
+    }
+
+    /// Parses a `Settings` from a file using the RON format.
+    fn parse_ron_from_file(file: &mut File) -> Result<Self, FileError> {
+        let len = file.metadata()
+            .context("Failed to recover file metadata.")?
+            .len();
+        let mut buf = Vec::with_capacity(len as usize);
+        let _ = file.read_to_end(&mut buf)
+            .context("Failed to read settings file")?;
+
+        use ron::de::Deserializer;
+        let mut d = Deserializer::from_bytes(&buf)
+            .context("Failed deserializing RON file")?;
+        let settings = Settings::deserialize(&mut d)
+            .context("Failed parsing Ron file")?;
+        d.end()
+            .context("Failed parsing Ron file")?;
+
+        Ok(settings) 
+    }
+    
     /// Write the `Settings` into the given file.
     pub fn write_to_file(&self, mut file: File) -> Result<(), FileError> {
         self.generate_ron_into_file(&mut file)

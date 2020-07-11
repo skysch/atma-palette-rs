@@ -107,37 +107,14 @@ impl Config {
     pub fn read_from_path<P>(path: P) -> Result<Self, FileError> 
         where P: AsRef<Path>
     {
-        let path = path.as_ref().to_owned();
-        let file = File::open(&path)
-            .context("Failed to open config file.")?;
+        let path = path.as_ref();
+        let file = File::open(path)
+            .with_context(|| format!(
+                "Failed to open config file for reading: {}",
+                path.display()))?;
         let mut config = Config::read_from_file(file)?;
-        config.load_path = Some(path);
+        config.load_path = Some(path.to_owned());
         Ok(config)
-    }
-
-    /// Constructs a new `Config` with options parsed from the given file.
-    pub fn read_from_file(mut file: File) -> Result<Self, FileError>  {
-        Config::parse_ron_from_file(&mut file)
-    }
-
-    /// Parses a `Config` from a file using the RON format.
-    fn parse_ron_from_file(file: &mut File) -> Result<Self, FileError> {
-        let len = file.metadata()
-            .context("Failed to recover file metadata.")?
-            .len();
-        let mut buf = Vec::with_capacity(len as usize);
-        let _ = file.read_to_end(&mut buf)
-            .context("Failed to read config file")?;
-
-        use ron::de::Deserializer;
-        let mut d = Deserializer::from_bytes(&buf)
-            .context("Failed deserializing RON file")?;
-        let config = Config::deserialize(&mut d)
-            .context("Failed parsing RON file")?;
-        d.end()
-            .context("Failed parsing RON file")?;
-
-        Ok(config) 
     }
 
     /// Open a file at the given path and write the `Config` into it.
@@ -145,15 +122,17 @@ impl Config {
         -> Result<(), FileError>
         where P: AsRef<Path>
     {
-        let path = path.as_ref().to_owned();
+        let path = path.as_ref();
         let file = OpenOptions::new()
             .write(true)
             .truncate(true)
             .create(true)
             .open(path)
-            .context("Failed to open config file.")?;
+            .with_context(|| format!(
+                "Failed to create/open config file for writing: {}",
+                path.display()))?;
         self.write_to_file(file)
-            .context("Failed to write config file.")?;
+            .context("Failed to write config file")?;
         Ok(())
     }
     
@@ -162,15 +141,17 @@ impl Config {
         -> Result<(), FileError>
         where P: AsRef<Path>
     {
-        let path = path.as_ref().to_owned();
+        let path = path.as_ref();
         let file = OpenOptions::new()
             .write(true)
             .truncate(true)
             .create_new(true)
             .open(path)
-            .context("Failed to open config file.")?;
+            .with_context(|| format!(
+                "Failed to create config file: {}",
+                path.display()))?;
         self.write_to_file(file)
-            .context("Failed to write config file.")?;
+            .context("Failed to write config file")?;
         Ok(())
     }
 
@@ -200,6 +181,31 @@ impl Config {
             },
             None => Ok(false)    
         }
+    }
+
+    /// Constructs a new `Config` with options parsed from the given file.
+    pub fn read_from_file(mut file: File) -> Result<Self, FileError>  {
+        Config::parse_ron_from_file(&mut file)
+    }
+
+    /// Parses a `Config` from a file using the RON format.
+    fn parse_ron_from_file(file: &mut File) -> Result<Self, FileError> {
+        let len = file.metadata()
+            .context("Failed to recover file metadata.")?
+            .len();
+        let mut buf = Vec::with_capacity(len as usize);
+        let _ = file.read_to_end(&mut buf)
+            .context("Failed to read config file")?;
+
+        use ron::de::Deserializer;
+        let mut d = Deserializer::from_bytes(&buf)
+            .context("Failed deserializing RON file")?;
+        let config = Config::deserialize(&mut d)
+            .context("Failed parsing RON file")?;
+        d.end()
+            .context("Failed parsing RON file")?;
+
+        Ok(config) 
     }
 
     /// Write the `Config` into the given file.
