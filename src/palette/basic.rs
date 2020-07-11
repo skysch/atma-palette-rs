@@ -59,8 +59,8 @@ pub struct BasicPalette {
     next_index: u32,
     /// A map of assigned names.
     names: BiMap<Cow<'static, str>, PositionSelector>,
-    /// A map of positions assigned to cells.
-    positions: BTreeMap<Position, u32>,
+    /// A map of assigned positions.
+    positions: BiMap<Position, u32>,
     /// A map of names assigned to groups of cells.
     groups: BTreeMap<Cow<'static, str>, Vec<u32>>,
 }
@@ -78,7 +78,7 @@ impl BasicPalette {
             cells: BTreeMap::new(),
             next_index: 0,
             names: BiMap::new(),
-            positions: BTreeMap::new(),
+            positions: BiMap::new(),
             groups: BTreeMap::new(),
         }
     }
@@ -235,7 +235,7 @@ impl BasicPalette {
 
     fn resolve_ref_to_index_using<'name>(
         names: &BiMap<Cow<'static, str>, PositionSelector>,
-        positions: &BTreeMap<Position, u32>,
+        positions: &BiMap<Position, u32>,
         groups: &BTreeMap<Cow<'static, str>, Vec<u32>>,
         cell_ref: &CellRef<'name>)
         -> Result<u32, PaletteError>
@@ -248,7 +248,7 @@ impl BasicPalette {
                 .and_then(|pos_sel| {
                     match Position::try_from(pos_sel.clone()) {
                         Err(_) => None,
-                        Ok(pos) => positions.get(&pos).cloned(),
+                        Ok(pos) => positions.get_by_left(&pos).cloned(),
                     }
                 })
                 .ok_or(PaletteError::UndefinedCellReference { 
@@ -256,7 +256,7 @@ impl BasicPalette {
                 }),
 
             CellRef::Position(position) => positions
-                .get(position)
+                .get_by_left(position)
                 .cloned()
                 .ok_or(PaletteError::UndefinedCellReference { 
                     cell_ref: cell_ref.clone().into_static(),
@@ -347,7 +347,7 @@ impl BasicPalette {
             .and_then(|pos_sel| {
                 match Position::try_from(pos_sel.clone()) {
                     Err(_) => None,
-                    Ok(pos) => self.positions.get(&pos).cloned(),
+                    Ok(pos) => self.positions.get_by_left(&pos).cloned(),
                 }
             })
             .and_then(|idx| self.cells.get(&idx))
@@ -361,7 +361,7 @@ impl BasicPalette {
             .and_then(|pos_sel| {
                 match Position::try_from(pos_sel.clone()) {
                     Err(_) => None,
-                    Ok(pos) => self.positions.get(&pos).cloned(),
+                    Ok(pos) => self.positions.get_by_left(&pos).cloned(),
                 }
             })
             .and_then(|idx| if self.cells.contains_key(&idx) {
@@ -440,14 +440,13 @@ impl BasicPalette {
     /// Returns true if the given position is assigned in the palette.
     pub fn is_assigned_position(&self, pos: &Position) -> bool {
         self.positions
-            .get(pos)
-            .is_some()
+            .contains_left(pos)
     }
 
     /// Returns true if the given position is occupied in the palette.
     pub fn is_occupied_position(&self, pos: &Position) -> bool {
         self.positions
-            .get(pos)
+            .get_by_left(pos)
             .and_then(|idx| self.cells.get(idx))
             .is_some()
     }
@@ -457,7 +456,7 @@ impl BasicPalette {
     /// no positions are assigned is empty.
     #[allow(unused)]
     pub(in crate) fn assigned_position_range(&self) -> Few<Position> {
-        let mut keys = self.positions.keys();
+        let mut keys = self.positions.left_values();
         match (keys.next(), keys.next_back()) {
             (Some(first), Some(last)) => Few::Two(*first, *last),
             (Some(first), None)       => Few::One(*first),
@@ -472,7 +471,7 @@ impl BasicPalette {
     {
         if low > high { return Few::Zero }
         
-        let mut range = self.positions.range(low..=high).map(|(k, _v)| k);
+        let mut range = self.positions.left_range(low..=high).map(|(k, _v)| k);
         match (range.next(), range.next_back()) {
             (Some(first), Some(last)) => Few::Two(*first, *last),
             (Some(first), None)       => Few::One(*first),
@@ -485,7 +484,7 @@ impl BasicPalette {
         -> Option<u32>
     {
         self.positions
-            .get(position)
+            .get_by_left(position)
             .and_then(|idx| if self.cells.contains_key(idx) {
                 Some(*idx)
             } else {
@@ -742,17 +741,35 @@ impl BasicPalette {
     {
         let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
 
-        match self.positions.insert(position.clone(), idx) {
-            Some(old_idx) => Ok(vec![
+        use crate::bimap::Overwritten::*;
+        match self.positions.insert(position, idx) {
+            Left(old_pos, old_idx) |
+            Right(old_pos, old_idx) |
+            Pair(old_pos, old_idx) => Ok(vec![
                 Operation::AssignPosition {
                     cell_ref: CellRef::Index(old_idx),
-                    position: position,
+                    position: old_pos,
                 },
             ]),
-            None => Ok(vec![
+            Both(
+                (old_pos_a, old_idx_a),
+                (old_pos_b, old_idx_b)) => 
+            {  
+                Ok(vec![
+                    Operation::AssignPosition {
+                        cell_ref: CellRef::Index(old_idx_a),
+                        position: old_pos_a,
+                    },
+                    Operation::AssignPosition {
+                        cell_ref: CellRef::Index(old_idx_b),
+                        position: old_pos_b,
+                    },
+                ])
+            },
+            Neither => Ok(vec![
                 Operation::UnassignPosition {
-                    cell_ref: CellRef::Index(idx),
-                    position: position,
+                    cell_ref: cell_ref.into_static(),
+                    position,
                 },
             ]),
         }
@@ -767,9 +784,9 @@ impl BasicPalette {
     {
         let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
         
-        match self.positions.get(&position) {
+        match self.positions.get_by_left(&position) {
             Some(cur_idx) if *cur_idx == idx => {
-                let _ = self.positions.remove(&position);
+                let _ = self.positions.remove_by_left(&position);
                 Ok(vec![
                     Operation::AssignPosition {
                         cell_ref: CellRef::Index(idx),
@@ -796,7 +813,7 @@ impl BasicPalette {
 
         let mut ops = Vec::with_capacity(to_remove.len());
         for position in to_remove.into_iter() {
-            let _ = self.positions.remove(&position);
+            let _ = self.positions.remove_by_left(&position);
             ops.push(Operation::AssignPosition {
                 cell_ref: CellRef::Index(idx),
                 position,
