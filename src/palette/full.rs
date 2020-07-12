@@ -15,7 +15,7 @@ use crate::cell::CellSelection;
 use crate::cell::Position;
 use crate::cell::PositionSelector;
 use crate::command::Positioning;
-use crate::color::Color;
+use crate::command::ExprTarget;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
 use crate::error::PaletteError;
@@ -264,7 +264,7 @@ impl Palette {
     /// [`Position`]: ../cell/struct.Position.html
     pub fn insert_colors<'name, S>(
         &mut self,
-        colors: &[Color],
+        targets: &[ExprTarget],
         name: Option<S>,
         position: Positioning)
         -> Result<(), PaletteError>
@@ -289,13 +289,20 @@ impl Palette {
         let name: Option<Cow<'static, str>> = name
             .map(|n| n.to_string().into());
 
-        let mut ops = Vec::with_capacity(colors.len() * 2);
-        for color in colors {
-            debug!("Inserting color {:X} at {}", color, next);
+        let mut ops = Vec::with_capacity(targets.len() * 2);
+        for target in targets {
+            let expr = match target {
+                ExprTarget::Color(color)
+                    => Expr::Color(color.clone()),
+                ExprTarget::CellRef(cell_ref)
+                    => Expr::Reference(cell_ref.clone()),
+            };
+            debug!("Inserting target {:?} at {}", target, next);
+
             // insert_cell
             ops.push(InsertCell {
                 idx,
-                cell: Cell::new_with_expr(Expr::Color(color.clone())),
+                cell: Cell::new_with_expr(expr),
             });
             if let Some(name) = &name {
                 // assign_group
@@ -316,7 +323,7 @@ impl Palette {
         }
 
         match name {
-            Some(name) if colors.len() == 1 => ops.push(AssignName {
+            Some(name) if targets.len() == 1 => ops.push(AssignName {
                 selector: PositionSelector::from(next),
                 name,
             }),

@@ -97,6 +97,9 @@ pub enum Expr {
     /// A color.
     Color(Color),
 
+    /// A reference to another cell's color.
+    Reference(CellRef<'static>),
+
     /// Performs an RGB multiply blend between the colors in the given cells.
     RgbMultiply(CellRef<'static>, CellRef<'static>, Interpolate),
 
@@ -155,6 +158,9 @@ impl Expr {
             Expr::Empty => Ok(None),
 
             Expr::Color(c) => Ok(Some(c.clone())),
+            
+            Expr::Reference(cell_ref) => basic
+                .cycle_detect_color(cell_ref, index_list),
             
             Expr::RgbMultiply(a, b, int)
                 => apply_rgb(basic, index_list, a, b, int, multiply),

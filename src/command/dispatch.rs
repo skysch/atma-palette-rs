@@ -13,7 +13,6 @@ use crate::cell::CellRef;
 use crate::cell::CellSelection;
 use crate::cell::CellSelector;
 use crate::cell::PositionSelector;
-use crate::color::Color;
 use crate::command::AtmaOptions;
 use crate::command::CommandOption;
 use crate::command::ExportOption;
@@ -21,10 +20,7 @@ use crate::command::InsertOption;
 use crate::Config;
 use crate::DEFAULT_PALETTE_PATH;
 use crate::error::FileError;
-use crate::error::ParseError;
 use crate::palette::Palette;
-use crate::parse::color;
-use crate::parse::ParseResultExt as _;
 use crate::Settings;
 
 // External library imports.
@@ -35,15 +31,13 @@ use anyhow::anyhow;
 use std::path::PathBuf;
 use std::path::Path;
 
+
+////////////////////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////////////////////
+
 /// Error message returned when no active palette is loaded.
 const NO_PALETTE: &'static str = "No active palette loaded.";
-
-
-fn parse_color(text: String) -> Result<Color, ParseError> {
-    color(&text[..])
-        .finish()
-        .map_err(ParseError::from)
-}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,10 +111,6 @@ pub fn dispatch(
             InsertOption::Colors { colors, name, at } => {
                 let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
                 let at = at.unwrap_or(config.default_positioning);
-                let colors: Vec<Color> = colors
-                    .into_iter()
-                    .map(parse_color)
-                    .collect::<Result<Vec<_>,_>>()?;
 
                 let res = pal.insert_colors(&colors[..], name, at);
                 debug!("{:?}", pal);

@@ -12,6 +12,7 @@
 // Local library imports.
 use crate::cell::CellSelection;
 use crate::command::Positioning;
+use crate::command::ExprTarget;
 
 // External library imports.
 use structopt::StructOpt;
@@ -198,7 +199,7 @@ pub enum InsertOption {
     /// Inserts colors into the palette.
     Colors {
         /// The colors to insert.
-        colors: Vec<String>,
+        colors: Vec<ExprTarget>,
 
         /// The name of the colors group.
         #[structopt(long = "name")]
@@ -212,7 +213,7 @@ pub enum InsertOption {
     /// Insert a ramp into the palette.
     Ramp {
         /// The ramp interpolation points.
-        points: Vec<String>,
+        points: Vec<ExprTarget>,
 
         /// The number of colors in the ramp.
         #[structopt(short = "c", long = "count")]
