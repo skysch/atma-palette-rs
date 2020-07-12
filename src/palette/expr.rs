@@ -98,6 +98,15 @@ pub enum Expr {
     /// Performs an RGB multiply blend between the colors in the given cells.
     RgbMultiply(CellRef<'static>, CellRef<'static>, Interpolate),
 
+    /// Performs an RGB divide blend between the colors in the given cells.
+    RgbDivide(CellRef<'static>, CellRef<'static>, Interpolate),
+
+    /// Performs an RGB subtract blend between the colors in the given cells.
+    RgbSubtract(CellRef<'static>, CellRef<'static>, Interpolate),
+
+    /// Performs an RGB difference blend between the colors in the given cells.
+    RgbDifference(CellRef<'static>, CellRef<'static>, Interpolate),
+
     /// Performs an RGB screen blend between the colors in the given cells.
     RgbScreen(CellRef<'static>, CellRef<'static>, Interpolate),
 
@@ -147,6 +156,12 @@ impl Expr {
             
             Expr::RgbMultiply(a, b, int)
                 => apply_rgb(basic, index_list, a, b, int, multiply),
+            Expr::RgbDivide(a, b, int)
+                => apply_rgb(basic, index_list, a, b, int, divide),
+            Expr::RgbSubtract(a, b, int)
+                => apply_rgb(basic, index_list, a, b, int, subtract),
+            Expr::RgbDifference(a, b, int)
+                => apply_rgb(basic, index_list, a, b, int, difference),
             Expr::RgbScreen(a, b, int)
                 => apply_rgb(basic, index_list, a, b, int, screen),
             Expr::RgbOverlay(a, b, int)
@@ -176,7 +191,6 @@ impl Default for Expr {
         Expr::Empty
     }
 }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,6 +232,21 @@ fn apply_rgb<F>(
 #[inline]
 fn multiply(a: f32, b: f32) -> f32 {
     a * b
+}
+
+#[inline]
+fn divide(a: f32, b: f32) -> f32 {
+    a / b
+}
+
+#[inline]
+fn subtract(a: f32, b: f32) -> f32 {
+    if a - b < 0.0 { 0.0 } else { a - b }
+}
+
+#[inline]
+fn difference(a: f32, b: f32) -> f32 {
+    if a > b { a - b } else { b - a }
 }
 
 #[inline]
