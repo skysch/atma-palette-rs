@@ -13,6 +13,8 @@
 use crate::cell::CellSelection;
 use crate::command::Positioning;
 use crate::command::ExprTarget;
+use crate::command::FunctionInput;
+use crate::command::BlendMode;
 
 // External library imports.
 use structopt::StructOpt;
@@ -199,7 +201,7 @@ pub enum InsertOption {
     /// Inserts colors into the palette.
     Colors {
         /// The colors to insert.
-        colors: Vec<ExprTarget>,
+        targets: Vec<ExprTarget>,
 
         /// The name of the colors group.
         #[structopt(long = "name")]
@@ -210,10 +212,27 @@ pub enum InsertOption {
         at: Option<Positioning>,
     },
 
+    /// Inserts a blend function into the palette.
+    Function {
+        /// The blend mode.
+        mode: BlendMode,
+
+        /// The function inputs.
+        input: Vec<FunctionInput>,
+
+        /// The name of the colors group.
+        #[structopt(long = "name")]
+        name: Option<String>,
+
+        /// The start position of the inserted function.
+        #[structopt(long = "at")]
+        at: Option<Positioning>,
+    },
+
     /// Insert a ramp into the palette.
     Ramp {
         /// The ramp interpolation points.
-        points: Vec<ExprTarget>,
+        targets: Vec<ExprTarget>,
 
         /// The number of colors in the ramp.
         #[structopt(short = "c", long = "count")]

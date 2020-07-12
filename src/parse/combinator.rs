@@ -12,8 +12,10 @@
 use crate::parse::ParseResult;
 use crate::parse::ParseResultExt as _;
 use crate::parse::Success;
+use crate::parse::Failure;
 
-
+// Standard lirary imports.
+use std::borrow::Cow;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Parser combinators.
@@ -337,5 +339,61 @@ pub fn dynamic_bracket<'t, F, G, H, V, U, T>(
             .with_join_context(&sub_suc, text)?;
 
         Ok(sub_suc.join_with(post_suc, text, |l, _| l))
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Literal map combinators
+////////////////////////////////////////////////////////////////////////////////
+
+/// Attempts a sequence parses with the given parser combinator. If the input
+/// on the left of the map succeeds, a clone of the right value is returned.
+pub fn any_literal_map<'t, P, Q, M, V, G, S>(parser: P, expected: S, map: M)
+    -> impl FnMut(&'t str) -> ParseResult<'t, V>
+    where
+        P: Fn(&'t str) -> Q,
+        Q: FnMut(&'t str) -> ParseResult<'t, G>,
+        M: IntoIterator<Item=(&'static str, V)>,
+        V: Clone,
+        S: Clone + Into<Cow<'static, str>>,
+{
+    let map: Vec<_> = map.into_iter().collect();
+    move |text| {
+        for (pat, value) in &map {
+            if let Ok(success) = (&parser)(pat)(text) {
+                return Ok(success.map_value(|_| value.clone()));
+            }
+        }
+        Err(Failure {
+            rest: text,
+            context: "",
+            expected: expected.clone().into(),
+            source: None,
+        })
+    }
+}
+
+/// Attempts a sequence parses with the given parser combinator. If the input
+/// on the left of the map succeeds, a the right value is returned.
+pub fn any_literal_map_once<'t, P, Q, M, V, G, S>(parser: P, expected: S, map: M)
+    -> impl FnOnce(&'t str) -> ParseResult<'t, V>
+    where
+        P: Fn(&'t str) -> Q,
+        Q: FnMut(&'t str) -> ParseResult<'t, G>,
+        M: IntoIterator<Item=(&'static str, V)>,
+        S: Into<Cow<'static, str>>,
+{
+    move |text| {
+        for (pat, value) in map.into_iter() {
+            if let Ok(success) = (&parser)(pat)(text) {
+                return Ok(success.map_value(|_| value));
+            }
+        }
+        Err(Failure {
+            rest: text,
+            context: "",
+            expected: expected.into(),
+            source: None,
+        })
     }
 }

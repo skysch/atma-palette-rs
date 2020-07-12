@@ -108,11 +108,11 @@ pub fn dispatch(
         // Insert
         ////////////////////////////////////////////////////////////////////////
         Insert { insert_option } => match insert_option {
-            InsertOption::Colors { colors, name, at } => {
+            InsertOption::Colors { targets, name, at } => {
                 let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
                 let at = at.unwrap_or(config.default_positioning);
 
-                let res = pal.insert_colors(&colors[..], name, at);
+                let res = pal.insert_colors(&targets[..], name, at);
                 debug!("{:?}", pal);
 
                 res.context("Command 'insert' failed")?;
@@ -121,6 +121,7 @@ pub fn dispatch(
                     .context("Failed to write palette")
             },
 
+            InsertOption::Function { .. } => unimplemented!(),
             InsertOption::Ramp { .. } => unimplemented!(),
         },
 
