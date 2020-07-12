@@ -14,7 +14,7 @@ use crate::cell::Position;
 use crate::color::Color;
 use crate::parse::cell_ref;
 use crate::parse::color;
-use crate::parse::any_literal_map;
+use crate::parse::any_literal_map_once;
 use crate::parse::FailureOwned;
 use crate::parse::float;
 use crate::parse::literal_ignore_ascii_case;
@@ -197,7 +197,7 @@ impl std::str::FromStr for Positioning {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        if let Ok(positioning) = any_literal_map(
+        if let Ok(positioning) = any_literal_map_once(
                 literal_ignore_ascii_case,
                 "",
                 vec![
@@ -266,7 +266,7 @@ impl std::str::FromStr for BlendMode {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        any_literal_map(
+        any_literal_map_once(
                 literal_ignore_ascii_case,
                 "blend mode",
                 vec![
