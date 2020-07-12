@@ -23,6 +23,7 @@ use serde::Serialize;
 // Standard library imports.
 use std::collections::HashSet;
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // Interpolate
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,6 +82,7 @@ impl Default for Interpolate {
         Interpolate::LinearRgb { amount: 1.0 }
     }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Expr
@@ -203,9 +205,9 @@ fn apply_rgb<F>(
     a: &CellRef<'static>,
     b: &CellRef<'static>,
     int: &Interpolate,
-    mut f: F)
+    f: F)
     -> Result<Option<Color>, PaletteError>
-    where F: FnMut(f32, f32) -> f32
+    where F: Fn(f32, f32) -> f32
 {
     match (
         basic.cycle_detect_color(a, index_list)?,
@@ -274,13 +276,10 @@ fn hard_light(a: f32, b: f32) -> f32 {
 
 #[inline]
 fn soft_light(a: f32, b: f32) -> f32 {
-    lerp_f32(multiply(a, b), screen(a, b), a)
-}
+    let s = multiply(a, b);
+    let e = screen(a, b);
 
-
-#[inline]
-fn lerp_f32(s: f32, e:f32, a: f32) -> f32 {
-    ((e-s) * a) + s
+    ((e - s) * a) + s
 }
 
 #[inline]

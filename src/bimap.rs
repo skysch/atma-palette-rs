@@ -17,7 +17,6 @@ use serde::Serialize;
 use serde::Serializer;
 
 // Standard library imports.
-use std::borrow::Borrow;
 use std::collections::btree_map;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
@@ -71,11 +70,7 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
     ///
     /// The key may be any borrowed form of the map's left key type, but the
     /// ordering on the borrowed form must match the ordering on the key type.
-    pub fn get_left<Q>(&self, left: &Q) -> Option<&R> 
-        where
-            Rc<L>: Borrow<Q>,
-            Q: Ord + ?Sized, 
-    {
+    pub fn get_left(&self, left: &L) -> Option<&R> {
         self.forward
             .get(left)
             .map(AsRef::as_ref)
@@ -85,11 +80,7 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
     ///
     /// The key may be any borrowed form of the map's right key type, but the
     /// ordering on the borrowed form must match the ordering on the key type.
-    pub fn get_right<Q>(&self, right: &Q) -> Option<&L> 
-        where
-            Rc<R>: Borrow<Q>,
-            Q: Ord + ?Sized,
-    {
+    pub fn get_right(&self, right: &R) -> Option<&L> {
         self.reverse
             .get(right)
             .map(AsRef::as_ref)
@@ -99,11 +90,7 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
     ///
     /// The key may be any borrowed form of the map's left key type, but the
     /// ordering on the borrowed form must match the ordering on the key type.
-    pub fn contains_left<Q>(&self, left: &Q) -> bool
-        where
-            Rc<L>: Borrow<Q>,
-            Q: Ord + ?Sized, 
-    {
+    pub fn contains_left(&self, left: &L) -> bool {
         self.forward.contains_key(left)
     }
 
@@ -111,11 +98,7 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
     ///
     /// The key may be any borrowed form of the map's right key type, but the
     /// ordering on the borrowed form must match the ordering on the key type.
-    pub fn contains_right<Q>(&self, right: &Q) -> bool
-        where
-            Rc<R>: Borrow<Q>,
-            Q: Ord + ?Sized, 
-    {
+    pub fn contains_right(&self, right: &R) -> bool {
         self.reverse.contains_key(right)
     }
 
@@ -180,11 +163,7 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
     ///
     /// The key may be any borrowed form of the map's left key type, but the
     /// ordering on the borrowed form must match the ordering on the key type.
-    pub fn remove_by_left<Q>(&mut self, left: &Q) -> Option<(L, R)>
-        where
-            Rc<L>: Borrow<Q>,
-            Q: Ord + ?Sized, 
-    {
+    pub fn remove_by_left(&mut self, left: &L) -> Option<(L, R)> {
         self.forward.remove(left).map(|right_rc| {
             let left_rc = self.reverse.remove(&right_rc).unwrap();
             (
@@ -201,11 +180,7 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
     ///
     /// The key may be any borrowed form of the map's right key type, but the
     /// ordering on the borrowed form must match the ordering on the key type.
-    pub fn remove_by_right<Q>(&mut self, right: &Q) -> Option<(L, R)>
-        where
-            Rc<R>: Borrow<Q>,
-            Q: Ord + ?Sized, 
-    {
+    pub fn remove_by_right(&mut self, right: &R) -> Option<(L, R)> {
         self.reverse.remove(right).map(|left_rc| {
             let right_rc = self.forward.remove(&left_rc).unwrap();
             (
@@ -241,11 +216,8 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
 
     /// Returns an iterator over the left-right pairs within the range keyed by
     /// the left in left-ascending order.
-    pub fn left_range<'a, Q, A>(&'a self, range: A) -> LeftRange<'a, L, R>
-    where
-        Rc<L>: Borrow<Q>,
-        A: std::ops::RangeBounds<Q>,
-        Q: Ord + ?Sized,
+    pub fn left_range<'a, A>(&'a self, range: A) -> LeftRange<'a, L, R>
+        where A: std::ops::RangeBounds<L>
     {
         LeftRange {
             inner: self.forward.range(range),
@@ -254,11 +226,8 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
 
     /// Returns an iterator over the left-right pairs within the range keyed by
     /// the right in right-ascending order.
-    pub fn right_range<'a, Q, A>(&'a self, range: A) -> RightRange<'a, L, R>
-    where
-        Rc<R>: Borrow<Q>,
-        A: std::ops::RangeBounds<Q>,
-        Q: Ord + ?Sized,
+    pub fn right_range<'a, A>(&'a self, range: A) -> RightRange<'a, L, R>
+        where A: std::ops::RangeBounds<R>
     {
         RightRange {
             inner: self.reverse.range(range),

@@ -130,7 +130,7 @@ pub fn dispatch(
                     .context("Failed to write palette")
             },
 
-            InsertOption::Ramp { ..} => unimplemented!(),
+            InsertOption::Ramp { .. } => unimplemented!(),
         },
 
         // Delete
