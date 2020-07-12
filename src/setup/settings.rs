@@ -42,7 +42,8 @@ pub const DEFAULT_SETTINGS_PATH: &'static str = ".atma-settings";
 // Settings
 ////////////////////////////////////////////////////////////////////////////////
 /// Application settings. Configures the application behavior.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Settings {
     /// The path the settings were initially loaded from.

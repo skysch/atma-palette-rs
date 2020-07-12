@@ -10,7 +10,6 @@
 #![allow(variant_size_differences)] // TODO: Remove this.
 
 // Local library imports.
-use crate::cell::Position;
 use crate::cell::CellSelection;
 use crate::command::Positioning;
 
@@ -150,7 +149,7 @@ pub enum CommandOption {
 
         /// The position to move the cells to.
         #[structopt(long = "to")]
-        to: Positioning
+        to: Option<Positioning>
     },
 
     /// Set color expressions, names, or metadata for cells.
@@ -206,8 +205,8 @@ pub enum InsertOption {
         name: Option<String>,
 
         /// The start position for the inserted colors.
-        #[structopt(long = "at", default_value = "cursor")]
-        at: Positioning,
+        #[structopt(long = "at")]
+        at: Option<Positioning>,
     },
 
     /// Insert a ramp into the palette.
@@ -228,8 +227,8 @@ pub enum InsertOption {
         name: Option<String>,
 
         /// The start position of the ramp.
-        #[structopt(long = "at", default_value = "cursor")]
-        at: Positioning,
+        #[structopt(long = "at")]
+        at: Option<Positioning>,
     },
 }
 

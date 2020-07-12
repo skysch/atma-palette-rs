@@ -13,6 +13,7 @@
 use crate::LevelFilter;
 use crate::LoggerConfig;
 use crate::StdoutLogOutput;
+use crate::command::Positioning;
 use crate::utility::normalize_path;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
@@ -46,12 +47,16 @@ pub const DEFAULT_CONFIG_PATH: &'static str = ".atma-config";
 /// Default value for load_default_palette.
 const DEFAULT_LOAD_DEFAULT_PALETTE: bool = true;
 
+/// Default value for default_positioning.
+const DEFAULT_DEFAULT_POSITIONING: Positioning = Positioning::Cursor;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Config
 ////////////////////////////////////////////////////////////////////////////////
 /// Application configuration config. Configures the logger and application
 /// behavior.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
     /// The path the config was initially loaded from.
@@ -69,6 +74,10 @@ pub struct Config {
     /// Attempt to load the default palette if no active palette is set.
     #[serde(default = "Config::default_load_default_palette")]
     pub load_default_palette: bool,
+
+    /// Default value when positioning is not given.
+    #[serde(default = "Config::default_default_positioning")]
+    pub default_positioning: Positioning,
 }
 
 
@@ -79,7 +88,8 @@ impl Config {
             load_path: None,
             logger_config: Config::default_logger_config(),
             log_levels: Config::default_log_levels(),
-            load_default_palette: Config::default_load_default_palette(),
+            load_default_palette: DEFAULT_LOAD_DEFAULT_PALETTE,
+            default_positioning: DEFAULT_DEFAULT_POSITIONING,
         }
     }
 
@@ -257,6 +267,12 @@ impl Config {
     fn default_load_default_palette() -> bool {
         DEFAULT_LOAD_DEFAULT_PALETTE
     }
+
+    /// Returns the default value for default_positioning.
+    #[inline(always)]
+    fn default_default_positioning() -> Positioning {
+        DEFAULT_DEFAULT_POSITIONING
+    }
 }
 
 impl Default for Config {
@@ -272,6 +288,8 @@ impl std::fmt::Display for Config {
         writeln!(fmt, "\tlogger_config/level_filter: {:?}",
             self.logger_config.level_filter)?;
         writeln!(fmt, "\tload_default_palette: {:?}",
-            self.load_default_palette)
+            self.load_default_palette)?;
+        writeln!(fmt, "\tdefault_positioning: {:?}",
+            self.default_positioning)
     }
 }

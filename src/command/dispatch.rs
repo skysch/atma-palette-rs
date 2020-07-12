@@ -116,6 +116,7 @@ pub fn dispatch(
         Insert { insert_option } => match insert_option {
             InsertOption::Colors { colors, name, at } => {
                 let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                let at = at.unwrap_or(config.default_positioning);
                 let colors: Vec<Color> = colors
                     .into_iter()
                     .map(parse_color)
@@ -155,6 +156,7 @@ pub fn dispatch(
         Move { selection, to } => match selection {
             Some(selection) => {
                 let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                let to = to.unwrap_or(config.default_positioning);
                 pal.move_selection(selection, to)?;
 
                 pal.write_to_load_path()

@@ -21,6 +21,10 @@ use crate::parse::ParseResultExt as _;
 use crate::parse::position;
 
 
+// External library imports.
+use serde::Serialize;
+use serde::Deserialize;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Constants
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,6 +121,7 @@ impl std::str::FromStr for RampInput {
 ////////////////////////////////////////////////////////////////////////////////
 /// Option parse result for input or move positioning.
 #[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize)]
 pub enum Positioning {
     /// An explicit position.
     Position(Position),
