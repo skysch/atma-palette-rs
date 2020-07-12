@@ -110,6 +110,25 @@ pub enum Expr {
     /// Performs an RGB soft light blend between the colors in the given cells.
     RgbSoftLight(CellRef<'static>, CellRef<'static>, Interpolate),
 
+    /// Performs an RGB color dodge blend between the colors in the given cells.
+    RgbColorDodge(CellRef<'static>, CellRef<'static>, Interpolate),
+
+    /// Performs an RGB color burn blend between the colors in the given cells.
+    RgbColorBurn(CellRef<'static>, CellRef<'static>, Interpolate),
+
+    /// Performs an RGB linear dodge blend between the colors in the given
+    /// cells.
+    RgbLinearDodge(CellRef<'static>, CellRef<'static>, Interpolate),
+
+    /// Performs an RGB linear burn blend between the colors in the given cells.
+    RgbLinearBurn(CellRef<'static>, CellRef<'static>, Interpolate),
+
+    /// Performs an RGB vivid light blend between the colors in the given cells.
+    RgbVividLight(CellRef<'static>, CellRef<'static>, Interpolate),
+
+    /// Performs an RGB linear light blend between the colors in the given
+    /// cells.
+    RgbLinearLight(CellRef<'static>, CellRef<'static>, Interpolate),
 
 }
 
@@ -123,93 +142,31 @@ impl Expr {
     {
         match self {
             Expr::Empty => Ok(None),
-            
+
             Expr::Color(c) => Ok(Some(c.clone())),
-
-            Expr::RgbMultiply(a, b, int) => match (
-                basic.cycle_detect_color(a, index_list)?,
-                basic.cycle_detect_color(b, index_list)?)
-            {
-                (Some(a), Some(b)) => {
-                    let [ra, ga, ba] = a.rgb_ratios();
-                    let [rb, gb, bb] = b.rgb_ratios();
-                    let rgb = Rgb::from([
-                        multiply(ra, rb),
-                        multiply(ga, gb),
-                        multiply(ba, bb),
-                    ]);
-                    Ok(Some(int.apply(a, rgb)))
-                },
-                _ => Ok(None),
-            },
-
-            Expr::RgbScreen(a, b, int) => match (
-                basic.cycle_detect_color(a, index_list)?,
-                basic.cycle_detect_color(b, index_list)?)
-            {
-                (Some(a), Some(b)) => {
-                    let [ra, ga, ba] = a.rgb_ratios();
-                    let [rb, gb, bb] = b.rgb_ratios();
-                    let rgb = Rgb::from([
-                        screen(ra, rb),
-                        screen(ga, gb),
-                        screen(ba, bb),
-                    ]);
-                    Ok(Some(int.apply(a, rgb)))
-                },
-                _ => Ok(None),
-            },
-
-            Expr::RgbOverlay(a, b, int) => match (
-                basic.cycle_detect_color(a, index_list)?,
-                basic.cycle_detect_color(b, index_list)?)
-            {
-                (Some(a), Some(b)) => {
-                    let [ra, ga, ba] = a.rgb_ratios();
-                    let [rb, gb, bb] = b.rgb_ratios();
-                    let rgb = Rgb::from([
-                        overlay(ra, rb),
-                        overlay(ga, gb),
-                        overlay(ba, bb),
-                    ]);
-                    Ok(Some(int.apply(a, rgb)))
-                },
-                _ => Ok(None),
-            },
-
-            Expr::RgbHardLight(a, b, int) => match (
-                basic.cycle_detect_color(a, index_list)?,
-                basic.cycle_detect_color(b, index_list)?)
-            {
-                (Some(a), Some(b)) => {
-                    let [ra, ga, ba] = a.rgb_ratios();
-                    let [rb, gb, bb] = b.rgb_ratios();
-                    let rgb = Rgb::from([
-                        hard_light(ra, rb),
-                        hard_light(ga, gb),
-                        hard_light(ba, bb),
-                    ]);
-                    Ok(Some(int.apply(a, rgb)))
-                },
-                _ => Ok(None),
-            },
-
-            Expr::RgbSoftLight(a, b, int) => match (
-                basic.cycle_detect_color(a, index_list)?,
-                basic.cycle_detect_color(b, index_list)?)
-            {
-                (Some(a), Some(b)) => {
-                    let [ra, ga, ba] = a.rgb_ratios();
-                    let [rb, gb, bb] = b.rgb_ratios();
-                    let rgb = Rgb::from([
-                        soft_light(ra, rb),
-                        soft_light(ga, gb),
-                        soft_light(ba, bb),
-                    ]);
-                    Ok(Some(int.apply(a, rgb)))
-                },
-                _ => Ok(None),
-            },
+            
+            Expr::RgbMultiply(a, b, int)
+                => apply_rgb(basic, index_list, a, b, int, multiply),
+            Expr::RgbScreen(a, b, int)
+                => apply_rgb(basic, index_list, a, b, int, screen),
+            Expr::RgbOverlay(a, b, int)
+                => apply_rgb(basic, index_list, a, b, int, overlay),
+            Expr::RgbHardLight(a, b, int)
+                => apply_rgb(basic, index_list, a, b, int, hard_light),
+            Expr::RgbSoftLight(a, b, int)
+                => apply_rgb(basic, index_list, a, b, int, soft_light),
+            Expr::RgbColorDodge(a, b, int)
+                => apply_rgb(basic, index_list, a, b, int, color_dodge),
+            Expr::RgbColorBurn(a, b, int)
+                => apply_rgb(basic, index_list, a, b, int, color_burn),
+            Expr::RgbLinearDodge(a, b, int)
+                => apply_rgb(basic, index_list, a, b, int, linear_dodge),
+            Expr::RgbLinearBurn(a, b, int)
+                => apply_rgb(basic, index_list, a, b, int, linear_burn),
+            Expr::RgbVividLight(a, b, int)
+                => apply_rgb(basic, index_list, a, b, int, vivid_light),
+            Expr::RgbLinearLight(a, b, int)
+                => apply_rgb(basic, index_list, a, b, int, linear_light),
         }
     }
 }
@@ -221,6 +178,38 @@ impl Default for Expr {
 }
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+// Component application functions
+////////////////////////////////////////////////////////////////////////////////
+/// Applies the given component blend to the RGB components of the given colors.
+fn apply_rgb<F>(
+    basic: &BasicPalette,
+    index_list: &mut HashSet<u32>,
+    a: &CellRef<'static>,
+    b: &CellRef<'static>,
+    int: &Interpolate,
+    mut f: F)
+    -> Result<Option<Color>, PaletteError>
+    where F: FnMut(f32, f32) -> f32
+{
+    match (
+        basic.cycle_detect_color(a, index_list)?,
+        basic.cycle_detect_color(b, index_list)?)
+    {
+        (Some(a), Some(b)) => {
+            let [ra, ga, ba] = a.rgb_ratios();
+            let [rb, gb, bb] = b.rgb_ratios();
+            let rgb = Rgb::from([
+                (f)(ra, rb),
+                (f)(ga, gb),
+                (f)(ba, bb),
+            ]);
+            Ok(Some(int.apply(a, rgb)))
+        },
+        _ => Ok(None),
+    }
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,4 +252,34 @@ fn soft_light(a: f32, b: f32) -> f32 {
 #[inline]
 fn lerp_f32(s: f32, e:f32, a: f32) -> f32 {
     ((e-s) * a) + s
+}
+
+#[inline]
+fn color_dodge(a: f32, b: f32) -> f32 {
+    b / (1.0 - a)
+}
+
+#[inline]
+fn linear_dodge(a: f32, b: f32) -> f32 {
+    if a + b > 1.0 { 1.0 } else { a + b }
+}
+
+#[inline]
+fn color_burn(a: f32, b: f32) -> f32 {
+    1.0 - (1.0 - a) / b
+}
+
+#[inline]
+fn linear_burn(a: f32, b: f32) -> f32 {
+    a + b - 1.0
+}
+
+#[inline]
+fn vivid_light(a: f32, b: f32) -> f32 {
+    if a > 0.5 { color_dodge(a, b) } else { color_burn(a, b) }
+}
+
+#[inline]
+fn linear_light(a: f32, b: f32) -> f32 {
+    2.0 * a + b - 1.0
 }
