@@ -12,11 +12,9 @@
 // Local library imports.
 use crate::cell::Position;
 use crate::cell::CellSelection;
+use crate::command::Positioning;
 
 // External library imports.
-use serde::Deserialize;
-use serde::Serialize;
-
 use structopt::StructOpt;
 
 // Standard library imports.
@@ -28,7 +26,6 @@ use std::path::PathBuf;
 ////////////////////////////////////////////////////////////////////////////////
 /// Command line options shared between subcommands.
 #[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]
 #[structopt(name = "atma")]
 pub struct AtmaOptions {
@@ -47,7 +44,6 @@ pub struct AtmaOptions {
 ////////////////////////////////////////////////////////////////////////////////
 /// Command line options shared between subcommands.
 #[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]
 pub struct CommonOptions {
     /// The application config file to load.
@@ -89,7 +85,6 @@ pub struct CommonOptions {
 /// Atma palette editing commands.
 #[allow(missing_docs)]
 #[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]
 pub enum CommandOption {
     /// Create a new palette.
@@ -155,7 +150,7 @@ pub enum CommandOption {
 
         /// The position to move the cells to.
         #[structopt(long = "to")]
-        to: Position
+        to: Positioning
     },
 
     /// Set color expressions, names, or metadata for cells.
@@ -199,7 +194,6 @@ impl CommandOption {
 ////////////////////////////////////////////////////////////////////////////////
 /// Options for the insert command.
 #[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]
 pub enum InsertOption {
     /// Inserts colors into the palette.
@@ -244,7 +238,6 @@ pub enum InsertOption {
 ////////////////////////////////////////////////////////////////////////////////
 /// Options for the export command.
 #[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
 #[derive(StructOpt)]
 pub enum ExportOption {
     /// Export palette data as a PNG file.

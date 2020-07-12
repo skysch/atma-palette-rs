@@ -14,6 +14,7 @@ use crate::cell::CellRef;
 use crate::cell::CellSelection;
 use crate::cell::Position;
 use crate::cell::PositionSelector;
+use crate::command::Positioning;
 use crate::color::Color;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
@@ -340,7 +341,7 @@ impl Palette {
     pub fn move_selection<'name>(
         &mut self,
         selection: CellSelection<'name>,
-        to: Position)
+        to: Positioning)
         -> Result<(), PaletteError>
     {
         use Operation::*;
@@ -349,7 +350,11 @@ impl Palette {
 
         let index_selection = selection.resolve(self.inner());    
         let mut ops = Vec::new();
-        let mut position = to;
+        let mut position = match to {
+            Positioning::Position(p) => p,
+            Positioning::Open => Position::ZERO,
+            Positioning::Cursor => unimplemented!(),
+        };
         for idx in index_selection {
             match self.inner()
                 .unoccupied_position_or_next(position)
