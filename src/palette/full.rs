@@ -298,10 +298,13 @@ impl Palette {
                 ExprTarget::Color(color)
                     => Expr::Color(color.clone()),
 
-                // TODO: insert Option to resolve to index?
-                // TODO: insert Option to resolve to color?
-                ExprTarget::CellRef(cell_ref)
-                    => Expr::Reference(cell_ref.clone()),
+                ExprTarget::CellRef(cell_ref) => {
+                    // "insert colors" always resolves to color.
+                    let color = self.inner
+                        .color(cell_ref)?
+                        .unwrap_or_default();
+                    Expr::Color(color.clone())
+                }
             };
 
             // insert_cell
