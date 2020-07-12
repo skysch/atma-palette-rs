@@ -83,6 +83,8 @@ pub fn main_facade() -> Result<(), Error> {
 
     // Print version information.
     debug!("Atma version: {}", env!("CARGO_PKG_VERSION"));
+    #[cfg(feature = "png")]
+    debug!("PNG support enabled.");
     let rustc_meta = rustc_version_runtime::version_meta();
     trace!("Rustc version: {} {:?}", rustc_meta.semver, rustc_meta.channel);
     if let Some(hash) = rustc_meta.commit_hash {

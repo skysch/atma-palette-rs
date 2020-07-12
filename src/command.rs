@@ -9,9 +9,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal modules.
+mod ancillary;
 mod dispatch;
 mod option;
 
 // Exports.
+pub use ancillary::*;
 pub use dispatch::*;
 pub use option::*;
