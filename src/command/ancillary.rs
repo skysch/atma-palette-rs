@@ -35,6 +35,9 @@ pub const POSITIONING_CURSOR: &'static str = "cursor";
 /// Token for positioning by open.
 pub const POSITIONING_OPEN: &'static str = "open";
 
+/// Token for no positioning.
+pub const POSITIONING_NONE: &'static str = "none";
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // ExprTarget
@@ -129,6 +132,18 @@ pub enum Positioning {
     Cursor,
     /// The first open position.
     Open,
+    /// No positioning.
+    None,
+}
+
+impl Positioning {
+    /// Returns true if the positioning is `None`.
+    pub fn is_none(&self) -> bool {
+        match self {
+            Positioning::None => true,
+            _                 => false,
+        }
+    }
 }
 
 impl std::str::FromStr for Positioning {
@@ -147,6 +162,13 @@ impl std::str::FromStr for Positioning {
             .is_ok()
         {
             return Ok(Positioning::Open);
+        }
+
+        if literal_ignore_ascii_case(POSITIONING_NONE)(text)
+            .end_of_text()
+            .is_ok()
+        {
+            return Ok(Positioning::None);
         }
 
         position(text)

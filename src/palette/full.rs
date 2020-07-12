@@ -280,10 +280,13 @@ impl Palette {
             Positioning::Position(p) => p,
             Positioning::Open => Position::ZERO,
             Positioning::Cursor => self.position_cursor,
+            Positioning::None => Position::ZERO,
         };
-        next = self.inner
-            .unoccupied_position_or_next(next)
-            .expect("no free positions"); // TODO: Handle with an error.
+        if !position.is_none() {
+            next = self.inner
+                .unoccupied_position_or_next(next)
+                .expect("no free positions"); // TODO: Handle with an error.
+        }
 
         // Convert name into proper format.
         let name: Option<Cow<'static, str>> = name
@@ -294,16 +297,24 @@ impl Palette {
             let expr = match target {
                 ExprTarget::Color(color)
                     => Expr::Color(color.clone()),
+
+                // TODO: insert Option to resolve to index?
+                // TODO: insert Option to resolve to color?
                 ExprTarget::CellRef(cell_ref)
                     => Expr::Reference(cell_ref.clone()),
             };
-            debug!("Inserting target {:?} at {}", target, next);
 
             // insert_cell
             ops.push(InsertCell {
                 idx,
                 cell: Cell::new_with_expr(expr),
             });
+            if !position.is_none() { 
+                ops.push(AssignPosition {
+                    cell_ref: CellRef::Index(idx),
+                    position: next.clone(),
+                });
+            }
             if let Some(name) = &name {
                 // assign_group
                 ops.push(AssignGroup {
@@ -313,13 +324,17 @@ impl Palette {
                 });
             }
 
-            // Shift to next position.
+            // Shift to next index.
             idx = self.inner
                 .unoccupied_index_or_next(idx.wrapping_add(1))
                 .expect("no free indices"); 
-            next = self.inner
-                .unoccupied_position_or_next(next.wrapping_succ())
-                .expect("no free positions");
+
+            // Shift to next position.
+            if !position.is_none() {
+                next = self.inner
+                    .unoccupied_position_or_next(next.wrapping_succ())
+                    .expect("no free positions");
+            }
         }
 
         match name {
@@ -330,7 +345,7 @@ impl Palette {
             _ => (),
         }
 
-        self.position_cursor = next.succ();
+        if !position.is_none() { self.position_cursor = next.succ(); }
         self.apply_operations(&ops[..])
     }
     
@@ -369,6 +384,7 @@ impl Palette {
             Positioning::Position(p) => p,
             Positioning::Open => Position::ZERO,
             Positioning::Cursor => self.position_cursor,
+            Positioning::None => unimplemented!(),
         };
         for idx in index_selection {
             match self.inner()

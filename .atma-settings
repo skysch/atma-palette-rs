@@ -1,4 +1,0 @@
-#![enable(implicit_some)]
-(
-    active_palette: None,
-)
