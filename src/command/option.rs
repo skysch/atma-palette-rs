@@ -205,9 +205,9 @@ pub enum InsertOption {
         #[structopt(long = "name")]
         name: Option<String>,
 
-        /// The position of the ramp start.
-        #[structopt(long = "at")]
-        at: Option<Position>
+        /// The start position for the inserted colors.
+        #[structopt(long = "at", default_value = "cursor")]
+        at: Positioning,
     },
 
     /// Insert a ramp into the palette.
@@ -227,9 +227,9 @@ pub enum InsertOption {
         #[structopt(long = "name")]
         name: Option<String>,
 
-        /// The position of the ramp start
-        #[structopt(long = "at")]
-        at: Option<Position>
+        /// The start position of the ramp.
+        #[structopt(long = "at", default_value = "cursor")]
+        at: Positioning,
     },
 }
 

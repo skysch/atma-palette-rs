@@ -65,6 +65,8 @@ pub struct Palette {
     inner: BasicPalette,
     /// The command history for the palette.
     history: Option<History>,
+    /// The positioning cursor.
+    position_cursor: Position,
 }
 
 
@@ -75,6 +77,7 @@ impl Palette {
             load_path: None,
             inner: BasicPalette::new(),
             history: None,
+            position_cursor: Position::ZERO,
         }
     }
 
@@ -263,7 +266,7 @@ impl Palette {
         &mut self,
         colors: &[Color],
         name: Option<S>,
-        position: Option<Position>)
+        position: Positioning)
         -> Result<(), PaletteError>
         where S: ToString
     {
@@ -273,7 +276,11 @@ impl Palette {
             .unoccupied_index_or_next(0)
             .expect("no free indices"); // TODO: Handle with an error.
         // Get start position.
-        let mut next = position.unwrap_or(Position::ZERO);
+        let mut next = match position {
+            Positioning::Position(p) => p,
+            Positioning::Open => Position::ZERO,
+            Positioning::Cursor => self.position_cursor,
+        };
         next = self.inner
             .unoccupied_position_or_next(next)
             .expect("no free positions"); // TODO: Handle with an error.
@@ -316,6 +323,7 @@ impl Palette {
             _ => (),
         }
 
+        self.position_cursor = next.succ();
         self.apply_operations(&ops[..])
     }
     
@@ -353,7 +361,7 @@ impl Palette {
         let mut position = match to {
             Positioning::Position(p) => p,
             Positioning::Open => Position::ZERO,
-            Positioning::Cursor => unimplemented!(),
+            Positioning::Cursor => self.position_cursor,
         };
         for idx in index_selection {
             match self.inner()
@@ -370,6 +378,7 @@ impl Palette {
             }
         }
 
+        self.position_cursor = position.succ();
         self.apply_operations(&ops[..])
     }
 
