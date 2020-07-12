@@ -371,7 +371,7 @@ impl Palette {
     pub fn move_selection<'name>(
         &mut self,
         selection: CellSelection<'name>,
-        to: Positioning)
+        position: Positioning)
         -> Result<(), PaletteError>
     {
         use Operation::*;
@@ -380,28 +380,35 @@ impl Palette {
 
         let index_selection = selection.resolve(self.inner());    
         let mut ops = Vec::new();
-        let mut position = match to {
+        let mut next = match position {
             Positioning::Position(p) => p,
             Positioning::Open => Position::ZERO,
             Positioning::Cursor => self.position_cursor,
-            Positioning::None => unimplemented!(),
+            Positioning::None => Position::ZERO,
         };
         for idx in index_selection {
+            if position.is_none() {
+                ops.push(UnassignPosition {
+                    cell_ref: CellRef::Index(idx)
+                });
+                continue;
+            }
+
             match self.inner()
-                .unoccupied_position_or_next(position)
+                .unoccupied_position_or_next(next)
             {
                 Some(pos) => {
                     ops.push(AssignPosition {
                         cell_ref: CellRef::Index(idx),
                         position: pos,
                     });
-                    position = pos.succ();
+                    next = pos.succ();
                 },
                 None => return Err(PaletteError::AllPositionsAssigned),
             }
         }
 
-        self.position_cursor = position.succ();
+        if !position.is_none() { self.position_cursor = next.succ(); }
         self.apply_operations(&ops[..])
     }
 

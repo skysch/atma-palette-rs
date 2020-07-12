@@ -84,14 +84,6 @@ pub enum Operation {
     UnassignPosition {
         /// A reference to the `Cell` to unassign the position for.
         cell_ref: CellRef<'static>,
-        /// The position to unassign.
-        position: Position,
-    },
-
-    /// Unassigns all positions for a cell.
-    ClearPositions {
-        /// A reference to the `Cell` to clear the positions for.
-        cell_ref: CellRef<'static>,
     },
 
     ////////////////////////////////////////////////////////////////////////////

@@ -629,10 +629,8 @@ impl BasicPalette {
 
             AssignPosition { cell_ref, position } 
                 => self.assign_position(cell_ref.clone(), position.clone()),
-            UnassignPosition { cell_ref, position } 
-                => self.unassign_position(cell_ref.clone(), position.clone()),
-            ClearPositions { cell_ref } 
-                => self.clear_positions(cell_ref.clone()),
+            UnassignPosition { cell_ref } 
+                => self.unassign_position(cell_ref.clone()),
 
             AssignGroup { cell_ref, group, idx } 
                 => self.assign_group(cell_ref.clone(), group.clone(), *idx),
@@ -787,7 +785,6 @@ impl BasicPalette {
             Neither => Ok(vec![
                 Operation::UnassignPosition {
                     cell_ref: cell_ref.into_static(),
-                    position,
                 },
             ]),
         }
@@ -796,23 +793,19 @@ impl BasicPalette {
     /// Unassigns a position for a cell.
     pub fn unassign_position<'name>(
         &mut self,
-        cell_ref: CellRef<'name>,
-        position: Position)
+        cell_ref: CellRef<'name>)
         -> Result<Vec<Operation>, PaletteError>
     {
         let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
         
-        match self.positions.get_left(&position) {
-            Some(cur_idx) if *cur_idx == idx => {
-                let _ = self.positions.remove_by_left(&position);
-                Ok(vec![
-                    Operation::AssignPosition {
-                        cell_ref: CellRef::Index(idx),
-                        position,
-                    },
-                ])
-            },
-            _ => Ok(Vec::new()),
+        match self.positions.remove_by_right(&idx) {
+            Some((position, _)) => Ok(vec![
+                Operation::AssignPosition {
+                    cell_ref: CellRef::Index(idx),
+                    position,
+                },
+            ]),
+            None => Ok(Vec::new()),
         }
     }
 
