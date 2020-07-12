@@ -274,7 +274,7 @@ impl<'t> std::fmt::Display for Failure<'t> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "parse error: expected {}", self.expected)?;
         if !self.context.is_empty() {
-            write!(f, ", found {}", self.context)?;
+            write!(f, ", found \"{}\"", self.context)?;
         }
         Ok(())
     }
@@ -326,7 +326,7 @@ impl std::fmt::Display for FailureOwned {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "parse error: expected {}", self.expected)?;
         if !self.context.is_empty() {
-            write!(f, ", found {}", self.context)?;
+            write!(f, ", found \"{}\"", self.context)?;
         }
         Ok(())
     }

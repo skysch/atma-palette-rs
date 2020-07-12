@@ -288,6 +288,7 @@ impl std::str::FromStr for BlendMode {
                 ])
             (text)
             .end_of_text()
+            .with_new_context(text, text)
             .finish()
     }
 }
