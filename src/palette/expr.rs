@@ -35,7 +35,7 @@ pub enum Interpolate {
         /// The interpolation factor.
         amount: f32,
     },
-    
+
     /// Cubic interpolation over each RGB channel.
     CubicRgb {
         /// The slope of the start color.
@@ -54,9 +54,8 @@ impl Interpolate {
             C: Into<Color> + Sized,
             D: Into<Color> + Sized,
     {
-        use Interpolate::*;
         match self {
-            LinearRgb { amount } => {
+            Interpolate::LinearRgb { amount } => {
                 Color::rgb_linear_interpolate(
                         start.into(),
                         end.into(),
@@ -64,7 +63,7 @@ impl Interpolate {
                     .into()
             },
 
-            CubicRgb { start_slope, end_slope, amount } => {
+            Interpolate::CubicRgb { start_slope, end_slope, amount } => {
                 Color::rgb_cubic_interpolate(
                         start.into(),
                         end.into(),
@@ -96,8 +95,20 @@ pub enum Expr {
     /// A color.
     Color(Color),
 
-    /// Performs an RGB multiply between the colors in the given cells.
+    /// Performs an RGB multiply blend between the colors in the given cells.
     RgbMultiply(CellRef<'static>, CellRef<'static>, Interpolate),
+
+    /// Performs an RGB screen blend between the colors in the given cells.
+    RgbScreen(CellRef<'static>, CellRef<'static>, Interpolate),
+
+    /// Performs an RGB overlay blend between the colors in the given cells.
+    RgbOverlay(CellRef<'static>, CellRef<'static>, Interpolate),
+
+    /// Performs an RGB hard light blend between the colors in the given cells.
+    RgbHardLight(CellRef<'static>, CellRef<'static>, Interpolate),
+
+    /// Performs an RGB soft light blend between the colors in the given cells.
+    RgbSoftLight(CellRef<'static>, CellRef<'static>, Interpolate),
 
 
 }
@@ -122,7 +133,79 @@ impl Expr {
                 (Some(a), Some(b)) => {
                     let [ra, ga, ba] = a.rgb_ratios();
                     let [rb, gb, bb] = b.rgb_ratios();
-                    let rgb = Rgb::from([ra * rb, ga * gb, ba * bb]);
+                    let rgb = Rgb::from([
+                        multiply(ra, rb),
+                        multiply(ga, gb),
+                        multiply(ba, bb),
+                    ]);
+                    Ok(Some(int.apply(a, rgb)))
+                },
+                _ => Ok(None),
+            },
+
+            Expr::RgbScreen(a, b, int) => match (
+                basic.cycle_detect_color(a, index_list)?,
+                basic.cycle_detect_color(b, index_list)?)
+            {
+                (Some(a), Some(b)) => {
+                    let [ra, ga, ba] = a.rgb_ratios();
+                    let [rb, gb, bb] = b.rgb_ratios();
+                    let rgb = Rgb::from([
+                        screen(ra, rb),
+                        screen(ga, gb),
+                        screen(ba, bb),
+                    ]);
+                    Ok(Some(int.apply(a, rgb)))
+                },
+                _ => Ok(None),
+            },
+
+            Expr::RgbOverlay(a, b, int) => match (
+                basic.cycle_detect_color(a, index_list)?,
+                basic.cycle_detect_color(b, index_list)?)
+            {
+                (Some(a), Some(b)) => {
+                    let [ra, ga, ba] = a.rgb_ratios();
+                    let [rb, gb, bb] = b.rgb_ratios();
+                    let rgb = Rgb::from([
+                        overlay(ra, rb),
+                        overlay(ga, gb),
+                        overlay(ba, bb),
+                    ]);
+                    Ok(Some(int.apply(a, rgb)))
+                },
+                _ => Ok(None),
+            },
+
+            Expr::RgbHardLight(a, b, int) => match (
+                basic.cycle_detect_color(a, index_list)?,
+                basic.cycle_detect_color(b, index_list)?)
+            {
+                (Some(a), Some(b)) => {
+                    let [ra, ga, ba] = a.rgb_ratios();
+                    let [rb, gb, bb] = b.rgb_ratios();
+                    let rgb = Rgb::from([
+                        hard_light(ra, rb),
+                        hard_light(ga, gb),
+                        hard_light(ba, bb),
+                    ]);
+                    Ok(Some(int.apply(a, rgb)))
+                },
+                _ => Ok(None),
+            },
+
+            Expr::RgbSoftLight(a, b, int) => match (
+                basic.cycle_detect_color(a, index_list)?,
+                basic.cycle_detect_color(b, index_list)?)
+            {
+                (Some(a), Some(b)) => {
+                    let [ra, ga, ba] = a.rgb_ratios();
+                    let [rb, gb, bb] = b.rgb_ratios();
+                    let rgb = Rgb::from([
+                        soft_light(ra, rb),
+                        soft_light(ga, gb),
+                        soft_light(ba, bb),
+                    ]);
                     Ok(Some(int.apply(a, rgb)))
                 },
                 _ => Ok(None),
@@ -135,4 +218,49 @@ impl Default for Expr {
     fn default() -> Self {
         Expr::Empty
     }
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Component blend functions.
+////////////////////////////////////////////////////////////////////////////////
+#[inline]
+fn multiply(a: f32, b: f32) -> f32 {
+    a * b
+}
+
+#[inline]
+fn screen(a: f32, b: f32) -> f32 {
+    1.0 - (1.0 - a) * (1.0 - b)
+}
+
+#[inline]
+fn overlay(a: f32, b: f32) -> f32 {
+    if a < 0.5 {
+        2.0 * a * b
+    } else {
+        1.0 - 2.0 * (1.0 - a) * (1.0 - b)
+    }
+}
+
+#[inline]
+fn hard_light(a: f32, b: f32) -> f32 {
+    if b < 0.5 {
+        2.0 * a * b
+    } else {
+        1.0 - 2.0 * (1.0 - a) * (1.0 - b)
+    }
+}
+
+#[inline]
+fn soft_light(a: f32, b: f32) -> f32 {
+    lerp_f32(multiply(a, b), screen(a, b), a)
+}
+
+
+#[inline]
+fn lerp_f32(s: f32, e:f32, a: f32) -> f32 {
+    ((e-s) * a) + s
 }
