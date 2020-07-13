@@ -35,16 +35,16 @@ fn test_palette() -> BasicPalette {
             Expr::Color(Rgb { r, g, b }.into())));
     }
     
-    palette.assign_name(PositionSelector::new(1, 0, 0), "a");
-    palette.assign_name(PositionSelector::new(1, 1, 0), "b");
-    palette.assign_name(PositionSelector::new(2, 0, 0), "c");
-    palette.assign_name(PositionSelector::new(2, 1, 0), "d");
-    palette.assign_name(PositionSelector::new(3, 0, 0), "e");
-    palette.assign_name(PositionSelector::new(3, 1, 0), "f");
-    palette.assign_name(PositionSelector::new(4, 0, 0), "g");
-    palette.assign_name(PositionSelector::new(4, 1, 0), "h");
-    palette.assign_name(PositionSelector::new(5, 0, 0), "i");
-    palette.assign_name(PositionSelector::new(5, 1, 0), "j");
+    palette.assign_name("a", PositionSelector::new(1, 0, 0));
+    palette.assign_name("b", PositionSelector::new(1, 1, 0));
+    palette.assign_name("c", PositionSelector::new(2, 0, 0));
+    palette.assign_name("d", PositionSelector::new(2, 1, 0));
+    palette.assign_name("e", PositionSelector::new(3, 0, 0));
+    palette.assign_name("f", PositionSelector::new(3, 1, 0));
+    palette.assign_name("g", PositionSelector::new(4, 0, 0));
+    palette.assign_name("h", PositionSelector::new(4, 1, 0));
+    palette.assign_name("i", PositionSelector::new(5, 0, 0));
+    palette.assign_name("j", PositionSelector::new(5, 1, 0));
 
     for i in 0u32..10u32 {
         palette.assign_group(CellRef::Index(100 + i), "GroupA", None);
@@ -62,8 +62,9 @@ fn test_palette() -> BasicPalette {
     for page in 1..5 {
         for line in 0..10 {
             for column in 0u16..10 {
-                palette.assign_position(CellRef::Index(100 + i), Position {
-                    page, line, column });
+                palette.assign_position(
+                    Position {page, line, column },
+                    CellRef::Index(100 + i));
                 i += 1;
             }
         }

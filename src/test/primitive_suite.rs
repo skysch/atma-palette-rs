@@ -18,6 +18,7 @@ use crate::cell::CellRef;
 // Standard library imports.
 use std::borrow::Cow;
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // Basic cell operations
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,20 +33,26 @@ fn cell_insert_remove_method_inverse() {
     assert!(pal.cell(&CellRef::Index(0)).is_err());
 }
 
-// /// Tests `BasicPalette::assign_name` followed by `BasicPalette::unassign_name`.
-// #[test]
-// fn cell_assign_unassign_name_method_inverse() {
-//     let mut pal = BasicPalette::new();
-//     pal.insert_cell(0, Cell::default());
+/// Tests `BasicPalette::assign_name` followed by `BasicPalette::unassign_name`.
+#[test]
+fn cell_assign_unassign_name_method_inverse() {
+    let mut pal = BasicPalette::new();
+    let position = Position { page: 0, line: 10, column: 0 };
 
-//     let name: Cow<'_, _> = "TestName".into();
+    pal.insert_cell(0, Cell::default());
+    pal.assign_position(position.clone(), CellRef::Index(0));
 
-//     pal.assign_name(CellRef::Index(0), name.clone());
-//     assert!(pal.cell(&CellRef::Name(name.clone())).is_ok());
+    let name: Cow<'_, _> = "TestName".into();
 
-//     pal.unassign_name(CellRef::Index(0), name.clone());
-//     assert!(pal.cell(&CellRef::Name(name.clone())).is_err());
-// }
+    pal.assign_name(
+        name.clone(),
+        position.clone().into());
+    assert!(pal.cell(&CellRef::Name(name.clone())).is_ok());
+
+    pal.unassign_name(
+        position.into());
+    assert!(pal.cell(&CellRef::Name(name.clone())).is_err());
+}
 
 
 /// Tests `BasicPalette::assign_position` followed by
@@ -57,31 +64,11 @@ fn cell_assign_unassign_position_method_inverse() {
 
     let position = Position { page: 0, line: 10, column: 0 };
 
-    pal.assign_position(CellRef::Index(0), position.clone());
+    pal.assign_position(position.clone(), CellRef::Index(0));
     assert!(pal.cell(&CellRef::Position(position.clone())).is_ok());
 
-    pal.unassign_position(CellRef::Index(0), position.clone());
+    pal.unassign_position(CellRef::Index(0));
     assert!(pal.cell(&CellRef::Position(position.clone())).is_err());
-}
-
-/// Tests `BasicPalette::assign_position` followed by
-/// `BasicPalette::clear_positions`.
-#[test]
-fn cell_assign_clear_position_method_inverse() {
-    let mut pal = BasicPalette::new();
-    pal.insert_cell(0, Cell::default());
-
-    let position1 = Position { page: 0, line: 10, column: 0 };
-    let position2 = Position { page: 1, line: 4, column: 3 };
-
-    pal.assign_position(CellRef::Index(0), position1.clone());
-    pal.assign_position(CellRef::Index(0), position2.clone());
-    assert!(pal.cell(&CellRef::Position(position1.clone())).is_ok());
-    assert!(pal.cell(&CellRef::Position(position2.clone())).is_ok());
-
-    pal.clear_positions(CellRef::Index(0));
-    assert!(pal.cell(&CellRef::Position(position1.clone())).is_err());
-    assert!(pal.cell(&CellRef::Position(position2.clone())).is_err());
 }
 
 /// Tests `BasicPalette::assign_group` followed by

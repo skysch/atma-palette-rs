@@ -624,11 +624,11 @@ impl BasicPalette {
 
             AssignName { selector, name } 
                 => self.assign_name(name.clone(), selector.clone()),
-            UnassignName { selector, name } 
-                => self.unassign_name(selector.clone(), name.clone()),
+            UnassignName { selector } 
+                => self.unassign_name(selector.clone()),
 
             AssignPosition { cell_ref, position } 
-                => self.assign_position(cell_ref.clone(), position.clone()),
+                => self.assign_position(position.clone(), cell_ref.clone()),
             UnassignPosition { cell_ref } 
                 => self.unassign_position(cell_ref.clone()),
 
@@ -717,33 +717,23 @@ impl BasicPalette {
             Neither => Ok(vec![
                 Operation::UnassignName {
                     selector,
-                    name,
                 },
             ]),
         }
     }
 
     /// Unassigns a name for a cell.
-    pub fn unassign_name<'name, T>(
-        &mut self,
-        selector: PositionSelector,
-        name: T)
+    pub fn unassign_name(&mut self, selector: PositionSelector)
         -> Result<Vec<Operation>, PaletteError>
-        where T: Into<Cow<'static, str>>
     {
-        let name = name.into();
-        
-        match self.names.get_left(&name) {
-            Some(cur_selector) if *cur_selector == selector => {
-                let _ = self.names.remove_by_left(&name);
-                Ok(vec![
-                    Operation::AssignName {
-                        selector,
-                        name,
-                    },
-                ])
-            },
-            _ => Ok(Vec::new()),
+        match self.names.remove_by_right(&selector) {
+            Some((name, _)) => Ok(vec![
+                Operation::AssignName {
+                    selector: selector,
+                    name,
+                },
+            ]),
+            None => Ok(Vec::new()),
         }
     }
 
@@ -751,8 +741,8 @@ impl BasicPalette {
     /// Assigns a position to a cell.
     pub fn assign_position<'name>(
         &mut self,
-        cell_ref: CellRef<'name>,
-        position: Position)
+        position: Position,
+        cell_ref: CellRef<'name>)
         -> Result<Vec<Operation>, PaletteError>
     {
         let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
@@ -807,31 +797,6 @@ impl BasicPalette {
             ]),
             None => Ok(Vec::new()),
         }
-    }
-
-    /// Unassigns a position for a cell.
-    pub fn clear_positions<'name>(&mut self, cell_ref: CellRef<'name>)
-        -> Result<Vec<Operation>, PaletteError>
-    {
-        let idx = BasicPalette::resolve_ref_to_index(&self, &cell_ref)?;
-
-        // TODO: Use BTreeMap::drain_filter when it becomes stable.
-        let mut to_remove = Vec::with_capacity(1);
-
-        for (position, cur_idx) in self.positions.iter() {
-            if *cur_idx == idx { to_remove.push(position.clone()); }
-        }
-
-        let mut ops = Vec::with_capacity(to_remove.len());
-        for position in to_remove.into_iter() {
-            let _ = self.positions.remove_by_left(&position);
-            ops.push(Operation::AssignPosition {
-                cell_ref: CellRef::Index(idx),
-                position,
-            });
-        }      
-
-        Ok(ops)
     }
 
     /// Assigns a group to a cell.

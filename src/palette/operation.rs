@@ -64,8 +64,6 @@ pub enum Operation {
     UnassignName {
         /// The PositionSelector to unassign the name from.
         selector: PositionSelector,
-        /// The name to unassign.
-        name: Cow<'static, str>,
     },
 
     ////////////////////////////////////////////////////////////////////////////

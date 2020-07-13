@@ -328,7 +328,30 @@ pub fn interpolate_rgb_cubic<'t>(text: &'t str) -> ParseResult<'t, Interpolate>
             end_slope: f3[1],
             amount: f3[2],
         }));
+    }
 
+    if let Ok(f2_suc) = functional(2)(cubic_suc.rest)
+        .with_join_context(&cubic_suc, text)
+    {
+        for i in &f2_suc.value {
+            if *i < 0.0 || *i > 1.0 {
+                return Err(Failure {
+                    context: f2_suc.token,
+                    expected: "valid interpolate value".into(),
+                    source: Some(Box::new(PaletteError::InvalidInputValue {
+                        msg: format!("Value {} does not lie within \
+                            the range [0.0, 1.0]", i).into(),
+                    })),
+                    rest: f2_suc.rest,
+                })
+            }
+        }
+
+        return Ok(f2_suc.map_value(|f2| Interpolate::RgbCubic {
+            start_slope: f2[0],
+            end_slope: f2[1],
+            amount: 1.0,
+        }));
     }
 
     if let Ok(f1_suc) = functional(1)(cubic_suc.rest)

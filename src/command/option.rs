@@ -219,7 +219,7 @@ pub enum InsertOption {
         blend: BlendMode,
 
         /// The interpolate mode.
-        #[structopt(long = "interpolate")]
+        #[structopt(short= "i", long = "interpolate")]
         interpolate: Option<Interpolate>,
 
         /// The function inputs.
@@ -245,7 +245,7 @@ pub enum InsertOption {
 
         /// The ramp interpolation function.
         #[structopt(short = "i", long = "interpolate")]
-        interpolate: Option<String>,
+        interpolate: Option<Interpolate>,
 
         /// The name of the ramp group.
         #[structopt(long = "name")]
