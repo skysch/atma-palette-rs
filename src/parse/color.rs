@@ -35,14 +35,6 @@ use crate::parse::whitespace;
 /// RGB hex prefix token.
 pub const RGB_HEX_PREFIX: char = '#';
 
-/// Interpolate RGB prefix token.
-const INTERPOLATE_RGB_PREFIX: &'static str = "rgb_";
-
-/// Interpolate linear token.
-const INTERPOLATE_LINEAR: &'static str = "linear";
-
-/// Interpolate cubic token.
-const INTERPOLATE_CUBIC: &'static str = "cubic";
 
 ////////////////////////////////////////////////////////////////////////////////
 // Color
@@ -263,8 +255,8 @@ pub fn interpolate<'t>(text: &'t str) -> ParseResult<'t, Interpolate> {
 pub fn interpolate_rgb_linear<'t>(text: &'t str) -> ParseResult<'t, Interpolate>
 {
     let linear_suc = prefix(
-            literal_ignore_ascii_case(INTERPOLATE_LINEAR),
-            maybe(literal_ignore_ascii_case(INTERPOLATE_RGB_PREFIX)))
+            literal_ignore_ascii_case("linear"),
+            maybe(literal_ignore_ascii_case("rgb_")))
         (text)?;
 
     if let Ok(f1_suc) = functional(1)(linear_suc.rest)
@@ -293,8 +285,8 @@ pub fn interpolate_rgb_linear<'t>(text: &'t str) -> ParseResult<'t, Interpolate>
 pub fn interpolate_rgb_cubic<'t>(text: &'t str) -> ParseResult<'t, Interpolate>
 {
     let cubic_suc = prefix(
-            literal_ignore_ascii_case(INTERPOLATE_CUBIC),
-            maybe(literal_ignore_ascii_case(INTERPOLATE_RGB_PREFIX)))
+            literal_ignore_ascii_case("cubic"),
+            maybe(literal_ignore_ascii_case("rgb_")))
         (text)?;
 
     if let Ok(f3_suc) = functional(3)(cubic_suc.rest)
