@@ -7,10 +7,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Parse primitives.
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: This module is currently under development.
-#![allow(unused_variables)]
-#![allow(unused_imports)]
-#![allow(missing_docs)]
 
 // Local imports.
 use crate::color::Cmyk;
@@ -19,34 +15,43 @@ use crate::color::Hsl;
 use crate::color::Hsv;
 use crate::color::Rgb;
 use crate::color::Xyz;
+use crate::error::PaletteError;
+use crate::palette::Interpolate;
 use crate::parse::bracket;
-use crate::parse::char_in;
 use crate::parse::circumfix;
 use crate::parse::Failure;
+use crate::parse::ParseResultExt as _;
 use crate::parse::float;
 use crate::parse::intersperse_collect;
 use crate::parse::literal_ignore_ascii_case;
 use crate::parse::maybe;
 use crate::parse::ParseResult;
-use crate::parse::ParseResultExt as _;
 use crate::parse::postfix;
 use crate::parse::prefix;
-use crate::parse::repeat;
-use crate::parse::Success;
 use crate::parse::uint_digits_value;
 use crate::parse::whitespace;
 
-// Standard library imports.
-use std::borrow::Cow;
 
-
-/// Floating point sign token.
+/// RGB hex prefix token.
 pub const RGB_HEX_PREFIX: char = '#';
 
-/// Floating point sign token.
+/// Functional separator token.
 pub const FUNCTIONAL_SEPARATOR: char = ',';
+
+/// Funtional open bracket token.
 pub const FUNCTIONAL_OPEN_BRACKET: char = '(';
+
+/// Funtional close bracket token.
 pub const FUNCTIONAL_CLOSE_BRACKET: char = ')';
+
+/// Interpolate RGB prefix token.
+const INTERPOLATE_RGB_PREFIX: &'static str = "rgb_";
+
+/// Interpolate linear token.
+const INTERPOLATE_LINEAR: &'static str = "linear";
+
+/// Interpolate cubic token.
+const INTERPOLATE_CUBIC: &'static str = "cubic";
 
 ////////////////////////////////////////////////////////////////////////////////
 // Color
@@ -235,7 +240,7 @@ pub fn xyz_functional<'t>(text: &'t str) -> ParseResult<'t, Xyz> {
 }
 
 /// Returns a parser which parses a functional suffix with n float parameters.
-fn functional<'t>(n: usize)
+pub(in crate) fn functional<'t>(n: usize)
     -> impl FnMut(&'t str) -> ParseResult<'t, Vec<f32>>
 {
     use crate::parse::char;
@@ -252,3 +257,107 @@ fn functional<'t>(n: usize)
             char(FUNCTIONAL_CLOSE_BRACKET),
             maybe(whitespace)))
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Interpolate
+////////////////////////////////////////////////////////////////////////////////
+/// Parses an Interpolate.
+pub fn interpolate<'t>(text: &'t str) -> ParseResult<'t, Interpolate> {
+    interpolate_rgb_linear(text)
+        .or_else(|_| interpolate_rgb_cubic(text))
+}
+
+/// Parses an Interpolate::Linear.
+pub fn interpolate_rgb_linear<'t>(text: &'t str) -> ParseResult<'t, Interpolate>
+{
+    let linear_suc = prefix(
+            literal_ignore_ascii_case(INTERPOLATE_LINEAR),
+            maybe(literal_ignore_ascii_case(INTERPOLATE_RGB_PREFIX)))
+        (text)?;
+
+    if let Ok(f1_suc) = functional(1)(linear_suc.rest)
+        .with_join_context(&linear_suc, text)
+    {
+        let i = f1_suc.value[0];
+        if i < 0.0 || i > 1.0 {
+            return Err(Failure {
+                context: f1_suc.token,
+                expected: "valid interpolate value".into(),
+                source: Some(Box::new(PaletteError::InvalidInputValue {
+                    msg: format!("Value {} does not lie within \
+                        the range [0.0, 1.0]", i).into(),
+                })),
+                rest: f1_suc.rest,
+            })
+        }
+        
+        Ok(f1_suc.map_value(|f1| Interpolate::RgbLinear { amount: f1[0] }))
+    } else {
+        Ok(linear_suc.map_value(|_| Interpolate::RgbLinear { amount: 1.0 }))
+    }
+}
+
+/// Parses an Interpolate::Cubic.
+pub fn interpolate_rgb_cubic<'t>(text: &'t str) -> ParseResult<'t, Interpolate>
+{
+    let cubic_suc = prefix(
+            literal_ignore_ascii_case(INTERPOLATE_CUBIC),
+            maybe(literal_ignore_ascii_case(INTERPOLATE_RGB_PREFIX)))
+        (text)?;
+
+    if let Ok(f3_suc) = functional(3)(cubic_suc.rest)
+        .with_join_context(&cubic_suc, text)
+    {
+        for i in &f3_suc.value {
+            if *i < 0.0 || *i > 1.0 {
+                return Err(Failure {
+                    context: f3_suc.token,
+                    expected: "valid interpolate value".into(),
+                    source: Some(Box::new(PaletteError::InvalidInputValue {
+                        msg: format!("Value {} does not lie within \
+                            the range [0.0, 1.0]", i).into(),
+                    })),
+                    rest: f3_suc.rest,
+                })
+            }
+        }
+
+        return Ok(f3_suc.map_value(|f3| Interpolate::RgbCubic {
+            start_slope: f3[0],
+            end_slope: f3[1],
+            amount: f3[2],
+        }));
+
+    }
+
+    if let Ok(f1_suc) = functional(1)(cubic_suc.rest)
+        .with_join_context(&cubic_suc, text)
+    {
+        let i = f1_suc.value[0];
+        if i < 0.0 || i > 1.0 {
+            return Err(Failure {
+                context: f1_suc.token,
+                expected: "valid interpolate value".into(),
+                source: Some(Box::new(PaletteError::InvalidInputValue {
+                    msg: format!("Value {} does not lie within \
+                        the range [0.0, 1.0]", i).into(),
+                })),
+                rest: f1_suc.rest,
+            })
+        }
+        
+        Ok(f1_suc.map_value(|f1| Interpolate::RgbCubic {
+            start_slope: 0.0,
+            end_slope: 0.0,
+            amount: f1[0],
+        }))
+    } else {
+        Ok(cubic_suc.map_value(|_| Interpolate::RgbCubic {
+            start_slope: 0.0,
+            end_slope: 0.0,
+            amount: 1.0,
+        }))
+    }
+}
+

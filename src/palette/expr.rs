@@ -15,6 +15,9 @@ use crate::color::Color;
 use crate::color::Rgb;
 use crate::cell::CellRef;
 use crate::error::PaletteError;
+use crate::parse::interpolate;
+use crate::parse::ParseResultExt as _;
+use crate::parse::FailureOwned;
 
 // External library imports.
 use serde::Deserialize;
@@ -32,13 +35,13 @@ use std::collections::HashSet;
 #[derive(Serialize, Deserialize)]
 pub enum Interpolate {
     /// Linear interpolation over each RGB channel.
-    LinearRgb {
+    RgbLinear {
         /// The interpolation factor.
         amount: f32,
     },
 
     /// Cubic interpolation over each RGB channel.
-    CubicRgb {
+    RgbCubic {
         /// The slope of the start color.
         start_slope: f32,
         /// The slope of the end color.
@@ -56,7 +59,7 @@ impl Interpolate {
             D: Into<Color> + Sized,
     {
         match self {
-            Interpolate::LinearRgb { amount } => {
+            Interpolate::RgbLinear { amount } => {
                 Color::rgb_linear_interpolate(
                         start.into(),
                         end.into(),
@@ -64,7 +67,7 @@ impl Interpolate {
                     .into()
             },
 
-            Interpolate::CubicRgb { start_slope, end_slope, amount } => {
+            Interpolate::RgbCubic { start_slope, end_slope, amount } => {
                 Color::rgb_cubic_interpolate(
                         start.into(),
                         end.into(),
@@ -77,9 +80,19 @@ impl Interpolate {
     }
 }
 
+impl std::str::FromStr for Interpolate {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        interpolate(text)
+            .end_of_text()
+            .finish()
+    }
+}
+
 impl Default for Interpolate {
     fn default() -> Self {
-        Interpolate::LinearRgb { amount: 1.0 }
+        Interpolate::RgbLinear { amount: 1.0 }
     }
 }
 
@@ -158,7 +171,7 @@ impl Expr {
             Expr::Empty => Ok(None),
 
             Expr::Color(c) => Ok(Some(c.clone())),
-            
+
             Expr::Reference(cell_ref) => basic
                 .cycle_detect_color(cell_ref, index_list),
             

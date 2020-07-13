@@ -197,7 +197,7 @@ impl std::str::FromStr for Positioning {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        if let Ok(positioning) = any_literal_map_once(
+        if let Ok(success) = any_literal_map_once(
                 literal_ignore_ascii_case,
                 "",
                 vec![
@@ -207,9 +207,8 @@ impl std::str::FromStr for Positioning {
                 ])
             (text)
             .end_of_text()
-            .finish()
         {
-            return Ok(positioning);
+            return Ok(success.value);
         }
 
         position(text)

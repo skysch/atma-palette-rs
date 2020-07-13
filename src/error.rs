@@ -204,6 +204,12 @@ pub enum PaletteError {
 
     /// All available positions in the palette are assigned.
     AllPositionsAssigned,
+
+    /// An expression or value was given an invalid value.
+    InvalidInputValue {
+        /// A description of the invalid input.
+        msg: Cow<'static, str>,
+    },
 }
 
 impl std::fmt::Display for PaletteError {
@@ -230,7 +236,10 @@ impl std::fmt::Display for PaletteError {
             },
 
             PaletteError::AllPositionsAssigned => write!(f,
-                "All palette positions are already assigned.")
+                "All palette positions are already assigned."),
+
+            PaletteError::InvalidInputValue { msg } => write!(f,
+                "Invalid input value: {}", msg)
         }
     }
 }
