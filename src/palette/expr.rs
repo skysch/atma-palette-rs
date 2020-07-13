@@ -10,6 +10,8 @@
 #![allow(variant_size_differences)] // TODO: Remove this.
 
 // Local imports.
+use crate::command::FunctionInput;
+use crate::command::BlendMode;
 use crate::palette::BasicPalette;
 use crate::color::Color;
 use crate::color::Rgb;
@@ -160,6 +162,119 @@ pub enum Expr {
 }
 
 impl Expr {
+    /// Constructs an `Expr` from option parts. 
+    pub fn from_parts(
+        blend_mode: BlendMode,
+        inputs: &[FunctionInput],
+        interpolate: Option<Interpolate>)
+        -> Result<Self, PaletteError>
+    {
+        if let BlendMode::Reference = blend_mode {
+            return Expr::from_parts_reference(inputs, interpolate);
+        }
+
+        Expr::from_parts_binary(blend_mode, inputs, interpolate)
+    }
+
+    /// Constructs an `Expr::Reference` from option parts. 
+    fn from_parts_reference(
+        inputs: &[FunctionInput],
+        interpolate: Option<Interpolate>)
+        -> Result<Self, PaletteError>
+    {
+        if inputs.len() != 1 {
+            return Err(PaletteError::InvalidInputValue {
+                msg: "blend mode \"reference\" requires 1 argument.".into(),
+            });
+        }
+
+        if interpolate.is_some() {
+            return Err(PaletteError::InvalidInputValue {
+                msg: "blend mode \"reference\" cannot be used with interpolate \
+                    option.".into(),
+            });
+        }
+
+        match &inputs[0] {
+            FunctionInput::Color(_)
+                => panic!("FunctionInput::Color should be removed"),
+
+            FunctionInput::Value(_) => return Err(
+                PaletteError::InvalidInputValue {
+                    msg: "blend mode \"reference\" requires non-numeric \
+                        argument.".into(),
+                }),
+
+            FunctionInput::CellRef(cell_ref) 
+                => Ok(Expr::Reference(cell_ref
+                    .clone()
+                    .into_static())),
+        }
+    }
+
+    /// Constructs any binary `Expr` from option parts. 
+    fn from_parts_binary(
+        blend_mode: BlendMode,
+        inputs: &[FunctionInput],
+        interpolate: Option<Interpolate>)
+        -> Result<Self, PaletteError>
+    {
+        if inputs.len() != 2 {
+            return Err(PaletteError::InvalidInputValue {
+                msg: format!("blend mode \"{}\" requires 2 arguments.",
+                    blend_mode).into(),
+            });
+        }
+
+        let a = match &inputs[0] {
+            FunctionInput::Color(_)
+                => panic!("FunctionInput::Color should be removed"),
+
+            FunctionInput::Value(_) => return Err(
+                PaletteError::InvalidInputValue {
+                    msg: format!("blend mode \"{}\" requires non-numeric \
+                        first argument.",
+                        blend_mode).into(),
+                }),
+
+            FunctionInput::CellRef(cell_ref) => cell_ref.clone().into_static(),
+        };
+
+        let b = match &inputs[1] {
+            FunctionInput::Color(_)
+                => panic!("FunctionInput::Color should be removed"),
+
+            FunctionInput::Value(_) => return Err(
+                PaletteError::InvalidInputValue {
+                    msg: format!("blend mode \"{}\" requires non-numeric \
+                        second argument.",
+                        blend_mode).into(),
+                }),
+
+            FunctionInput::CellRef(cell_ref) => cell_ref.clone().into_static(),
+        };
+
+        let i = interpolate.unwrap_or_default();
+
+        Ok(match blend_mode {
+            BlendMode::RgbMultiply    => Expr::RgbMultiply(a, b, i),
+            BlendMode::RgbDivide      => Expr::RgbDivide(a, b, i),
+            BlendMode::RgbSubtract    => Expr::RgbSubtract(a, b, i),
+            BlendMode::RgbDifference  => Expr::RgbDifference(a, b, i),
+            BlendMode::RgbScreen      => Expr::RgbScreen(a, b, i),
+            BlendMode::RgbOverlay     => Expr::RgbOverlay(a, b, i),
+            BlendMode::RgbHardLight   => Expr::RgbHardLight(a, b, i),
+            BlendMode::RgbSoftLight   => Expr::RgbSoftLight(a, b, i),
+            BlendMode::RgbColorDodge  => Expr::RgbColorDodge(a, b, i),
+            BlendMode::RgbColorBurn   => Expr::RgbColorBurn(a, b, i),
+            BlendMode::RgbLinearDodge => Expr::RgbLinearDodge(a, b, i),
+            BlendMode::RgbLinearBurn  => Expr::RgbLinearBurn(a, b, i),
+            BlendMode::RgbVividLight  => Expr::RgbVividLight(a, b, i),
+            BlendMode::RgbLinearLight => Expr::RgbLinearLight(a, b, i),
+            _                         => unimplemented!(),
+        })
+    }
+
     /// Returns the Expr's color.
     pub fn color(
         &self,

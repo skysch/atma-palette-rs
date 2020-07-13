@@ -218,12 +218,12 @@ pub enum InsertOption {
         /// The blend mode.
         blend: BlendMode,
 
+        /// The function inputs.
+        input: Vec<FunctionInput>,
+
         /// The interpolate mode.
         #[structopt(short= "i", long = "interpolate")]
         interpolate: Option<Interpolate>,
-
-        /// The function inputs.
-        input: Vec<FunctionInput>,
 
         /// The name of the colors group.
         #[structopt(long = "name")]

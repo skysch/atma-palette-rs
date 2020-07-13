@@ -232,3 +232,25 @@ impl std::str::FromStr for BlendMode {
             .finish()
     }
 }
+
+impl std::fmt::Display for BlendMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            BlendMode::Reference      => "reference",
+            BlendMode::RgbMultiply    => "multiply",
+            BlendMode::RgbDivide      => "divide",
+            BlendMode::RgbSubtract    => "subtract",
+            BlendMode::RgbDifference  => "difference",
+            BlendMode::RgbScreen      => "screen",
+            BlendMode::RgbOverlay     => "overlay",
+            BlendMode::RgbHardLight   => "hard_light",
+            BlendMode::RgbSoftLight   => "soft_light",
+            BlendMode::RgbColorDodge  => "color_dodge",
+            BlendMode::RgbColorBurn   => "color_burn",
+            BlendMode::RgbLinearDodge => "linear_dodge",
+            BlendMode::RgbLinearBurn  => "linear_burn",
+            BlendMode::RgbVividLight  => "vivid_light",
+            BlendMode::RgbLinearLight => "linear_light",
+        })
+    }
+}
