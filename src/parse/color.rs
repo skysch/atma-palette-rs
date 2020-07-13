@@ -35,15 +35,6 @@ use crate::parse::whitespace;
 /// RGB hex prefix token.
 pub const RGB_HEX_PREFIX: char = '#';
 
-/// Functional separator token.
-pub const FUNCTIONAL_SEPARATOR: char = ',';
-
-/// Funtional open bracket token.
-pub const FUNCTIONAL_OPEN_BRACKET: char = '(';
-
-/// Funtional close bracket token.
-pub const FUNCTIONAL_CLOSE_BRACKET: char = ')';
-
 /// Interpolate RGB prefix token.
 const INTERPOLATE_RGB_PREFIX: &'static str = "rgb_";
 
@@ -248,13 +239,13 @@ pub(in crate) fn functional<'t>(n: usize)
         intersperse_collect(n, Some(n),
             float::<f32>("f32"),
             circumfix(
-                char(FUNCTIONAL_SEPARATOR),
+                char(','),
                 maybe(whitespace))),
         postfix(
-            char(FUNCTIONAL_OPEN_BRACKET),
+            char('('),
             maybe(whitespace)),
         prefix(
-            char(FUNCTIONAL_CLOSE_BRACKET),
+            char(')'),
             maybe(whitespace)))
 }
 
