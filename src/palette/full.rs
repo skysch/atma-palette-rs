@@ -15,7 +15,10 @@ use crate::cell::CellSelection;
 use crate::cell::Position;
 use crate::cell::PositionSelector;
 use crate::command::Positioning;
+use crate::command::BlendMode;
+use crate::command::FunctionInput;
 use crate::command::ExprTarget;
+use crate::palette::Interpolate;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
 use crate::error::PaletteError;
@@ -251,6 +254,7 @@ impl Palette {
     ////////////////////////////////////////////////////////////////////////////
     // Commands
     ////////////////////////////////////////////////////////////////////////////
+    
     /// Inserts the given colors into the palette.
     ///
     /// ### Parameters
@@ -352,6 +356,31 @@ impl Palette {
         self.apply_operations(&ops[..])
     }
     
+    /// Inserts the given colors into the palette.
+    ///
+    /// ### Parameters
+    ///
+    /// + `colors`: The [`Colors`] to insert.
+    /// + `name`: The name of the colors. Creates a name association for a
+    /// single color, or a group association for multiple colors.
+    /// + `position`: The starting [`Position`] of the colors.
+    ///
+    /// [`Colors`]: ../color/struct.Color.html
+    /// [`Position`]: ../cell/struct.Position.html
+    pub fn insert_function<'name, S>(
+        &mut self,
+        blend_mode: BlendMode,
+        inputs: &[FunctionInput],
+        interpolate: Option<Interpolate>,
+        name: Option<S>,
+        position: Positioning)
+        -> Result<(), PaletteError>
+        where S: ToString
+    {
+        // TODO: Implement this.
+        unimplemented!()
+    }
+
     /// Deletes the selected cells from the palette.
     pub fn delete_selection<'name>(
         &mut self,

@@ -216,10 +216,10 @@ pub enum InsertOption {
     /// Inserts a blend function into the palette.
     Function {
         /// The blend mode.
-        blend: BlendMode,
+        blend_mode: BlendMode,
 
         /// The function inputs.
-        input: Vec<FunctionInput>,
+        inputs: Vec<FunctionInput>,
 
         /// The interpolate mode.
         #[structopt(short= "i", long = "interpolate")]
