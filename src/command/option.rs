@@ -15,6 +15,7 @@ use crate::command::Positioning;
 use crate::command::ExprTarget;
 use crate::command::FunctionInput;
 use crate::command::BlendMode;
+use crate::palette::Interpolate;
 
 // External library imports.
 use structopt::StructOpt;
@@ -215,7 +216,11 @@ pub enum InsertOption {
     /// Inserts a blend function into the palette.
     Function {
         /// The blend mode.
-        mode: BlendMode,
+        blend: BlendMode,
+
+        /// The interpolate mode.
+        #[structopt(long = "interpolate")]
+        interpolate: Option<Interpolate>,
 
         /// The function inputs.
         input: Vec<FunctionInput>,

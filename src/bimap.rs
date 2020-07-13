@@ -271,6 +271,16 @@ impl<L, R> Default for BiMap<L, R>
     }
 }
 
+impl<L, R> PartialEq for BiMap<L, R>
+    where
+        L: Ord,
+        R: Ord,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.forward == other.forward
+    }
+}
+
 impl<L, R> FromIterator<(L, R)> for BiMap<L, R>
 where
     L: Ord,
