@@ -59,6 +59,53 @@ name
 ## atma export {subpalette}
 
 
+# Insertable objects
+## Color
+    + #ABCDEF
+    + rgb(1.0,1.0,1.0)
+    + cmyk(1.0,1.0,1.0,1.0)
+    + hsl(360.0,1.0,1.0)
+    + hsv(360.0,1.0,1.0)
+    + xyz(1.0,1.0,1.0)
+
+## Reference
+    + CellRef
+
+## Color Copy
+    + (CellRef)
+    + copy(CellRef)
+
+## Blend Expr
+    + [rgb_]blend(CellRef, CellRef, [Interpolate])
+    + [rgb_]multiply(CellRef, CellRef, [Interpolate])
+    + [rgb_]divide(CellRef, CellRef, [Interpolate])
+    + [rgb_]subtract(CellRef, CellRef, [Interpolate])
+    + [rgb_]difference(CellRef, CellRef, [Interpolate])
+    + [rgb_]screen(CellRef, CellRef, [Interpolate])
+    + [rgb_]overlay(CellRef, CellRef, [Interpolate])
+    + [rgb_]hard_light(CellRef, CellRef, [Interpolate])
+    + [rgb_]soft_light(CellRef, CellRef, [Interpolate])
+    + [rgb_]color_dodge(CellRef, CellRef, [Interpolate])
+    + [rgb_]color_burn(CellRef, CellRef, [Interpolate])
+    + [rgb_]linear_dodge(CellRef, CellRef, [Interpolate])
+    + [rgb_]linear_burn(CellRef, CellRef, [Interpolate])
+    + [rgb_]vivid_light(CellRef, CellRef, [Interpolate])
+    + [rgb_]linear_light(CellRef, CellRef, [Interpolate])
+
+### [Interpolate]
+    f32
+    linear([RGB], f32)
+    cubic([RGB], f32, [f32,f32])
+
+## Ramp Function
+    ramp(count, blend_fn, [InterpolateRange])
+
+### [InterpolateRange]
+    linear
+    linear([RGB], [(f32, f32)])
+    cubic
+    cubic([RGB], [(f32, f32)], [(f32, f32)])
+
 
 # Composite Operations
 ## Undo
@@ -78,10 +125,8 @@ name
 ## RemoveCell
 ## AssignName
 ## UnassignName
-## ClearNames
 ## AssignPosition
 ## UnassignPosition
-## ClearPosition
 ## AssignGroup
 ## UnassignGroup
 ## ClearGroup

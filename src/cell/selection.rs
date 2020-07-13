@@ -125,6 +125,7 @@ impl std::str::FromStr for CellSelection<'static> {
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         cell_selection(text)
             .end_of_text()
+            .with_new_context(text, text)
             .finish()
             .map(|v| v.clone().into_static())
     }

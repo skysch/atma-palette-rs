@@ -93,6 +93,7 @@ impl std::str::FromStr for CellRef<'static> {
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         cell_ref(text)
             .end_of_text()
+            .with_new_context(text, text)
             .finish()
             .map(|v| v.clone().into_static())
     }

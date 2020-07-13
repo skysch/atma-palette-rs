@@ -49,6 +49,33 @@ pub fn maybe<'t, F, V>(mut parser: F)
     }
 }
 
+/// Returns a parser which will require a parse to succeed if the given
+/// predicate fails.
+#[inline]
+pub fn require_if<'t, E, F, V, P>(expected: E, mut pred: P, mut parser: F)
+    -> impl FnMut(&'t str) -> ParseResult<'t, Option<V>>
+    where
+        E: Into<Cow<'static, str>>,
+        F: FnMut(&'t str) -> ParseResult<'t, V>,
+        P: FnMut() -> bool,
+{
+    let expected = expected.into();
+    move |text| {
+        match (parser)(text) {
+            Ok(success) => Ok(success.map_value(Some)),
+            Err(fail) => if (pred)() {
+                Err(fail).source_for(expected.clone())
+            } else {
+                Ok(Success {
+                    value: None,
+                    token: "",
+                    rest: text,
+                })
+            }
+        }
+    }
+}
+
 /// Returns a parser which repeats a parse a givin number of times, stopping if
 /// a failure occurs or the upper limit is reached, returning the number of
 /// successes. Fails if the lower limit is not reached.
@@ -329,7 +356,7 @@ pub fn dynamic_bracket<'t, F, G, H, V, U, T>(
     move |text| {
         let (val, pre_suc) = (prefix_parser)(text)
             .with_new_context("", text)?
-            .extract_value();
+            .take_value();
         
         let sub_suc = (parser)(pre_suc.rest)
             .with_join_context(&pre_suc, text)?;

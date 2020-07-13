@@ -9,14 +9,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal library imports.
-use crate::cell::CellRef;
 use crate::cell::Position;
-use crate::color::Color;
-use crate::parse::cell_ref;
-use crate::parse::color;
 use crate::parse::any_literal_map_once;
 use crate::parse::FailureOwned;
-use crate::parse::float;
 use crate::parse::literal_ignore_ascii_case;
 use crate::parse::ParseResultExt as _;
 use crate::parse::position;
@@ -25,86 +20,6 @@ use crate::parse::position;
 // External library imports.
 use serde::Serialize;
 use serde::Deserialize;
-
-
-////////////////////////////////////////////////////////////////////////////////
-// ExprTarget
-////////////////////////////////////////////////////////////////////////////////
-/// Option parse result for the target of an expression.
-#[allow(variant_size_differences)]
-#[derive(Debug, Clone)]
-pub enum ExprTarget {
-    /// A Color.
-    Color(Color),
-    /// A cell reference.
-    CellRef(CellRef<'static>),
-}
-
-impl std::str::FromStr for ExprTarget {
-    type Err = FailureOwned;
-
-    fn from_str(text: &str) -> Result<Self, Self::Err> {
-        let color_res = color(text)
-            .end_of_text()
-            .finish();
-
-        if let Ok(color) = color_res {
-            return Ok(ExprTarget::Color(color));
-        }
-
-        cell_ref(text)
-            .end_of_text()
-            .source_for("expected color or cell reference")
-            .finish()
-            .map(CellRef::into_static)
-            .map(ExprTarget::CellRef)
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// FunctionInput
-////////////////////////////////////////////////////////////////////////////////
-/// Option parse result for input to a ramp.
-#[allow(variant_size_differences)]
-#[derive(Debug, Clone)]
-pub enum FunctionInput {
-    /// A floating point value
-    Value(f32),
-    /// A color.
-    Color(Color),
-    /// A cell reference.
-    CellRef(CellRef<'static>),
-}
-
-impl std::str::FromStr for FunctionInput {
-    type Err = FailureOwned;
-
-    fn from_str(text: &str) -> Result<Self, Self::Err> {
-        let float_res = float::<f32>("f32")(text)
-            .end_of_text()
-            .finish();
-
-        if let Ok(float) = float_res {
-            return Ok(FunctionInput::Value(float));
-        }
-
-        let color_res = color(text)
-            .end_of_text()
-            .finish();
-
-        if let Ok(color) = color_res {
-            return Ok(FunctionInput::Color(color));
-        }
-
-        cell_ref(text)
-            .end_of_text()
-            .source_for("expected value, color, or cell reference")
-            .finish()
-            .map(CellRef::into_static)
-            .map(FunctionInput::CellRef)
-    }
-}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,102 +70,9 @@ impl std::str::FromStr for Positioning {
         position(text)
             .end_of_text()
             .source_for("expected 'cursor', 'open', or a position")
+            .with_new_context(text, text)
             .finish()
             .map(Positioning::Position)
     }
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-// BlendMode
-////////////////////////////////////////////////////////////////////////////////
-/// Option parse result for blend mode functions.
-#[derive(Debug, Clone, Copy)]
-#[derive(Serialize, Deserialize)]
-pub enum BlendMode {
-    /// A reference to another cell's color.
-    Reference,
-    /// Performs an RGB multiply blend between the colors in the given cells.
-    RgbMultiply,
-    /// Performs an RGB divide blend between the colors in the given cells.
-    RgbDivide,
-    /// Performs an RGB subtract blend between the colors in the given cells.
-    RgbSubtract,
-    /// Performs an RGB difference blend between the colors in the given cells.
-    RgbDifference,
-    /// Performs an RGB screen blend between the colors in the given cells.
-    RgbScreen,
-    /// Performs an RGB overlay blend between the colors in the given cells.
-    RgbOverlay,
-    /// Performs an RGB hard light blend between the colors in the given cells.
-    RgbHardLight,
-    /// Performs an RGB soft light blend between the colors in the given cells.
-    RgbSoftLight,
-    /// Performs an RGB color dodge blend between the colors in the given cells.
-    RgbColorDodge,
-    /// Performs an RGB color burn blend between the colors in the given cells.
-    RgbColorBurn,
-    /// Performs an RGB linear dodge blend between the colors in the given
-    /// cells.
-    RgbLinearDodge,
-    /// Performs an RGB linear burn blend between the colors in the given cells.
-    RgbLinearBurn,
-    /// Performs an RGB vivid light blend between the colors in the given cells.
-    RgbVividLight,
-    /// Performs an RGB linear light blend between the colors in the given
-    /// cells.
-    RgbLinearLight,
-}
-
-impl std::str::FromStr for BlendMode {
-    type Err = FailureOwned;
-
-    fn from_str(text: &str) -> Result<Self, Self::Err> {
-        any_literal_map_once(
-                literal_ignore_ascii_case,
-                "blend mode",
-                vec![
-                    ("reference",    BlendMode::Reference),
-                    ("multiply",     BlendMode::RgbMultiply),
-                    ("divide",       BlendMode::RgbDivide),
-                    ("subtract",     BlendMode::RgbSubtract),
-                    ("difference",   BlendMode::RgbDifference),
-                    ("screen",       BlendMode::RgbScreen),
-                    ("overlay",      BlendMode::RgbOverlay),
-                    ("hard_light",   BlendMode::RgbHardLight),
-                    ("soft_light",   BlendMode::RgbSoftLight),
-                    ("color_dodge",  BlendMode::RgbColorDodge),
-                    ("color_burn",   BlendMode::RgbColorBurn),
-                    ("linear_dodge", BlendMode::RgbLinearDodge),
-                    ("linear_burn",  BlendMode::RgbLinearBurn),
-                    ("vivid_light",  BlendMode::RgbVividLight),
-                    ("linear_light", BlendMode::RgbLinearLight),
-                ])
-            (text)
-            .end_of_text()
-            .with_new_context(text, text)
-            .finish()
-    }
-}
-
-impl std::fmt::Display for BlendMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            BlendMode::Reference      => "reference",
-            BlendMode::RgbMultiply    => "multiply",
-            BlendMode::RgbDivide      => "divide",
-            BlendMode::RgbSubtract    => "subtract",
-            BlendMode::RgbDifference  => "difference",
-            BlendMode::RgbScreen      => "screen",
-            BlendMode::RgbOverlay     => "overlay",
-            BlendMode::RgbHardLight   => "hard_light",
-            BlendMode::RgbSoftLight   => "soft_light",
-            BlendMode::RgbColorDodge  => "color_dodge",
-            BlendMode::RgbColorBurn   => "color_burn",
-            BlendMode::RgbLinearDodge => "linear_dodge",
-            BlendMode::RgbLinearBurn  => "linear_burn",
-            BlendMode::RgbVividLight  => "vivid_light",
-            BlendMode::RgbLinearLight => "linear_light",
-        })
-    }
-}

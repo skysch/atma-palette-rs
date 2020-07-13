@@ -12,10 +12,7 @@
 // Local library imports.
 use crate::cell::CellSelection;
 use crate::command::Positioning;
-use crate::command::ExprTarget;
-use crate::command::FunctionInput;
-use crate::command::BlendMode;
-use crate::palette::Interpolate;
+use crate::palette::InsertExpr;
 
 // External library imports.
 use structopt::StructOpt;
@@ -132,8 +129,16 @@ pub enum CommandOption {
 
     /// Insert colors and ramps into a palette.
     Insert {
-        #[structopt(subcommand)]
-        insert_option: InsertOption,
+        /// The color expression objects to insert.
+        exprs: Vec<InsertExpr>,
+
+        /// The name of the insert group.
+        #[structopt(long = "name")]
+        name: Option<String>,
+
+        /// The start position for the inserted objects.
+        #[structopt(long = "at")]
+        at: Option<Positioning>,
     },
     
     /// Delete colors and ramps from a palette.
@@ -191,71 +196,6 @@ impl CommandOption {
     }
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-// InsertOption
-////////////////////////////////////////////////////////////////////////////////
-/// Options for the insert command.
-#[derive(Debug, Clone)]
-#[derive(StructOpt)]
-pub enum InsertOption {
-    /// Inserts colors into the palette.
-    Colors {
-        /// The colors to insert.
-        targets: Vec<ExprTarget>,
-
-        /// The name of the colors group.
-        #[structopt(long = "name")]
-        name: Option<String>,
-
-        /// The start position for the inserted colors.
-        #[structopt(long = "at")]
-        at: Option<Positioning>,
-    },
-
-    /// Inserts a blend function into the palette.
-    Function {
-        /// The blend mode.
-        blend_mode: BlendMode,
-
-        /// The function inputs.
-        inputs: Vec<FunctionInput>,
-
-        /// The interpolate mode.
-        #[structopt(short= "i", long = "interpolate")]
-        interpolate: Option<Interpolate>,
-
-        /// The name of the colors group.
-        #[structopt(long = "name")]
-        name: Option<String>,
-
-        /// The start position of the inserted function.
-        #[structopt(long = "at")]
-        at: Option<Positioning>,
-    },
-
-    /// Insert a ramp into the palette.
-    Ramp {
-        /// The ramp interpolation points.
-        targets: Vec<ExprTarget>,
-
-        /// The number of colors in the ramp.
-        #[structopt(short = "c", long = "count")]
-        count: usize,
-
-        /// The ramp interpolation function.
-        #[structopt(short = "i", long = "interpolate")]
-        interpolate: Option<Interpolate>,
-
-        /// The name of the ramp group.
-        #[structopt(long = "name")]
-        name: Option<String>,
-
-        /// The start position of the ramp.
-        #[structopt(long = "at")]
-        at: Option<Positioning>,
-    },
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // ExportOption

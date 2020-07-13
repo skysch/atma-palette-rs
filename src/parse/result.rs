@@ -60,6 +60,15 @@ pub trait ParseResultExt<'t, V>: Sized {
     fn with_new_context(self, context: &'t str, text: &'t str)
         -> ParseResult<'t, V>;
 
+
+    /// Applies the given closure to the parsed value, causing the parse to fail
+    /// if the closure is Err. Will only be called if the parse was successful.
+    fn convert_value<F, U, E, T>(self, expected: T, f: F) -> ParseResult<'t, U>
+        where
+            T: Into<Cow<'static, str>>,
+            F: FnOnce(V) -> Result<U, E>,
+            E: std::error::Error + Send + Sync + 'static;
+
     /// Applies the given closure to the parsed value. Will only be called if
     /// the parse was successful.
     fn map_value<F, U>(self, f: F) -> ParseResult<'t, U>
@@ -124,6 +133,32 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
         })
     }
 
+    fn convert_value<F, U, E, T>(self, expected: T, f: F) -> ParseResult<'t, U>
+        where
+            T: Into<Cow<'static, str>>,
+            F: FnOnce(V) -> Result<U, E>,
+            E: std::error::Error + Send + Sync + 'static
+    {
+        match self {
+            Ok(success) => match (f)(success.value) {
+                Ok(value) => Ok(Success {
+                    value,
+                    token: success.token,
+                    rest: success.rest,
+                }),
+
+                Err(e) => Err(Failure {
+                    context: success.token,
+                    expected: expected.into(),
+                    source: Some(Box::new(e)),
+                    rest: success.rest,
+                }),
+            },
+            Err(err) => Err(err),
+        }
+
+    }
+
     fn map_value<F, U>(self, f: F) -> ParseResult<'t, U>
         where F: FnOnce(V) -> U
     {
@@ -171,7 +206,7 @@ impl<'t, V> Success<'t, V> {
     }
 
     /// Splits the parsed value from the Success.
-    pub fn extract_value(self) -> (V, Success<'t, ()>) {
+    pub fn take_value(self) -> (V, Success<'t, ()>) {
         (self.value, Success {
             value: (),
             token: self.token,

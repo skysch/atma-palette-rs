@@ -130,6 +130,7 @@ impl std::str::FromStr for Position {
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         position(text)
             .end_of_text()
+            .with_new_context(text, text)
             .finish()
     }
 }
@@ -254,6 +255,7 @@ impl std::str::FromStr for PositionSelector {
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         position_selector(text)
             .end_of_text()
+            .with_new_context(text, text)
             .finish()
     }
 }

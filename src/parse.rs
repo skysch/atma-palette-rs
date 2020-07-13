@@ -11,6 +11,7 @@
 // Internal modules.
 mod color;
 mod combinator;
+mod expr;
 mod primitive;
 mod result;
 mod selection;
@@ -18,6 +19,7 @@ mod selection;
 // Exports.
 pub use self::color::*;
 pub use self::combinator::*;
+pub use self::expr::*;
 pub use self::primitive::*;
 pub use self::result::*;
 pub use self::selection::*;

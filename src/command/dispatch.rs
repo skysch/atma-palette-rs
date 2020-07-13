@@ -16,7 +16,6 @@ use crate::cell::PositionSelector;
 use crate::command::AtmaOptions;
 use crate::command::CommandOption;
 use crate::command::ExportOption;
-use crate::command::InsertOption;
 use crate::Config;
 use crate::DEFAULT_PALETTE_PATH;
 use crate::error::FileError;
@@ -107,45 +106,8 @@ pub fn dispatch(
 
         // Insert
         ////////////////////////////////////////////////////////////////////////
-        Insert { insert_option } => match insert_option {
-            InsertOption::Colors { targets, name, at } => {
-                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
-                let at = at.unwrap_or(config.default_positioning);
-
-                let res = pal.insert_colors(&targets[..], name, at);
-                debug!("{:?}", pal);
-
-                res.context("Command 'insert' failed")?;
-                pal.write_to_load_path()
-                    .map(|_| ())
-                    .context("Failed to write palette")
-            },
-
-            InsertOption::Function { 
-                blend_mode,
-                inputs,
-                interpolate,
-                name,
-                at,
-            } => {
-                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
-                let at = at.unwrap_or(config.default_positioning);
-
-                let res = pal.insert_function(
-                    blend_mode,
-                    &inputs[..],
-                    interpolate,
-                    name,
-                    at);
-                debug!("{:?}", pal);
-
-                res.context("Command 'insert' failed")?;
-                pal.write_to_load_path()
-                    .map(|_| ())
-                    .context("Failed to write palette")
-            },
-
-            InsertOption::Ramp { .. } => unimplemented!(),
+        Insert { .. } => {
+            unimplemented!()
         },
 
         // Delete
