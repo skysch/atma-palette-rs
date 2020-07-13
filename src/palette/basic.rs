@@ -162,6 +162,7 @@ impl BasicPalette {
     ////////////////////////////////////////////////////////////////////////////
     // Accessors
     ////////////////////////////////////////////////////////////////////////////
+    
     /// Retreives a copy of the color associated with the given `CellRef`.
     pub fn color<'name>(&self, cell_ref: &CellRef<'name>)
         -> Result<Option<Color>, PaletteError>

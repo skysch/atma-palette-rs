@@ -29,6 +29,52 @@ use serde::Serialize;
 // Standard library imports.
 use std::collections::HashSet;
 
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Expr
+////////////////////////////////////////////////////////////////////////////////
+/// Atma color expression for defining the behavior of a cell.
+#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize)]
+pub enum Expr {
+    /// A color expression with no color.
+    Empty,
+    /// A simple color expression.
+    Color(Color),
+    /// A reference to another cell.
+    Reference(CellRef<'static>),
+    /// A color blend expression.
+    Blend(BlendExpr),
+}
+
+impl Expr {
+    /// Returns the Expr's color.
+    pub fn color(
+        &self,
+        basic: &BasicPalette,
+        index_list: &mut HashSet<u32>)
+        -> Result<Option<Color>, PaletteError>
+    {
+        match self {
+            Expr::Empty => Ok(None),
+
+            Expr::Color(c) => Ok(Some(c.clone())),
+
+            Expr::Reference(cell_ref) => basic
+                .cycle_detect_color(cell_ref, index_list),
+
+            Expr::Blend(blend_expr) => blend_expr.color(basic, index_list),
+        }
+    }
+}
+
+impl Default for Expr {
+    fn default() -> Self {
+        Expr::Empty
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // InsertExpr
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,6 +101,42 @@ pub enum InsertExpr {
     },
 }
 
+impl InsertExpr {
+    /// Returns the color `Expr`s to be inserted.
+    pub fn exprs(&self, basic: &BasicPalette)
+        -> Result<Vec<Expr>, PaletteError>
+    {
+        match self {
+            InsertExpr::Color(color) => Ok(vec![
+                Expr::Color(color.clone())
+            ]),
+
+            InsertExpr::Reference(cell_ref) => Ok(vec![
+                Expr::Reference(cell_ref.clone())
+            ]),
+            
+            // TODO: Config to generate default color instead of error?
+            InsertExpr::Copy(cell_ref) => Ok(vec![
+                Expr::Color(basic.color(cell_ref)?
+                    .ok_or_else(|| PaletteError::UndefinedColor {
+                        cell_ref: cell_ref.clone(),
+                        circular: false,
+                    })?)
+            ]),
+            
+            InsertExpr::Blend(blend_expr) => Ok(vec![
+                Expr::Blend(blend_expr.clone())
+            ]),
+            
+            InsertExpr::Ramp { count, blend_fn, interpolate } => Ok(interpolate
+                .blend_exprs(*count, blend_fn)
+                .into_iter()
+                .map(Expr::Blend)
+                .collect())
+        }
+    }
+}
+
 impl std::str::FromStr for InsertExpr {
     type Err = FailureOwned;
 
@@ -63,50 +145,6 @@ impl std::str::FromStr for InsertExpr {
             .end_of_text()
             .with_new_context(text, text)
             .finish()
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Expr
-////////////////////////////////////////////////////////////////////////////////
-/// Atma color expression for defining the behavior of a cell.
-#[derive(Debug, Clone, PartialEq)]
-#[derive(Serialize, Deserialize)]
-pub enum Expr {
-    /// A color expression with no color.
-    Empty,
-    /// A simple color expression.
-    Color(Color),
-    /// A reference to another cell.
-    Reference(CellRef<'static>),
-    /// A color blend expression.
-    Blend(BlendExpr),
-}
-impl Expr {
-    /// Returns the Expr's color.
-    pub fn color(
-        &self,
-        basic: &BasicPalette,
-        index_list: &mut HashSet<u32>)
-        -> Result<Option<Color>, PaletteError>
-    {
-        match self {
-            Expr::Empty => Ok(None),
-
-            Expr::Color(c) => Ok(Some(c.clone())),
-
-            Expr::Reference(cell_ref) => basic
-                .cycle_detect_color(cell_ref, index_list),
-
-            Expr::Blend(blend_expr) => blend_expr.color(basic, index_list),
-        }
-    }
-}
-
-impl Default for Expr {
-    fn default() -> Self {
-        Expr::Empty
     }
 }
 
@@ -411,10 +449,10 @@ pub struct InterpolateRange {
 
 impl InterpolateRange {
     /// Compute the `BlendExpr`s for the ramp, using the given `BlendFunction`.
-    pub fn blend_exprs(&self, count: usize, blend_fn: &BlendFunction)
+    pub fn blend_exprs(&self, count: u32, blend_fn: &BlendFunction)
         -> Vec<BlendExpr>
     {
-        let mut exprs = Vec::with_capacity(count);
+        let mut exprs = Vec::with_capacity(count as usize);
         let inc = (self.end - self.start) / (count as f32 + 2.0);
         let mut amount = inc;
 
