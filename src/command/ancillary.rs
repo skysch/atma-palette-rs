@@ -26,65 +26,6 @@ use crate::parse::position;
 use serde::Serialize;
 use serde::Deserialize;
 
-////////////////////////////////////////////////////////////////////////////////
-// Constants
-////////////////////////////////////////////////////////////////////////////////
-
-/// Token for positioning by cursor.
-pub const POSITIONING_CURSOR: &'static str = "cursor";
-
-/// Token for positioning by open.
-pub const POSITIONING_OPEN: &'static str = "open";
-
-/// Token for no positioning.
-pub const POSITIONING_NONE: &'static str = "none";
-
-/// Token for reference function.
-pub const BLEND_MODE_REFERENCE: &'static str = "reference";
-
-/// Token for multiply blend mode.
-pub const BLEND_MODE_MULTIPLY: &'static str = "multiply";
-
-/// Token for divide blend mode.
-pub const BLEND_MODE_DIVIDE: &'static str = "divide";
-
-/// Token for subtract blend mode.
-pub const BLEND_MODE_SUBTRACT: &'static str = "subtract";
-
-/// Token for difference blend mode.
-pub const BLEND_MODE_DIFFERENCE: &'static str = "difference";
-
-/// Token for screen blend mode.
-pub const BLEND_MODE_SCREEN: &'static str = "screen";
-
-/// Token for overlay blend mode.
-pub const BLEND_MODE_OVERLAY: &'static str = "overlay";
-
-/// Token for hardlight blend mode.
-pub const BLEND_MODE_HARD_LIGHT: &'static str = "hard_light";
-
-/// Token for softlight blend mode.
-pub const BLEND_MODE_SOFT_LIGHT: &'static str = "soft_light";
-
-/// Token for colordodge blend mode.
-pub const BLEND_MODE_COLOR_DODGE: &'static str = "color_dodge";
-
-/// Token for colorburn blend mode.
-pub const BLEND_MODE_COLOR_BURN: &'static str = "color_burn";
-
-/// Token for lineardodge blend mode.
-pub const BLEND_MODE_LINEAR_DODGE: &'static str = "linear_dodge";
-
-/// Token for linearburn blend mode.
-pub const BLEND_MODE_LINEAR_BURN: &'static str = "linear_burn";
-
-/// Token for vividlight blend mode.
-pub const BLEND_MODE_VIVID_LIGHT: &'static str = "vivid_light";
-
-/// Token for linearlight blend mode.
-pub const BLEND_MODE_LINEAR_LIGHT: &'static str = "linear_light";
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // ExprTarget
@@ -201,9 +142,9 @@ impl std::str::FromStr for Positioning {
                 literal_ignore_ascii_case,
                 "",
                 vec![
-                    (POSITIONING_CURSOR, Positioning::Cursor),
-                    (POSITIONING_OPEN,   Positioning::Open),
-                    (POSITIONING_NONE,   Positioning::None),
+                    ("cursor", Positioning::Cursor),
+                    ("open",   Positioning::Open),
+                    ("none",   Positioning::None),
                 ])
             (text)
             .end_of_text()
@@ -269,21 +210,21 @@ impl std::str::FromStr for BlendMode {
                 literal_ignore_ascii_case,
                 "blend mode",
                 vec![
-                    (BLEND_MODE_REFERENCE,    BlendMode::Reference),
-                    (BLEND_MODE_MULTIPLY,     BlendMode::RgbMultiply),
-                    (BLEND_MODE_DIVIDE,       BlendMode::RgbDivide),
-                    (BLEND_MODE_SUBTRACT,     BlendMode::RgbSubtract),
-                    (BLEND_MODE_DIFFERENCE,   BlendMode::RgbDifference),
-                    (BLEND_MODE_SCREEN,       BlendMode::RgbScreen),
-                    (BLEND_MODE_OVERLAY,      BlendMode::RgbOverlay),
-                    (BLEND_MODE_HARD_LIGHT,   BlendMode::RgbHardLight),
-                    (BLEND_MODE_SOFT_LIGHT,   BlendMode::RgbSoftLight),
-                    (BLEND_MODE_COLOR_DODGE,  BlendMode::RgbColorDodge),
-                    (BLEND_MODE_COLOR_BURN,   BlendMode::RgbColorBurn),
-                    (BLEND_MODE_LINEAR_DODGE, BlendMode::RgbLinearDodge),
-                    (BLEND_MODE_LINEAR_BURN,  BlendMode::RgbLinearBurn),
-                    (BLEND_MODE_VIVID_LIGHT,  BlendMode::RgbVividLight),
-                    (BLEND_MODE_LINEAR_LIGHT, BlendMode::RgbLinearLight),
+                    ("reference",    BlendMode::Reference),
+                    ("multiply",     BlendMode::RgbMultiply),
+                    ("divide",       BlendMode::RgbDivide),
+                    ("subtract",     BlendMode::RgbSubtract),
+                    ("difference",   BlendMode::RgbDifference),
+                    ("screen",       BlendMode::RgbScreen),
+                    ("overlay",      BlendMode::RgbOverlay),
+                    ("hard_light",   BlendMode::RgbHardLight),
+                    ("soft_light",   BlendMode::RgbSoftLight),
+                    ("color_dodge",  BlendMode::RgbColorDodge),
+                    ("color_burn",   BlendMode::RgbColorBurn),
+                    ("linear_dodge", BlendMode::RgbLinearDodge),
+                    ("linear_burn",  BlendMode::RgbLinearBurn),
+                    ("vivid_light",  BlendMode::RgbVividLight),
+                    ("linear_light", BlendMode::RgbLinearLight),
                 ])
             (text)
             .end_of_text()
