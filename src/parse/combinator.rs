@@ -61,16 +61,17 @@ pub fn require_if<'t, E, F, V, P>(expected: E, mut pred: P, mut parser: F)
 {
     let expected = expected.into();
     move |text| {
-        match (parser)(text) {
-            Ok(success) => Ok(success.map_value(Some)),
-            Err(fail) => if (pred)() {
-                Err(fail).source_for(expected.clone())
-            } else {
-                Ok(Success {
+        if (pred)() {
+            (parser)(text)
+                .map_value(Some)
+        } else {
+            match (parser)(text) {
+                Ok(success) => Ok(success.map_value(Some)),
+                Err(_) => Ok(Success {
                     value: None,
                     token: "",
                     rest: text,
-                })
+                }),
             }
         }
     }
@@ -258,13 +259,11 @@ pub fn prefix<'t, F, G, V, U>(mut parser: F, mut prefix_parser: G)
         G: FnMut(&'t str) -> ParseResult<'t, U>,
 {
     move |text| {
-        let pre_suc = (prefix_parser)(text)
+        let suc = (prefix_parser)(text)
             .with_new_context("", text)?;
-        
-        let sub_suc = (parser)(pre_suc.rest)
-            .with_join_context(&pre_suc, text)?;
 
-        Ok(pre_suc.join_with(sub_suc, text, |_, r| r))
+        (parser)(suc.rest)
+            .with_join_previous(suc, text)
     }
 }
 
@@ -278,13 +277,13 @@ pub fn postfix<'t, F, G, V, U>(mut parser: F, mut postfix_parser: G)
         G: FnMut(&'t str) -> ParseResult<'t, U>,
 {
     move |text| {
-        let sub_suc = (parser)(text)
-            .with_new_context("", text)?;
-        
-        let post_suc = (postfix_parser)(sub_suc.rest)
-            .with_join_context(&sub_suc, text)?;
+        let (val, suc) = (parser)(text)
+            .with_new_context("", text)?
+            .take_value();
 
-        Ok(sub_suc.join_with(post_suc, text, |l, _| l))
+        (postfix_parser)(suc.rest)
+            .with_join_previous(suc, text)
+            .map_value(|_| val)
     }
 }
 
@@ -298,17 +297,16 @@ pub fn circumfix<'t, F, G, V, U>(mut parser: F, mut circumfix_parser: G)
         G: FnMut(&'t str) -> ParseResult<'t, U>,
 {
     move |text| {
-        let pre_suc = (circumfix_parser)(text)
+        let suc = (circumfix_parser)(text)
             .with_new_context("", text)?;
-        
-        let sub_suc = (parser)(pre_suc.rest)
-            .with_join_context(&pre_suc, text)?;
-        let sub_suc = pre_suc.join_with(sub_suc, text, |_, r| r);
 
-        let post_suc = (circumfix_parser)(sub_suc.rest)
-            .with_join_context(&sub_suc, text)?;
+        let (val, suc) = (parser)(suc.rest)
+            .with_join_previous(suc, text)?
+            .take_value();
 
-        Ok(sub_suc.join_with(post_suc, text, |l, _| l))
+        (circumfix_parser)(suc.rest)
+            .with_join_previous(suc, text)
+            .map_value(|_| val)
     }
 }
 
@@ -326,17 +324,16 @@ pub fn bracket<'t, F, G, H, V, U, T>(
         H: FnMut(&'t str) -> ParseResult<'t, T>,
 {
     move |text| {
-        let pre_suc = (prefix_parser)(text)
+        let suc = (prefix_parser)(text)
             .with_new_context("", text)?;
-        
-        let sub_suc = (parser)(pre_suc.rest)
-            .with_join_context(&pre_suc, text)?;
-        let sub_suc = pre_suc.join_with(sub_suc, text, |_, r| r);
 
-        let post_suc = (postfix_parser)(sub_suc.rest)
-            .with_join_context(&sub_suc, text)?;
+        let (val, suc) = (parser)(suc.rest)
+            .with_join_previous(suc, text)?
+            .take_value();
 
-        Ok(sub_suc.join_with(post_suc, text, |l, _| l))
+        (postfix_parser)(suc.rest)
+            .with_join_previous(suc, text)
+            .map_value(|_| val)
     }
 }
 
@@ -354,18 +351,17 @@ pub fn dynamic_bracket<'t, F, G, H, V, U, T>(
         H: FnMut(&'t str, U) -> ParseResult<'t, T>,
 {
     move |text| {
-        let (val, pre_suc) = (prefix_parser)(text)
+        let (pre, suc) = (prefix_parser)(text)
             .with_new_context("", text)?
             .take_value();
-        
-        let sub_suc = (parser)(pre_suc.rest)
-            .with_join_context(&pre_suc, text)?;
-        let sub_suc = pre_suc.join_with(sub_suc, text, |_, r| r);
 
-        let post_suc = (postfix_parser)(sub_suc.rest, val)
-            .with_join_context(&sub_suc, text)?;
+        let (val, suc) = (parser)(suc.rest)
+            .with_join_previous(suc, text)?
+            .take_value();
 
-        Ok(sub_suc.join_with(post_suc, text, |l, _| l))
+        (postfix_parser)(suc.rest, pre)
+            .with_join_previous(suc, text)
+            .map_value(|_| val)
     }
 }
 

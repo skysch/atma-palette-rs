@@ -61,6 +61,10 @@ pub trait ParseResultExt<'t, V>: Sized {
         -> ParseResult<'t, V>;
 
 
+    fn with_join_previous<U>(self, success: Success<'t, U>, text: &'t str)
+        -> ParseResult<'t, V>;
+
+
     /// Applies the given closure to the parsed value, causing the parse to fail
     /// if the closure is Err. Will only be called if the parse was successful.
     fn convert_value<F, U, E, T>(self, expected: T, f: F) -> ParseResult<'t, U>
@@ -131,6 +135,13 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
             failure.rest = text;
             failure
         })
+    }
+
+    fn with_join_previous<U>(self, success: Success<'t, U>, text: &'t str)
+        -> ParseResult<'t, V>
+    {
+        self.map_err(|failure| success.join_failure(failure, text))
+            .map(|curr| success.join_with(curr, text, |_, v| v))
     }
 
     fn convert_value<F, U, E, T>(self, expected: T, f: F) -> ParseResult<'t, U>

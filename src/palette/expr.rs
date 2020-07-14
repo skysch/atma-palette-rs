@@ -7,20 +7,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 //! Palette color expression definitions.
 ////////////////////////////////////////////////////////////////////////////////
-#![allow(variant_size_differences)] // TODO: Remove this.
 
 // Local imports.
-use crate::palette::BasicPalette;
+use crate::cell::CellRef;
 use crate::color::Color;
 use crate::color::Rgb;
-use crate::cell::CellRef;
 use crate::error::PaletteError;
-use crate::parse::insert_expr;
-use crate::parse::interpolate;
+use crate::palette::BasicPalette;
 use crate::parse::blend_method;
 use crate::parse::color_space;
-use crate::parse::ParseResultExt as _;
 use crate::parse::FailureOwned;
+use crate::parse::insert_expr;
+use crate::parse::interpolate;
+use crate::parse::ParseResultExt as _;
 
 // External library imports.
 use serde::Deserialize;
@@ -28,7 +27,7 @@ use serde::Serialize;
 
 // Standard library imports.
 use std::collections::HashSet;
-
+use std::convert::TryInto;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,6 +73,7 @@ impl Default for Expr {
         Expr::Empty
     }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // InsertExpr
@@ -148,6 +148,7 @@ impl std::str::FromStr for InsertExpr {
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // BlendExpr
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +214,6 @@ impl BlendFunction {
         }
     }
 }
-
 
 /// Color blending method.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -413,6 +413,18 @@ pub struct Interpolate {
 }
 
 impl Interpolate {
+    /// Validates the interpolation.
+    pub fn validate(self) -> Result<Self, PaletteError> {
+        if self.amount < 0.0 || self.amount > 1.0 {
+            Err(PaletteError::InvalidInputValue {
+                msg: format!("interpolate value {} must lie within the \
+                    range [0.0, 1.0].", self.amount).into()
+            })
+        } else {
+            Ok(self)
+        }
+    }
+
     /// Applies the interpolation to the given colors.
     pub fn apply<A, B>(&self, a: A, b: B) -> Color
         where
@@ -448,11 +460,28 @@ pub struct InterpolateRange {
 }
 
 impl InterpolateRange {
+    /// Validates the interpolation ranges.
+    pub fn validate(self) -> Result<Self, PaletteError> {
+        if self.start < 0.0 || self.start > 1.0 {
+            Err(PaletteError::InvalidInputValue {
+                msg: format!("interpolate start value {} must lie within the \
+                    range [0.0, 1.0].", self.start).into()
+            })
+        } else if self.end < 0.0 || self.end > 1.0 {
+            Err(PaletteError::InvalidInputValue {
+                msg: format!("interpolate end value {} must lie within the \
+                    range [0.0, 1.0].", self.end).into()
+            })
+        } else {
+            Ok(self)
+        }
+    }
+
     /// Compute the `BlendExpr`s for the ramp, using the given `BlendFunction`.
     pub fn blend_exprs(&self, count: u32, blend_fn: &BlendFunction)
         -> Vec<BlendExpr>
     {
-        let mut exprs = Vec::with_capacity(count as usize);
+        let mut exprs = Vec::with_capacity(count.try_into().unwrap());
         let inc = (self.end - self.start) / (count as f32 + 2.0);
         let mut amount = inc;
 

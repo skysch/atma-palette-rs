@@ -9,6 +9,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal modules.
+mod expr_suite;
 mod parse_suite;
-mod primitive_suite;
+mod operation_suite;
 mod selection_suite;

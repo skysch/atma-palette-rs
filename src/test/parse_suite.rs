@@ -292,6 +292,27 @@ fn literal_nonmatch() {
         }));
 }
 
+
+/// Tests `parse::literal_ignore_ascii_case`.
+#[test]
+fn literal_ignore_ascii_case_match() {
+    assert_eq!(
+        literal_ignore_ascii_case("")("abcd"),
+        Ok(Success {
+            value: "",
+            token: "",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        literal_ignore_ascii_case("abc")("AbCd"),
+        Ok(Success {
+            value: "AbC",
+            token: "AbC",
+            rest: "d",
+        }));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Combinators
 ////////////////////////////////////////////////////////////////////////////////
@@ -344,6 +365,19 @@ fn repeat_char_nonmatch() {
             expected: "".into(), source: None,
         }));
 }
+
+/// Tests `postfix` on `parse::char`.
+#[test]
+fn postfix_char_match() {
+    assert_eq!(
+        postfix(char('a'), char('b'))("abcd"),
+        Ok(Success {
+            value: 'a',
+            token: "ab",
+            rest: "cd",
+        }));
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // integers

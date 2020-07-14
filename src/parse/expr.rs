@@ -57,12 +57,12 @@ pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
 
     let (blend_method, suc) = blend_method
         (suc.rest)
-        .with_join_context(&suc, text)?
+        .with_join_previous(suc, text)?
         .take_value();
 
     let suc = postfix(char('('), maybe(whitespace))
         (suc.rest)
-        .with_join_context(&suc, text)?;
+        .with_join_previous(suc, text)?;
 
     let (refs, suc) = intersperse_collect(2, Some(2), 
             cell_ref,
@@ -70,7 +70,7 @@ pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
                 char(','),
                 maybe(whitespace)))
         (suc.rest)
-        .with_join_context(&suc, text)?
+        .with_join_previous(suc, text)?
         .take_value();
 
     let (interpolate, suc) = maybe(
@@ -80,13 +80,13 @@ pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
                     char(','),
                     maybe(whitespace))))
         (suc.rest)
-        .with_join_context(&suc, text)?
+        .with_join_previous(suc, text)?
         .take_value();
     let interpolate = interpolate.unwrap_or_default();
 
     prefix(char(')'), maybe(whitespace))
         (suc.rest)
-        .with_join_context(&suc, text)
+        .with_join_previous(suc, text)
         .map_value(|_| BlendExpr { 
             blend_fn: BlendFunction {
                 color_space,
@@ -110,12 +110,12 @@ pub fn blend_function<'t>(text: &'t str) -> ParseResult<'t, BlendFunction> {
 
     let (blend_method, suc) = blend_method
         (suc.rest)
-        .with_join_context(&suc, text)?
+        .with_join_previous(suc, text)?
         .take_value();
 
     let suc = postfix(char('('), maybe(whitespace))
         (suc.rest)
-        .with_join_context(&suc, text)?;
+        .with_join_previous(suc, text)?;
 
     let (refs, suc) = intersperse_collect(2, Some(2), 
             cell_ref,
@@ -123,12 +123,12 @@ pub fn blend_function<'t>(text: &'t str) -> ParseResult<'t, BlendFunction> {
                 char(','),
                 maybe(whitespace)))
         (suc.rest)
-        .with_join_context(&suc, text)?
+        .with_join_previous(suc, text)?
         .take_value();
 
     prefix(char(')'), maybe(whitespace))
         (suc.rest)
-        .with_join_context(&suc, text)
+        .with_join_previous(suc, text)
         .map_value(|_| BlendFunction { 
             color_space,
             blend_method,
@@ -187,9 +187,12 @@ pub fn color_space<'t>(text: &'t str) -> ParseResult<'t, ColorSpace> {
 /// Parses an Interpolate.
 pub fn interpolate<'t>(text: &'t str) -> ParseResult<'t, Interpolate> {
     let linear = interpolate_linear(text);
-    if linear.is_ok() { return linear; }
-
-    interpolate_cubic(text)
+    if linear.is_ok() {
+        linear.convert_value("valid interpolate", Interpolate::validate)
+    } else {
+        interpolate_cubic(text)
+            .convert_value("valid interpolate", Interpolate::validate)
+    }
 }
 
 /// Parses an Interpolate if it is linear.
@@ -234,19 +237,11 @@ pub fn interpolate_linear_args<'t>(text: &'t str)
                     char(','),
                     maybe(whitespace))))
         (suc.rest)
-        .convert_value("interpolate value", |amount| {
-            if amount < 0.0 || amount > 1.0 { 
-                Err(PaletteError::InvalidInputValue {
-                    msg: format!("interpolate value {} must lie within the \
-                        range [0.0, 1.0].", amount).into()
-                })
-            } else {
-                Ok(Interpolate {
-                    color_space,
-                    interpolate_fn: InterpolateFunction::Linear,
-                    amount,
-                })
-            }
+        .with_join_previous(suc, text)
+        .map_value(|amount| Interpolate {
+            color_space,
+            interpolate_fn: InterpolateFunction::Linear,
+            amount,
         })
 }
 
@@ -275,7 +270,6 @@ pub fn interpolate_cubic_args<'t>(text: &'t str)
     let cs_sep = color_space.is_some();
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
 
-    
     let (amount, suc) = prefix(
             float::<f32>("f32"),
             require_if("separator after color space", 
@@ -284,17 +278,7 @@ pub fn interpolate_cubic_args<'t>(text: &'t str)
                     char(','),
                     maybe(whitespace))))
         (suc.rest)
-        .with_join_context(&suc, text)
-        .convert_value("interpolate value", |amount| {
-            if amount < 0.0 || amount > 1.0 { 
-                Err(PaletteError::InvalidInputValue {
-                    msg: format!("interpolate value {} must lie within the \
-                        range [0.0, 1.0].", amount).into()
-                })
-            } else {
-                Ok(amount)
-            }
-        })?
+        .with_join_previous(suc, text)?
         .take_value();
 
     maybe(
@@ -302,13 +286,13 @@ pub fn interpolate_cubic_args<'t>(text: &'t str)
             intersperse_collect(2, Some(2),
                 float::<f32>("f32"),
                 circumfix(
-                        char(','),
-                        maybe(whitespace))),
+                    char(','),
+                    maybe(whitespace))),
             circumfix(
                 char(','),
                 maybe(whitespace))))
         (suc.rest)
-        .with_join_context(&suc, text)
+        .with_join_previous(suc, text)
         .map_value(|val| match val {
             None => Interpolate {
                 color_space,
@@ -332,9 +316,16 @@ pub fn interpolate_range<'t>(text: &'t str)
     -> ParseResult<'t, InterpolateRange>
 {
     let linear = interpolate_range_linear(text);
-    if linear.is_ok() { return linear; }
-
-    interpolate_range_cubic(text)
+    if linear.is_ok() {
+        linear.convert_value(
+            "valid interpolate range",
+            InterpolateRange::validate)
+    } else {
+        interpolate_range_cubic(text)
+            .convert_value(
+                "valid interpolate range",
+                InterpolateRange::validate)
+    }
 }
 
 /// Parses an InterpolateRange if it is linear.
@@ -353,7 +344,7 @@ pub fn interpolate_range_linear<'t>(text: &'t str)
                 char(')'),
                 maybe(whitespace))))
         (suc.rest)
-        .with_join_context(&suc, text)
+        .with_join_previous(suc, text)
         .map_value(|val| val.unwrap_or_else(|| InterpolateRange {
             color_space: ColorSpace::default(),
             interpolate_fn: InterpolateFunction::Linear,
@@ -378,49 +369,28 @@ pub fn interpolate_range_linear_args<'t>(text: &'t str)
             intersperse_collect(2, Some(2),
                 float::<f32>("f32"),
                 circumfix(
-                        char(','),
-                        maybe(whitespace))),
+                    char(','),
+                    maybe(whitespace))),
             require_if("separator after color space", 
-                    move || cs_sep,
-                    circumfix(
-                            char(','),
-                            maybe(whitespace)))))
+                move || cs_sep,
+                circumfix(
+                    char(','),
+                    maybe(whitespace)))))
         (suc.rest)
-        .with_join_context(&suc, text)
-        .convert_value("interpolation range", |val| match val {
-            None => Ok(InterpolateRange {
+        .with_join_previous(suc, text)
+        .map_value(|val| match val {
+            None => InterpolateRange {
                 color_space,
                 interpolate_fn: InterpolateFunction::Linear,
                 start: 0.0,
                 end: 1.0,
-            }),
-            Some(vals) => {
-                let (s, e) = (vals[0], vals[1]);
-                let start = if s < 0.0 || s > 1.0 { 
-                    return Err(PaletteError::InvalidInputValue {
-                        msg: format!("interpolate value {} must lie within the \
-                            range [0.0, 1.0].", s).into()
-                    });
-                } else {
-                    s
-                };
-
-                let end = if s < 0.0 || s > 1.0 { 
-                    return Err(PaletteError::InvalidInputValue {
-                        msg: format!("interpolate value {} must lie within the \
-                            range [0.0, 1.0].", e).into()
-                    });
-                } else {
-                    e
-                };
-                
-                Ok(InterpolateRange {
-                    color_space,
-                    interpolate_fn: InterpolateFunction::Linear,
-                    start,
-                    end,
-                })
-            }
+            },
+            Some(vals) => InterpolateRange {
+                color_space,
+                interpolate_fn: InterpolateFunction::Linear,
+                start: vals[0],
+                end: vals[1],
+            },
         })
 }
 
@@ -440,7 +410,7 @@ pub fn interpolate_range_cubic<'t>(text: &'t str)
                 char(')'),
                 maybe(whitespace))))
         (suc.rest)
-        .with_join_context(&suc, text)
+        .with_join_previous(suc, text)
         .map_value(|val| val.unwrap_or_else(|| InterpolateRange {
             color_space: ColorSpace::default(),
             interpolate_fn: InterpolateFunction::Cubic(0.0, 0.0),
@@ -466,65 +436,44 @@ pub fn interpolate_range_cubic_args<'t>(text: &'t str)
                 intersperse_collect(2, Some(2),
                     float::<f32>("f32"),
                     circumfix(
-                            char(','),
-                            maybe(whitespace))),
+                        char(','),
+                        maybe(whitespace))),
                 require_if("separator after color space", 
                     move || cs_sep,
                     circumfix(
-                            char(','),
-                            maybe(whitespace)))))
+                        char(','),
+                        maybe(whitespace)))))
         (suc.rest)
-        .with_join_context(&suc, text)
-        .convert_value("interpolation range", |val| match val {
-            None => Ok(None),
-            Some(vals) => {
-                let (s, e) = (vals[0], vals[1]);
-                let start = if s < 0.0 || s > 1.0 { 
-                    return Err(PaletteError::InvalidInputValue {
-                        msg: format!("interpolate value {} must lie within the \
-                            range [0.0, 1.0].", s).into()
-                    });
-                } else {
-                    s
-                };
-
-                let end = if s < 0.0 || s > 1.0 { 
-                    return Err(PaletteError::InvalidInputValue {
-                        msg: format!("interpolate value {} must lie within the \
-                            range [0.0, 1.0].", e).into()
-                    });
-                } else {
-                    e
-                };
-                
-                Ok(Some((start, end)))
-            },
-        })?
+        .with_join_previous(suc, text)?
+        .map_value(|val| match val {
+            None => None,
+            Some(vals) => Some((vals[0], vals[1])),
+        })
         .take_value();
 
     let r_sep = range.is_some();
-    let (start, end) = range.clone().unwrap_or((0.0, 1.9));
+    let (start, end) = range.clone().unwrap_or((0.0, 1.0));
     
     maybe(
         prefix(
             intersperse_collect(2, Some(2),
                 float::<f32>("f32"),
                 circumfix(
-                        char(','),
-                        maybe(whitespace))),
+                    char(','),
+                    maybe(whitespace))),
             require_if("separator after color space", 
                 move || cs_sep && r_sep,
                 circumfix(
-                        char(','),
-                        maybe(whitespace)))))
+                    char(','),
+                    maybe(whitespace)))))
         (suc.rest)
-        .with_join_context(&suc, text)
+        .with_join_previous(suc, text)
         .map_value(|val| match val {
             None => InterpolateRange {
                 color_space,
-                interpolate_fn: InterpolateFunction::Linear,
-                start: 0.0,
-                end: 1.0,
+                interpolate_fn: InterpolateFunction::Cubic(0.0, 0.0),
+                start: start,
+                end: end,
             },
             Some(vals) => InterpolateRange {
                 color_space,

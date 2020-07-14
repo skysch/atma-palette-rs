@@ -434,7 +434,7 @@ pub fn float<'t, T>(float_type: &'static str)
             (full.rest)
             .expect("infallible maybe parse");
         let exp_suc = full.join(exp_suc, text);
-
+        
         match T::from_str(exp_suc.token) {
             Ok(val) => Ok(exp_suc.map_value(|_| val)), 
             Err(e) => Err(Failure {
