@@ -28,11 +28,6 @@ use crate::parse::whitespace;
 use crate::cell::CellSelection;
 use crate::cell::CellSelector;
 use crate::cell::PositionSelector;
-use crate::cell::REF_ALL_TOKEN;
-use crate::cell::REF_POS_SEP_TOKEN;
-use crate::cell::REF_PREFIX_TOKEN;
-use crate::cell::REF_RANGE_TOKEN;
-use crate::cell::REF_SEP_TOKEN;
 
 
 
@@ -46,7 +41,7 @@ pub fn cell_selection<'t>(text: &'t str) -> ParseResult<'t, CellSelection<'t>> {
     intersperse_collect(1, None,
             cell_selector,
             circumfix(
-                char(REF_SEP_TOKEN),
+                char(','),
                 maybe(whitespace)))
         (text)
         .source_for("cell selection")
@@ -60,7 +55,7 @@ pub fn cell_selection<'t>(text: &'t str) -> ParseResult<'t, CellSelection<'t>> {
 
 /// Parses a CellSelector.
 pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
-    if let Ok(all_suc) = char(REF_ALL_TOKEN)(text) {
+    if let Ok(all_suc) = char('*')(text) {
         Ok(all_suc.map_value(|_| CellSelector::All))
 
     } else if let Ok(pos_suc) = position(text) {
@@ -140,22 +135,16 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
 pub fn position_selector<'t>(text: &'t str)
     -> ParseResult<'t, PositionSelector>
 {
-    let (page, suc) = prefix(
-            u16_or_all,
-            char(REF_PREFIX_TOKEN))
+    let (page, suc) = prefix(u16_or_all, char(':'))
         (text)?
         .take_value();
     
-    let (line, suc) = prefix(
-            u16_or_all,
-            char(REF_POS_SEP_TOKEN))
+    let (line, suc) = prefix(u16_or_all, char('.'))
         (suc.rest)
         .with_join_previous(suc, text)?
         .take_value();
 
-    prefix(
-            u16_or_all,
-            char(REF_POS_SEP_TOKEN))
+    prefix(u16_or_all, char('.'))
         (suc.rest)
         .with_join_previous(suc, text)
         .map_value(|column| PositionSelector { page, line, column })    
@@ -164,7 +153,7 @@ pub fn position_selector<'t>(text: &'t str)
 /// Parses a u16 or an 'all' selector token. Return Some if a u16 was parsed, or
 /// None if 'all' was parsed.
 pub fn u16_or_all<'t>(text: &'t str) -> ParseResult<'t, Option<u16>> {
-    if let Ok(all_suc) = char(REF_ALL_TOKEN)(text) {
+    if let Ok(all_suc) = char('*')(text) {
         Ok(all_suc.map_value(|_| None))
     } else {
         uint::<u16>("u16")(text).map_value(Some)
@@ -180,7 +169,7 @@ pub fn range_suffix<'t, F, V>(parser: F)
     prefix(
         parser, 
         circumfix(
-            char(REF_RANGE_TOKEN),
+            char('-'),
             maybe(whitespace)))
 }
 
@@ -189,8 +178,8 @@ pub fn group_all<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
     postfix(
         name, 
         postfix(
-            char(REF_PREFIX_TOKEN),
-            char(REF_ALL_TOKEN)))
+            char(':'),
+            char('*')))
         (text)
 }
 
@@ -222,22 +211,16 @@ pub fn cell_ref<'t>(text: &'t str) -> ParseResult<'t, CellRef<'t>> {
 
 /// Parses a Position.
 pub fn position<'t>(text: &'t str) -> ParseResult<'t, Position> {
-    let (page, suc) = prefix(
-            uint::<u16>("u16"),
-            char(REF_PREFIX_TOKEN))
+    let (page, suc) = prefix(uint::<u16>("u16"), char(':'))
         (text)?
         .take_value();
     
-    let (line, suc) = prefix(
-            uint::<u16>("u16"),
-            char(REF_POS_SEP_TOKEN))
+    let (line, suc) = prefix(uint::<u16>("u16"), char('.'))
         (suc.rest)
         .with_join_previous(suc, text)?
         .take_value();
 
-    prefix(
-            uint::<u16>("u16"),
-            char(REF_POS_SEP_TOKEN))
+    prefix(uint::<u16>("u16"), char('.'))
         (suc.rest)
         .with_join_previous(suc, text)
         .map_value(|column| Position { page, line, column })    
@@ -245,9 +228,7 @@ pub fn position<'t>(text: &'t str) -> ParseResult<'t, Position> {
 
 /// Parses a Index.
 pub fn index<'t>(text: &'t str) -> ParseResult<'t, u32> {
-    prefix(
-            uint::<u32>("u32"),
-            char(REF_PREFIX_TOKEN))
+    prefix(uint::<u32>("u32"), char(':'))
         (text)
         .source_for("cell ref index")
 }
@@ -256,11 +237,11 @@ pub fn index<'t>(text: &'t str) -> ParseResult<'t, u32> {
 /// Parses a name.
 pub fn name<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
     let valid_char = char_matching(|c| ![
-        REF_ALL_TOKEN,
-        REF_SEP_TOKEN,
-        REF_POS_SEP_TOKEN,
-        REF_PREFIX_TOKEN,
-        REF_RANGE_TOKEN,
+        '*',
+        ',',
+        '.',
+        ':',
+        '-',
         ')',
         '(',
     ].contains(&c) && !c.is_whitespace());
