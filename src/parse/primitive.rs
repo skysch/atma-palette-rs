@@ -65,16 +65,16 @@ pub fn char<'t>(c: char) -> impl FnMut(&'t str) -> ParseResult<'t, char> {
     move |text| {
         if text.starts_with(c) {
             Ok(Success { 
-                value: c,
                 token: &text[..c.len_utf8()],
                 rest: &text[c.len_utf8()..],
+                value: c,
             })
         } else {
             Err(Failure {
                 token: "",
+                rest: text,
                 expected: c.to_string().into(),
                 source: None,
-                rest: text,
             })
         }
     }
@@ -95,9 +95,9 @@ pub fn char_in<'t, 'o: 't>(opts: &'o str)
 
         Err(Failure {
             token: "",
+            rest: text,
             expected: format!("one of {}", opts).into(),
             source: None,
-            rest: text,
         })
     }
 }
@@ -112,18 +112,18 @@ pub fn char_matching<'t, F>(mut f: F)
         if let Some(c) = text.chars().next() {
             if (f)(c) {
                 return Ok(Success { 
-                    value: c,
                     token: &text[..c.len_utf8()],
                     rest: &text[c.len_utf8()..],
+                    value: c,
                 });
             }
         }
 
         Err(Failure {
             token: "",
+            rest: text,
             expected: "char satisfying predicate".into(),
             source: None,
-            rest: text,
         })
     }
 }
@@ -187,16 +187,16 @@ pub fn literal_ignore_ascii_case<'t>(expect: &'t str)
                 },
 
                 (None, _) => return Ok(Success { 
-                    value: &text[..idx],
                     token: &text[..idx],
                     rest: &text[idx..],
+                    value: &text[..idx],
                 }),
 
                 (_, _) => return Err(Failure { 
                     token: &text[..idx],
+                    rest: text,
                     expected: format!("ignore case literal {}", expect).into(),
                     source: None,
-                    rest: text,
                 }),
             }
         }
@@ -241,16 +241,16 @@ pub fn prefix_radix_token<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
        // corresponding case is also handled there.
     {
         Ok(Success { 
-            value: &text[..2],
             token: &text[..2],
             rest: &text[2..],
+            value: &text[..2],
         })
     } else {
         Err(Failure { 
             token: "",
+            rest: text,
             expected: "0[box]".into(),
             source: None,
-            rest: text,
         })
     }
 }

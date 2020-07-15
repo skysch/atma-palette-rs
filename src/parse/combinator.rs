@@ -24,9 +24,9 @@ use std::borrow::Cow;
 #[inline]
 pub fn null<'t>(text: &'t str) -> ParseResult<'t, ()> {
     Ok(Success {
-        value: (),
         token: "",
         rest: text,
+        value: (),
     })
 }
 
@@ -41,9 +41,9 @@ pub fn maybe<'t, F, V>(mut parser: F)
         match (parser)(text) {
             Ok(success) => Ok(success.map_value(Some)),
             Err(_) => Ok(Success {
-                value: None,
                 token: "",
                 rest: text,
+                value: None,
             }),
         }
     }
@@ -60,9 +60,9 @@ pub fn atomic<'t, F, V>(mut parser: F)
         match (parser)(text) {
             Ok(success) => Ok(success.map_value(Some)),
             Err(fail) if fail.token.is_empty() => Ok(Success {
-                value: None,
                 token: "",
                 rest: text,
+                value: None,
             }),
             Err(fail) => Err(fail),
         }
@@ -89,9 +89,9 @@ pub fn require_if<'t, E, F, V, P>(expected: E, mut pred: P, mut parser: F)
             match (parser)(text) {
                 Ok(success) => Ok(success.map_value(Some)),
                 Err(_) => Ok(Success {
-                    value: None,
                     token: "",
                     rest: text,
+                    value: None,
                 }),
             }
         }
@@ -135,9 +135,9 @@ pub fn intersperse<'t, F, G, V, U>(
         let mut sub_suc = match (parser)(text) {
             Ok(first) => first.discard_value(),
             Err(_) if low == 0 => return Ok(Success {
-                value: 0,
                 token: "",
                 rest: text,
+                value: 0,
             }),
             Err(fail) => return Err(fail)
                 .map_value(|_: V| 0)
@@ -209,9 +209,9 @@ pub fn intersperse_collect<'t, F, G, V, U>(
         let mut sub_suc = match (parser)(text) {
             Ok(first) => first.map_value(|val| vec![val]) ,
             Err(_) if low == 0 => return Ok(Success {
-                value: Vec::new(),
                 token: "",
                 rest: text,
+                value: Vec::new(),
             }),
             Err(fail) => return Err(fail)
                 .map_value(|_: V| Vec::new())
@@ -405,8 +405,8 @@ pub fn any_literal_map<'t, P, Q, M, V, G, S>(parser: P, expected: S, map: M)
             }
         }
         Err(Failure {
-            rest: text,
             token: "",
+            rest: text,
             expected: expected.clone().into(),
             source: None,
         })
@@ -430,8 +430,8 @@ pub fn any_literal_map_once<'t, P, Q, M, V, G, S>(parser: P, expected: S, map: M
             }
         }
         Err(Failure {
-            rest: text,
             token: "",
+            rest: text,
             expected: expected.into(),
             source: None,
         })

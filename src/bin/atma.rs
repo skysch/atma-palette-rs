@@ -71,8 +71,8 @@ pub fn main_facade() -> Result<(), Error> {
 
     // Setup and start the global logger.
     let mut logger =  Logger::from_config(config.logger_config.clone());
-    for (token, level) in &config.log_levels {
-        logger = logger.level_for(token.clone(), *level);
+    for (context, level) in &config.log_levels {
+        logger = logger.level_for(context.clone(), *level);
     }
     match (opts.common.verbose, opts.common.quiet, opts.common.trace) {
         (_, _, true) => logger.level_for("atma", LevelFilter::Trace).start(),

@@ -85,9 +85,9 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
             Ok(success) if success.rest.is_empty() => Ok(success),
             Ok(success) => Err(Failure {
                 token: success.token,
+                rest: success.rest,
                 expected: "end-of-text".into(),
                 source: None,
-                rest: success.rest,
             }),
             Err(failure) => Err(failure),
         }
@@ -106,9 +106,9 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
             let rest = failure.rest;
             Failure {
                 token,
+                rest,
                 expected: expected.into(),
                 source: Some(Box::new(failure.to_owned())),
-                rest,
             }
         })
     }
@@ -139,16 +139,16 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
         match self {
             Ok(success) => match (f)(success.value) {
                 Ok(value) => Ok(Success {
-                    value,
                     token: success.token,
                     rest: success.rest,
+                    value,
                 }),
 
                 Err(e) => Err(Failure {
                     token: success.token,
+                    rest: success.rest,
                     expected: expected.into(),
                     source: Some(Box::new(e)),
-                    rest: success.rest,
                 }),
             },
             Err(err) => Err(err),
@@ -160,9 +160,9 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
         where F: FnOnce(V) -> U
     {
         self.map(|success| Success {
-            value: (f)(success.value),
             token: success.token,
             rest: success.rest,
+            value: (f)(success.value),
         })
     }
 
@@ -182,12 +182,12 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Success<'t, V> {
-    /// The parsed value.
-    pub value: V,
     /// The parsed text.
     pub token: &'t str,
     /// The remainder of the parsable text.
     pub rest: &'t str,
+    /// The parsed value.
+    pub value: V,
 }
 
 impl<'t, V> Success<'t, V> {
@@ -196,36 +196,36 @@ impl<'t, V> Success<'t, V> {
         where F: FnOnce(V) -> U
     {
         Success {
-            value: (f)(self.value),
             token: self.token,
             rest: self.rest,
+            value: (f)(self.value),
         }
     }
 
     /// Splits the parsed value from the Success.
     pub fn take_value(self) -> (V, Success<'t, ()>) {
         (self.value, Success {
-            value: (),
             token: self.token,
             rest: self.rest,
+            value: (),
         })
     }
 
     /// Discards the parsed value.
     pub fn discard_value(self) -> Success<'t, ()> {
         Success {
-            value: (),
             token: self.token,
             rest: self.rest,
+            value: (),
         }
     }
 
     /// Discards the parsed value, replacing it with the parsed text.
     pub fn tokenize_value(self) -> Success<'t, &'t str> {
         Success {
-            value: self.token,
             token: self.token,
             rest: self.rest,
+            value: self.token,
         }
     }
 
@@ -235,9 +235,9 @@ impl<'t, V> Success<'t, V> {
         -> Success<'t, ()>
     {
         Success {
-            value: (),
             token: &text[..self.token.len() + other.token.len()],
             rest: other.rest,
+            value: (),
         }
     }
 
@@ -276,14 +276,14 @@ pub struct Failure<'t> {
     /// text, and optionally include any text which should be skipped if the
     /// parse is to recover from errors.
     pub token: &'t str,
+    /// The remainder of the parsable text. Failed parses should return their
+    /// exact input text.
+    pub rest: &'t str,
     /// The expected result of the failing parse. Recommended to be a literal,
     /// function name, or description of the token.
     pub expected: Cow<'static, str>,
     /// The parse failure that caused this one.
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
-    /// The remainder of the parsable text. Failed parses should return their
-    /// exact input text.
-    pub rest: &'t str,
 }
 
 impl<'t> Failure<'t> {
