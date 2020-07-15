@@ -203,9 +203,7 @@ pub fn uint<'t, T>(int_type: &'static str)
             Some(INT_RADIX_PREFIX_OCT) => 8,
             Some(INT_RADIX_PREFIX_HEX) => 16,
             None => 10,
-            // NOTE: This is safe as long as `prefix_radix_token` never succeeds
-            // with another string.
-            Some(_) => unsafe { std::hint::unreachable_unchecked() },
+            Some(_) => unreachable!(),
         };
 
         uint_value(int_type, radix)(radix_suc.rest)
@@ -219,8 +217,6 @@ pub fn prefix_radix_token<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
     if text.starts_with(INT_RADIX_PREFIX_BIN) || 
        text.starts_with(INT_RADIX_PREFIX_OCT) ||
        text.starts_with(INT_RADIX_PREFIX_HEX) 
-       // NOTE: Changes to these matches will result in UB in `uint` unless the
-       // corresponding case is also handled there.
     {
         Ok(Success { 
             token: &text[..2],
@@ -382,29 +378,19 @@ pub fn float<'t, T>(float_type: &'static str)
                     T::from_str);
         }
 
-        // Parse the digits.
-        let digits = circumfix(
+        // Parse the digits. If not enough digits are parsed, we'll get an error
+        // from T::from_str later.
+        let suc = circumfix(
                 maybe(char('.')),
                 repeat(0, None, char_matching(|c| c.is_digit(10))))
             (suc.rest)
             .tokenize_value()
-            .expect("infallible repeat parse");
-
-        if digits.token == "." || digits.token.is_empty() {
-            let full = suc.join(digits, text);
-            return Err(Failure {
-                token: full.token,
-                expected: format!("Valid {} value", float_type).into(),
-                source: None,
-                rest: full.rest,
-            })
-        }
-        let full = suc.join(digits, text);
+            .with_join_previous(suc, text)?;
 
         // Parse the exponent.
         atomic(float_exp)
-            (full.rest)
-            .with_join_previous(full, text)
+            (suc.rest)
+            .with_join_previous(suc, text)
             .tokenize_value()
             .convert_value(
                 format!("parse inf {}", float_type),
