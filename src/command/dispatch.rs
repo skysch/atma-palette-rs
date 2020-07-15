@@ -108,6 +108,10 @@ pub fn dispatch(
         ////////////////////////////////////////////////////////////////////////
         Insert { exprs, name, at } => {
             let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+            if exprs.is_empty() {
+                println!("No expressions to insert.");
+                return Ok(()); 
+            }
             let at = at.unwrap_or(config.default_positioning);
 
             pal.insert_exprs(&exprs[..], name, at)?;
