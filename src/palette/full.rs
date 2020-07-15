@@ -41,7 +41,6 @@ use std::path::Path;
 use std::path::PathBuf;
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // DEFAULT_PALETTE_PATH
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,6 +48,7 @@ use std::path::PathBuf;
 ///
 /// [`Palette`]: struct.Palette.html
 pub const DEFAULT_PALETTE_PATH: &'static str = "palette.atma";
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Palette
@@ -64,10 +64,7 @@ pub struct Palette {
     inner: BasicPalette,
     /// The command history for the palette.
     history: Option<History>,
-    /// The positioning cursor.
-    position_cursor: Position,
 }
-
 
 impl Palette {
     /// Constructs a new `Palette`.
@@ -76,7 +73,6 @@ impl Palette {
             load_path: None,
             inner: BasicPalette::new(),
             history: None,
-            position_cursor: Position::ZERO,
         }
     }
 
@@ -269,7 +265,7 @@ impl Palette {
         let mut next = match position {
             Positioning::Position(p) => p,
             Positioning::Open => Position::ZERO,
-            Positioning::Cursor => self.position_cursor,
+            Positioning::Cursor => self.inner.position_cursor(),
             Positioning::None => Position::ZERO,
         };
         if !position.is_none() {
@@ -335,7 +331,9 @@ impl Palette {
             _ => (),
         }
 
-        if !position.is_none() { self.position_cursor = next.succ(); }
+        if !position.is_none() {
+            ops.push(SetPositionCursor { position: next.succ() });
+        }
         self.apply_operations(&ops[..])
     }
 
@@ -373,7 +371,7 @@ impl Palette {
         let mut next = match position {
             Positioning::Position(p) => p,
             Positioning::Open => Position::ZERO,
-            Positioning::Cursor => self.position_cursor,
+            Positioning::Cursor => self.inner.position_cursor(),
             Positioning::None => Position::ZERO,
         };
         for idx in index_selection {
@@ -398,7 +396,9 @@ impl Palette {
             }
         }
 
-        if !position.is_none() { self.position_cursor = next.succ(); }
+        if !position.is_none() {
+            ops.push(SetPositionCursor { position: next.succ() });
+        }
         self.apply_operations(&ops[..])
     }
 
@@ -407,7 +407,7 @@ impl Palette {
     ////////////////////////////////////////////////////////////////////////////
 
     /// Applies a sequence of `Operation`s to the palette.
-    ///
+    /// 
     /// ### Parameters
     /// + `op`: The operation to apply.
     pub fn apply_operations(&mut self, ops: &[Operation])
@@ -417,28 +417,26 @@ impl Palette {
     }
 
     /// Unapplies the latest set of applied operations.
-    ///
+    /// 
     /// Returns the number of undo operations successfully performed. This may
     /// be fewer than the number provided if there are fewer undo operations
     /// recorded than requested.
     pub fn undo(&mut self, count: usize) -> usize {
-        if let Some(history) = self.history.as_mut() {
-            self.inner.undo(history, count)
-        } else {
-            0
+        match self.history.as_mut() {
+            Some(history) => self.inner.undo(history, count),
+            _             => 0,
         }
     }
 
     /// Reapplies the latest set of undone operations.
-    ///
+    /// 
     /// Returns the number of redo operations successfully performed. This may
     /// be fewer than the number provided if there are fewer redo operations
     /// recorded than requested.
     pub fn redo(&mut self, count: usize) -> usize {
-        if let Some(history) = self.history.as_mut() {
-            self.inner.redo(history, count)
-        } else {
-            0
+        match self.history.as_mut() {
+            Some(history) => self.inner.redo(history, count),
+            _             => 0,
         }
     }
 }

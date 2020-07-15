@@ -115,6 +115,7 @@ pub enum Operation {
     ////////////////////////////////////////////////////////////////////////////
     // Expr operations
     ////////////////////////////////////////////////////////////////////////////
+
     /// Sets the color expression for a cell.
     SetExpr {
         /// A reference to the `Cell` to set the `Expr` for.
@@ -122,6 +123,16 @@ pub enum Operation {
         /// The expression to set.
         expr: Expr,
     },
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Positioning operations
+    ////////////////////////////////////////////////////////////////////////////
+    /// Sets the palette's position cursor.
+    SetPositionCursor {
+        /// The position to set.
+        position: Position,
+    }
 }
 
 

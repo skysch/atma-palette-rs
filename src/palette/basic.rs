@@ -56,8 +56,6 @@ pub struct BasicPalette {
     // TODO: Consider using a Vec here.
     /// BasicPalette cells storage. Holds cells containing color expressions.
     cells: BTreeMap<u32, Cell>,
-    /// The next free cell index.
-    next_index: u32,
     /// A map of assigned names.
     names: BiMap<Cow<'static, str>, PositionSelector>,
     // TODO: Consider allowing positions to be assigned based on ranges. E.g.,
@@ -67,6 +65,11 @@ pub struct BasicPalette {
     positions: BiMap<Position, u32>,
     /// A map of names assigned to groups of cells.
     groups: BTreeMap<Cow<'static, str>, Vec<u32>>,
+    /// The next free cell index.
+    next_index: u32,
+    // TODO: Undo/redo should track the cursor position.
+    /// The positioning cursor.
+    position_cursor: Position,
 }
 
 
@@ -80,10 +83,11 @@ impl BasicPalette {
     pub fn new() -> Self {
         BasicPalette {
             cells: BTreeMap::new(),
-            next_index: 0,
             names: BiMap::new(),
             positions: BiMap::new(),
             groups: BTreeMap::new(),
+            next_index: 0,
+            position_cursor: Position::ZERO,
         }
     }
 
@@ -166,7 +170,16 @@ impl BasicPalette {
     ////////////////////////////////////////////////////////////////////////////
     // Accessors
     ////////////////////////////////////////////////////////////////////////////
-    
+    /// Returns the palette's `Position` cursor.
+    pub fn position_cursor(&self) -> Position {
+        self.position_cursor
+    }
+
+    /// Sets the palette's `Position` cursor, returning its previous value.
+    pub fn set_position_cursor(&mut self, pos: Position) -> Position {
+        std::mem::replace(&mut self.position_cursor, pos)
+    }
+
     /// Retreives a copy of the color associated with the given `CellRef`.
     pub fn color<'name>(&self, cell_ref: &CellRef<'name>)
         -> Result<Option<Color>, PaletteError>
@@ -646,6 +659,11 @@ impl BasicPalette {
 
             SetExpr { cell_ref, expr }
                 => self.set_expr(cell_ref.clone(), expr.clone()),
+
+            SetPositionCursor { position }
+                => Ok(vec![SetPositionCursor {
+                    position: self.set_position_cursor(*position),
+                }]),
         }
     }
 

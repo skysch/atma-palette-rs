@@ -51,6 +51,7 @@ pub fn dispatch(
     cur_dir: PathBuf)
     -> Result<(), anyhow::Error>
 {
+    trace!("Begin command dispatch.");
     use CommandOption::*;
     use anyhow::Context as _;
 
@@ -78,6 +79,8 @@ pub fn dispatch(
         ////////////////////////////////////////////////////////////////////////
         List { selection } => {
             let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+
+            // TODO: Move all of this to an inner function.
             debug!("Start listing for selection {:?}", selection);
             let selection = selection.unwrap_or(CellSelector::All.into());
             let index_selection = selection.resolve(pal.inner());
@@ -243,6 +246,7 @@ fn new_palette(
     set_active: bool)
     -> Result<(), anyhow::Error>
 {
+    trace!("Build new palette.");
     use crate::error::FileErrorContext as _;
 
     fn already_exists(e: &FileError) -> bool {
