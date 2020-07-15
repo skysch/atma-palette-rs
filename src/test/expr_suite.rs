@@ -14,7 +14,6 @@ use crate::cell::Position;
 use crate::palette::BlendExpr;
 use crate::palette::BlendFunction;
 use crate::palette::BlendMethod;
-use crate::color::Color;
 use crate::color::Rgb;
 use crate::palette::ColorSpace;
 use crate::palette::InsertExpr;
@@ -22,6 +21,7 @@ use crate::palette::Interpolate;
 use crate::palette::InterpolateFunction;
 use crate::palette::InterpolateRange;
 use crate::parse::*;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // InsertExpr
@@ -44,6 +44,94 @@ fn insert_expr_ramp_match() {
                 interpolate: InterpolateRange::default(),
             },
             token: "ramp(3, overlay(:0,:1))",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        insert_expr("ramp(3, overlay(:0,:1), linear)abcd"),
+        Ok(Success {
+            value: InsertExpr::Ramp {
+                count: 3,
+                blend_fn: BlendFunction {
+                    color_space: ColorSpace::default(),
+                    blend_method: BlendMethod::Overlay,
+                    source: CellRef::Index(0),
+                    target: CellRef::Index(1),
+                },
+                interpolate: InterpolateRange {
+                    color_space: ColorSpace::default(),
+                    interpolate_fn: InterpolateFunction::Linear,
+                    start: 0.0,
+                    end: 1.0,
+                },
+            },
+            token: "ramp(3, overlay(:0,:1), linear)",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        insert_expr("ramp(3, overlay(:0,:1), linear(rgb, 0.0, 0.8))abcd"),
+        Ok(Success {
+            value: InsertExpr::Ramp {
+                count: 3,
+                blend_fn: BlendFunction {
+                    color_space: ColorSpace::default(),
+                    blend_method: BlendMethod::Overlay,
+                    source: CellRef::Index(0),
+                    target: CellRef::Index(1),
+                },
+                interpolate: InterpolateRange {
+                    color_space: ColorSpace::Rgb,
+                    interpolate_fn: InterpolateFunction::Linear,
+                    start: 0.0,
+                    end: 0.8,
+                },
+            },
+            token: "ramp(3, overlay(:0,:1), linear(rgb, 0.0, 0.8))",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        insert_expr("ramp(3, overlay(:0,:1),cubic(rgb,0.0,0.8,3.0,3.0))abcd"),
+        Ok(Success {
+            value: InsertExpr::Ramp {
+                count: 3,
+                blend_fn: BlendFunction {
+                    color_space: ColorSpace::default(),
+                    blend_method: BlendMethod::Overlay,
+                    source: CellRef::Index(0),
+                    target: CellRef::Index(1),
+                },
+                interpolate: InterpolateRange {
+                    color_space: ColorSpace::Rgb,
+                    interpolate_fn: InterpolateFunction::Cubic(3.0, 3.0),
+                    start: 0.0,
+                    end: 0.8,
+                },
+            },
+            token: "ramp(3, overlay(:0,:1),cubic(rgb,0.0,0.8,3.0,3.0))",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        insert_expr("ramp(3, overlay(:0,:1),cubic(rgb,0.0,0.8,-3.0,-3.0))abcd"),
+        Ok(Success {
+            value: InsertExpr::Ramp {
+                count: 3,
+                blend_fn: BlendFunction {
+                    color_space: ColorSpace::default(),
+                    blend_method: BlendMethod::Overlay,
+                    source: CellRef::Index(0),
+                    target: CellRef::Index(1),
+                },
+                interpolate: InterpolateRange {
+                    color_space: ColorSpace::Rgb,
+                    interpolate_fn: InterpolateFunction::Cubic(-3.0, -3.0),
+                    start: 0.0,
+                    end: 0.8,
+                },
+            },
+            token: "ramp(3, overlay(:0,:1),cubic(rgb,0.0,0.8,-3.0,-3.0))",
             rest: "abcd",
         }));
 }

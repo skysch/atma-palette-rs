@@ -205,7 +205,6 @@ impl Palette {
         debug!("Serializing & writing Palette file.");
         let pretty = PrettyConfig::new()
             .with_depth_limit(3)
-            .with_separate_tuple_members(true)
             .with_extensions(ron::extensions::Extensions::IMPLICIT_SOME);
         let s = to_string_pretty(self, pretty)?;
 
