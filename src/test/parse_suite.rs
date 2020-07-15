@@ -92,7 +92,7 @@ fn failure_join_failure() {
     };
 
     let r = Failure {
-        context: &input[2..5],
+        token: &input[2..5],
         rest: &input[2..],
         // These fields are unchecked:
         expected: "".into(), source: None,
@@ -101,7 +101,7 @@ fn failure_join_failure() {
     assert_eq!(
         l.join_failure(r, input),
         Failure {
-            context: &input[..5],
+            token: &input[..5],
             rest: input,
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -131,7 +131,7 @@ fn char_nonmatch() {
     assert_eq!(
         char('b')("abcd"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -156,7 +156,7 @@ fn char_in_nonmatch() {
     assert_eq!(
         char_in("bdcbd")("abcd"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -182,7 +182,7 @@ fn char_matching_nonmatch() {
     assert_eq!(
         char_matching(|c| c == 'b')("abcd"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -215,7 +215,7 @@ fn char_whitespace_nonmatch() {
     assert_eq!(
         char_whitespace("abcd"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -252,7 +252,7 @@ fn whitespace_nonmatch() {
     assert_eq!(
         whitespace("abcd"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -285,7 +285,7 @@ fn literal_nonmatch() {
     assert_eq!(
         literal("xyz")("abcd"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -359,7 +359,7 @@ fn repeat_char_nonmatch() {
     assert_eq!(
         repeat(3, Some(5), char('a'))("aabcd"),
         Err(Failure {
-            context: "aa",
+            token: "aa",
             rest: "aabcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -417,7 +417,7 @@ fn prefix_radix_token_nonmatch() {
     assert_eq!(
         prefix_radix_token("1234abcd"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "1234abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -504,7 +504,7 @@ fn uint_u8_nonmatch() {
     assert_eq!(
         uint::<u8>("u8")("abcd"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -513,7 +513,7 @@ fn uint_u8_nonmatch() {
     assert_eq!(
         uint::<u8>("u8")("0b20abcd"),
         Err(Failure {
-            context: "0b",
+            token: "0b",
             rest: "0b20abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -522,7 +522,7 @@ fn uint_u8_nonmatch() {
     assert_eq!(
         uint::<u8>("u8")("0o80abcd"),
         Err(Failure {
-            context: "0o",
+            token: "0o",
             rest: "0o80abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -531,7 +531,7 @@ fn uint_u8_nonmatch() {
     assert_eq!(
         uint::<u8>("u8")("0xG0abcd"),
         Err(Failure {
-            context: "0x",
+            token: "0x",
             rest: "0xG0abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -540,7 +540,7 @@ fn uint_u8_nonmatch() {
     assert_eq!(
         uint::<u8>("u8")("0x100Gabcd"),
         Err(Failure {
-            context: "0x100",
+            token: "0x100",
             rest: "0x100Gabcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -589,7 +589,7 @@ fn uint_u16_nonmatch() {
     assert_eq!(
         uint::<u16>("u16")("abcd"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -598,7 +598,7 @@ fn uint_u16_nonmatch() {
     assert_eq!(
         uint::<u16>("u16")("0b20abcd"),
         Err(Failure {
-            context: "0b",
+            token: "0b",
             rest: "0b20abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -607,7 +607,7 @@ fn uint_u16_nonmatch() {
     assert_eq!(
         uint::<u16>("u16")("0o80abcd"),
         Err(Failure {
-            context: "0o",
+            token: "0o",
             rest: "0o80abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -616,7 +616,7 @@ fn uint_u16_nonmatch() {
     assert_eq!(
         uint::<u16>("u16")("0xG0abcd"),
         Err(Failure {
-            context: "0x",
+            token: "0x",
             rest: "0xG0abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -625,7 +625,7 @@ fn uint_u16_nonmatch() {
     assert_eq!(
         uint::<u16>("u16")("0x10000Gabcd"),
         Err(Failure {
-            context: "0x10000",
+            token: "0x10000",
             rest: "0x10000Gabcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -674,7 +674,7 @@ fn uint_u32_nonmatch() {
     assert_eq!(
         uint::<u32>("u32")("abcd"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -683,7 +683,7 @@ fn uint_u32_nonmatch() {
     assert_eq!(
         uint::<u32>("u32")("0b20abcd"),
         Err(Failure {
-            context: "0b",
+            token: "0b",
             rest: "0b20abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -692,7 +692,7 @@ fn uint_u32_nonmatch() {
     assert_eq!(
         uint::<u32>("u32")("0o80abcd"),
         Err(Failure {
-            context: "0o",
+            token: "0o",
             rest: "0o80abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -701,7 +701,7 @@ fn uint_u32_nonmatch() {
     assert_eq!(
         uint::<u32>("u32")("0xG0abcd"),
         Err(Failure {
-            context: "0x",
+            token: "0x",
             rest: "0xG0abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -710,7 +710,7 @@ fn uint_u32_nonmatch() {
     assert_eq!(
         uint::<u32>("u32")("0x100000000Gabcd"),
         Err(Failure {
-            context: "0x100000000",
+            token: "0x100000000",
             rest: "0x100000000Gabcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -759,7 +759,7 @@ fn uint_u64_nonmatch() {
     assert_eq!(
         uint::<u64>("u64")("abcd"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -768,7 +768,7 @@ fn uint_u64_nonmatch() {
     assert_eq!(
         uint::<u64>("u64")("0b20abcd"),
         Err(Failure {
-            context: "0b",
+            token: "0b",
             rest: "0b20abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -777,7 +777,7 @@ fn uint_u64_nonmatch() {
     assert_eq!(
         uint::<u64>("u64")("0o80abcd"),
         Err(Failure {
-            context: "0o",
+            token: "0o",
             rest: "0o80abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -786,7 +786,7 @@ fn uint_u64_nonmatch() {
     assert_eq!(
         uint::<u64>("u64")("0xG0abcd"),
         Err(Failure {
-            context: "0x",
+            token: "0x",
             rest: "0xG0abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -795,7 +795,7 @@ fn uint_u64_nonmatch() {
     assert_eq!(
         uint::<u64>("u64")("0x10000000000000000Gabcd"),
         Err(Failure {
-            context: "0x10000000000000000",
+            token: "0x10000000000000000",
             rest: "0x10000000000000000Gabcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -873,7 +873,7 @@ fn name_nonmatch() {
     assert_eq!(
         name(" xyz"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: " xyz",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -882,7 +882,7 @@ fn name_nonmatch() {
     assert_eq!(
         name(".xyz"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: ".xyz",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -891,7 +891,7 @@ fn name_nonmatch() {
     assert_eq!(
         name(",xyz"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: ",xyz",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -900,7 +900,7 @@ fn name_nonmatch() {
     assert_eq!(
         name(":xyz"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: ":xyz",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -909,7 +909,7 @@ fn name_nonmatch() {
     assert_eq!(
         name("-xyz"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "-xyz",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -918,7 +918,7 @@ fn name_nonmatch() {
     assert_eq!(
         name("*xyz"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "*xyz",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -976,7 +976,7 @@ fn index_nonmatch() {
     assert_eq!(
         index(":abcd"),
         Err(Failure {
-            context: ":",
+            token: ":",
             rest: ":abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -985,7 +985,7 @@ fn index_nonmatch() {
     assert_eq!(
         index(":0b20abcd"),
         Err(Failure {
-            context: ":0b",
+            token: ":0b",
             rest: ":0b20abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -994,7 +994,7 @@ fn index_nonmatch() {
     assert_eq!(
         index(":0o80abcd"),
         Err(Failure {
-            context: ":0o",
+            token: ":0o",
             rest: ":0o80abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1003,7 +1003,7 @@ fn index_nonmatch() {
     assert_eq!(
         index(":0xG0abcd"),
         Err(Failure {
-            context: ":0x",
+            token: ":0x",
             rest: ":0xG0abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1012,7 +1012,7 @@ fn index_nonmatch() {
     assert_eq!(
         index(":0x100000000 abcd"),
         Err(Failure {
-            context: ":0x100000000",
+            token: ":0x100000000",
             rest: ":0x100000000 abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1045,7 +1045,7 @@ fn position_nonmatch() {
     assert_eq!(
         position(":1 .2.3abcd"),
         Err(Failure {
-            context: ":1",
+            token: ":1",
             rest: ":1 .2.3abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1054,7 +1054,7 @@ fn position_nonmatch() {
     assert_eq!(
         position(":1.*.3abcd"),
         Err(Failure {
-            context: ":1.",
+            token: ":1.",
             rest: ":1.*.3abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1063,7 +1063,7 @@ fn position_nonmatch() {
     assert_eq!(
         position(":1.2.0x10000 abcd"),
         Err(Failure {
-            context: ":1.2.0x10000",
+            token: ":1.2.0x10000",
             rest: ":1.2.0x10000 abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1192,7 +1192,7 @@ fn position_selector_nonmatch() {
     assert_eq!(
         position_selector(":1.2.abcd"),
         Err(Failure {
-            context: ":1.2.",
+            token: ":1.2.",
             rest: ":1.2.abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1201,7 +1201,7 @@ fn position_selector_nonmatch() {
     assert_eq!(
         position_selector(":1.2.0x1FFFF abcd"),
         Err(Failure {
-            context: ":1.2.0x1FFFF",
+            token: ":1.2.0x1FFFF",
             rest: ":1.2.0x1FFFF abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1210,7 +1210,7 @@ fn position_selector_nonmatch() {
     assert_eq!(
         position_selector(":1.**.3abcd"),
         Err(Failure {
-            context: ":1.*",
+            token: ":1.*",
             rest: ":1.**.3abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1243,7 +1243,7 @@ fn range_suffix_index_nonmatch() {
     assert_eq!(
         range_suffix(index)("-:0x1FFFFFFFF abcd"),
         Err(Failure {
-            context: "-:0x1FFFFFFFF",
+            token: "-:0x1FFFFFFFF",
             rest: "-:0x1FFFFFFFF abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1252,7 +1252,7 @@ fn range_suffix_index_nonmatch() {
     assert_eq!(
         range_suffix(index)("-: 10abcd"),
         Err(Failure {
-            context: "-:",
+            token: "-:",
             rest: "-: 10abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1261,7 +1261,7 @@ fn range_suffix_index_nonmatch() {
     assert_eq!(
         range_suffix(index)("--: 10abcd"),
         Err(Failure {
-            context: "-",
+            token: "-",
             rest: "--: 10abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1294,7 +1294,7 @@ fn range_suffix_position_nonmatch() {
     assert_eq!(
         range_suffix(position)("- -: 10abcd"),
         Err(Failure {
-            context: "- ",
+            token: "- ",
             rest: "- -: 10abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1303,7 +1303,7 @@ fn range_suffix_position_nonmatch() {
     assert_eq!(
         range_suffix(position)(" -:0xFFFF.0xFFFF.0x1FFFF abcd"),
         Err(Failure {
-            context: " -:0xFFFF.0xFFFF.0x1FFFF",
+            token: " -:0xFFFF.0xFFFF.0x1FFFF",
             rest: " -:0xFFFF.0xFFFF.0x1FFFF abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1336,7 +1336,7 @@ fn range_suffix_group_nonmatch() {
     assert_eq!(
         range_suffix(group)("- -xyz:0abcd"),
         Err(Failure {
-            context: "- ",
+            token: "- ",
             rest: "- -xyz:0abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1345,7 +1345,7 @@ fn range_suffix_group_nonmatch() {
     assert_eq!(
         range_suffix(group)(" -xyz:0xHabcd"),
         Err(Failure {
-            context: " -xyz:0x",
+            token: " -xyz:0x",
             rest: " -xyz:0xHabcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1403,7 +1403,7 @@ fn cell_selector_index_range_nonmatch() {
     assert_eq!(
         cell_selector(":1-:0abcd"),
         Err(Failure {
-            context: ":1-:0",
+            token: ":1-:0",
             rest: ":1-:0abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1459,7 +1459,7 @@ fn cell_selector_position_range_nonmatch() {
     assert_eq!(
         cell_selector(":1.2.3-:0.5.6abcd"),
         Err(Failure {
-            context: ":1.2.3-:0.5.6",
+            token: ":1.2.3-:0.5.6",
             rest: ":1.2.3-:0.5.6abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1537,7 +1537,7 @@ fn cell_selector_group_range_nonmatch() {
     assert_eq!(
         cell_selector("xyz:2-xyzt:4abcd"),
         Err(Failure {
-            context: "xyz:2-xyzt:4",
+            token: "xyz:2-xyzt:4",
             rest: "xyz:2-xyzt:4abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1546,7 +1546,7 @@ fn cell_selector_group_range_nonmatch() {
     assert_eq!(
         cell_selector("xyz:2-xyz:1abcd"),
         Err(Failure {
-            context: "xyz:2-xyz:1",
+            token: "xyz:2-xyz:1",
             rest: "xyz:2-xyz:1abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -1633,7 +1633,7 @@ fn float_f32_nonmatch() {
     assert_eq!(
         float::<f32>("f32")("-110.0123141eabcd"),
         Err(Failure {
-            context: "-110.0123141e",
+            token: "-110.0123141e",
             rest: "-110.0123141eabcd",
             // These fields are unchecked:
             expected: "".into(), source: None,

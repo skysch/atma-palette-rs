@@ -59,7 +59,7 @@ pub fn atomic<'t, F, V>(mut parser: F)
     move |text| {
         match (parser)(text) {
             Ok(success) => Ok(success.map_value(Some)),
-            Err(fail) if fail.context.is_empty() => Ok(Success {
+            Err(fail) if fail.token.is_empty() => Ok(Success {
                 value: None,
                 token: "",
                 rest: text,
@@ -152,7 +152,7 @@ pub fn intersperse<'t, F, G, V, U>(
 
         let mut count = 1;
         while count < low {
-            let next_suc = prefix(&mut parser, &mut inner_parser)(sub_suc.rest)
+            sub_suc = prefix(&mut parser, &mut inner_parser)(sub_suc.rest)
                 .discard_value()
                 .source_for(format!("intersperse {}{}", low,
                     match high {
@@ -160,9 +160,8 @@ pub fn intersperse<'t, F, G, V, U>(
                         Some(high) if high == low => "".into(),
                         _ => "+".into(),
                     }))
-                .with_join_context(&sub_suc, text)?;
+                .with_join_previous(sub_suc, text)?;
 
-            sub_suc = sub_suc.join(next_suc, text);
             count += 1;
         }
 
@@ -174,12 +173,11 @@ pub fn intersperse<'t, F, G, V, U>(
                         Some(high) if high != low => format!(" to {}", high),
                         Some(high) if high == low => "".into(),
                         _ => "+".into(),
-                    }))
-                .with_join_context(&sub_suc, text);
+                    }));
 
             match next_res {
                 Ok(next_suc) => {
-                    sub_suc = sub_suc.join(next_suc, text);
+                    sub_suc = sub_suc.join_with(next_suc, text, |_, v| v);
                     count += 1;
                 }
                 Err(_) => break,
@@ -229,7 +227,6 @@ pub fn intersperse_collect<'t, F, G, V, U>(
         let mut count = 1;
         while count < low {
             let next_suc = prefix(&mut parser, &mut inner_parser)(sub_suc.rest)
-                .with_join_context(&sub_suc, text)
                 .source_for(format!("intersperse {}{}", low,
                     match high {
                         Some(high) if high != low => format!(" to {}", high),
@@ -249,8 +246,7 @@ pub fn intersperse_collect<'t, F, G, V, U>(
                         Some(high) if high != low => format!(" to {}", high),
                         Some(high) if high == low => "".into(),
                         _ => "+".into(),
-                    }))
-                .with_join_context(&sub_suc, text);
+                    }));
 
             match next_res {
                 Ok(next_suc) => {
@@ -410,7 +406,7 @@ pub fn any_literal_map<'t, P, Q, M, V, G, S>(parser: P, expected: S, map: M)
         }
         Err(Failure {
             rest: text,
-            context: "",
+            token: "",
             expected: expected.clone().into(),
             source: None,
         })
@@ -435,7 +431,7 @@ pub fn any_literal_map_once<'t, P, Q, M, V, G, S>(parser: P, expected: S, map: M
         }
         Err(Failure {
             rest: text,
-            context: "",
+            token: "",
             expected: expected.into(),
             source: None,
         })

@@ -40,7 +40,7 @@ pub const RGB_HEX_PREFIX: char = '#';
 /// Parses a Color.
 pub fn color<'t>(text: &'t str) -> ParseResult<'t, Color> {
     let mut fail = Failure {
-        context: "",
+        token: "",
         expected: "color value".into(),
         source: None,
         rest: text,
@@ -49,7 +49,7 @@ pub fn color<'t>(text: &'t str) -> ParseResult<'t, Color> {
     match rgb_hex(text).or_else(|_| rgb_functional(text)) {
         Ok(rgb_suc)   => return Ok(rgb_suc.map_value(Color::from)),
         Err(rgb_fail) => {
-            fail.context = rgb_fail.context;
+            fail.token = rgb_fail.token;
             fail.rest = rgb_fail.rest;
             fail.source = Some(Box::new(rgb_fail.to_owned()));
         }
@@ -57,8 +57,8 @@ pub fn color<'t>(text: &'t str) -> ParseResult<'t, Color> {
 
     match cmyk_functional(text) {
         Ok(cmyk_suc)   => return Ok(cmyk_suc.map_value(Color::from)),
-        Err(cmyk_fail) => if cmyk_fail.context.len() > fail.context.len() {
-            fail.context = cmyk_fail.context;
+        Err(cmyk_fail) => if cmyk_fail.token.len() > fail.token.len() {
+            fail.token = cmyk_fail.token;
             fail.rest = cmyk_fail.rest;
             fail.source = Some(Box::new(cmyk_fail.to_owned()));
         }
@@ -66,8 +66,8 @@ pub fn color<'t>(text: &'t str) -> ParseResult<'t, Color> {
 
     match hsv_functional(text) {
         Ok(hsv_suc)   => return Ok(hsv_suc.map_value(Color::from)),
-        Err(hsv_fail) => if hsv_fail.context.len() > fail.context.len() {
-            fail.context = hsv_fail.context;
+        Err(hsv_fail) => if hsv_fail.token.len() > fail.token.len() {
+            fail.token = hsv_fail.token;
             fail.rest = hsv_fail.rest;
             fail.source = Some(Box::new(hsv_fail.to_owned()));
         }
@@ -75,8 +75,8 @@ pub fn color<'t>(text: &'t str) -> ParseResult<'t, Color> {
     
     match hsl_functional(text) {
         Ok(hsl_suc)   => return Ok(hsl_suc.map_value(Color::from)),
-        Err(hsl_fail) => if hsl_fail.context.len() > fail.context.len() {
-            fail.context = hsl_fail.context;
+        Err(hsl_fail) => if hsl_fail.token.len() > fail.token.len() {
+            fail.token = hsl_fail.token;
             fail.rest = hsl_fail.rest;
             fail.source = Some(Box::new(hsl_fail.to_owned()));
         }
@@ -84,8 +84,8 @@ pub fn color<'t>(text: &'t str) -> ParseResult<'t, Color> {
     
     match xyz_functional(text) {
         Ok(xyz_suc)   => return Ok(xyz_suc.map_value(Color::from)),
-        Err(xyz_fail) => if xyz_fail.context.len() > fail.context.len() {
-            fail.context = xyz_fail.context;
+        Err(xyz_fail) => if xyz_fail.token.len() > fail.token.len() {
+            fail.token = xyz_fail.token;
             fail.rest = xyz_fail.rest;
             fail.source = Some(Box::new(xyz_fail.to_owned()));
         }

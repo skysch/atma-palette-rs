@@ -63,7 +63,7 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
                 Ok(pos_range) => Ok(pos_suc.join_with(ub_suc, text,
                     |_, _| pos_range)),
                 Err(range_err) => Err(Failure {
-                    context: pos_suc.join(ub_suc, text).token,
+                    token: pos_suc.join(ub_suc, text).token,
                     expected: "valid position range".into(),
                     source: Some(Box::new(range_err)),
                     rest: text,
@@ -84,7 +84,7 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
                 Ok(index_range) => Ok(index_suc.join_with(ub_suc, text,
                     |_, _| index_range)),
                 Err(range_err) => Err(Failure {
-                    context: index_suc.join(ub_suc, text).token,
+                    token: index_suc.join(ub_suc, text).token,
                     expected: "valid index range".into(),
                     source: Some(Box::new(range_err)),
                     rest: text,
@@ -110,7 +110,7 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
                 Ok(group_range) => Ok(group_suc.join_with(ub_suc, text,
                     |_, _| group_range)),
                 Err(range_err) => Err(Failure {
-                    context: group_suc.join(ub_suc, text).token,
+                    token: group_suc.join(ub_suc, text).token,
                     expected: "valid group range".into(),
                     source: Some(Box::new(range_err)),
                     rest: text,

@@ -413,7 +413,7 @@ fn interpolate_range_nonmatch() {
     assert_eq!(
         interpolate_range("lineaabcd"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "lineaabcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -515,7 +515,7 @@ fn interpolate_nonmatch() {
     assert_eq!(
         interpolate("lineaabcd"),
         Err(Failure {
-            context: "",
+            token: "",
             rest: "lineaabcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -524,7 +524,7 @@ fn interpolate_nonmatch() {
     assert_eq!(
         interpolate("linear(100.0)abcd"),
         Err(Failure {
-            context: "linear(100.0)",
+            token: "linear(100.0)",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -533,7 +533,7 @@ fn interpolate_nonmatch() {
     assert_eq!(
         interpolate("linear(rgb, 100.0)abcd"),
         Err(Failure {
-            context: "linear(rgb, 100.0)",
+            token: "linear(rgb, 100.0)",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -542,7 +542,7 @@ fn interpolate_nonmatch() {
     assert_eq!(
         interpolate("cubic(100.0)abcd"),
         Err(Failure {
-            context: "cubic(100.0)",
+            token: "cubic(100.0)",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -551,7 +551,7 @@ fn interpolate_nonmatch() {
     assert_eq!(
         interpolate("cubic(rgb, 100.0)abcd"),
         Err(Failure {
-            context: "cubic(rgb, 100.0)",
+            token: "cubic(rgb, 100.0)",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,
@@ -560,7 +560,7 @@ fn interpolate_nonmatch() {
     assert_eq!(
         interpolate("cubic(rgb, 3.1, 0.3, 0.2)abcd"),
         Err(Failure {
-            context: "cubic(rgb, 3.1, 0.3, 0.2)",
+            token: "cubic(rgb, 3.1, 0.3, 0.2)",
             rest: "abcd",
             // These fields are unchecked:
             expected: "".into(), source: None,

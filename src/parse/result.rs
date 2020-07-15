@@ -39,28 +39,20 @@ pub trait ParseResultExt<'t, V>: Sized {
     /// The given discription will become the new parse description.
     ///
     /// It is recommended to call this before any calls to `with_join_context`
-    /// or `with_new_context` to ensure the subparse context is maintained in
+    /// or `with_new_context` to ensure the subparse token is maintained in
     /// the failure source.
     fn source_for<E>(self, expected: E) -> Self
         where E: Into<Cow<'static, str>>;
 
-    /// Sets the context for a failed parse by extending back to include a
-    /// previously successful parse.
-    ///
-    /// This is typically used to set establish a recovery point before a
-    /// previously successful parse.
-    fn with_join_context<U>(self, success: &Success<'t, U>, text: &'t str)
-        -> ParseResult<'t, V>;
-
-    /// Sets a new context for a failed parse.
+    /// Sets a new token for a failed parse.
     ///
     /// This is typically used by a parser combinator to establish a recovery
-    /// point before any subparser calls. The `context` argument sets the context directly, and should only be
+    /// point before any subparser calls. The `token` argument sets the token directly, and should only be
     /// non-empty if there is a known recovery point for the parse.
-    fn with_new_context(self, context: &'t str, text: &'t str)
+    fn with_new_context(self, token: &'t str, text: &'t str)
         -> ParseResult<'t, V>;
 
-    /// Sets the context for a parse by combining it with a previously
+    /// Sets the token for a parse by combining it with a previously
     /// successful parse.
     fn with_join_previous<U>(self, success: Success<'t, U>, text: &'t str)
         -> ParseResult<'t, V>;
@@ -92,7 +84,7 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
         match self {
             Ok(success) if success.rest.is_empty() => Ok(success),
             Ok(success) => Err(Failure {
-                context: success.token,
+                token: success.token,
                 expected: "end-of-text".into(),
                 source: None,
                 rest: success.rest,
@@ -110,10 +102,10 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
         where E: Into<Cow<'static, str>>
     {
         self.map_err(|failure| {
-            let context = failure.context;
+            let token = failure.token;
             let rest = failure.rest;
             Failure {
-                context,
+                token,
                 expected: expected.into(),
                 source: Some(Box::new(failure.to_owned())),
                 rest,
@@ -121,17 +113,11 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
         })
     }
 
-    fn with_join_context<U>(self, success: &Success<'t, U>, text: &'t str)
-        -> ParseResult<'t, V>
-    {
-        self.map_err(|failure| success.join_failure(failure, text))
-    }
-
-    fn with_new_context(self, context: &'t str, text: &'t str)
+    fn with_new_context(self, token: &'t str, text: &'t str)
         -> ParseResult<'t, V>
     {
         self.map_err(|mut failure| {
-            failure.context = context;
+            failure.token = token;
             failure.rest = text;
             failure
         })
@@ -159,7 +145,7 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
                 }),
 
                 Err(e) => Err(Failure {
-                    context: success.token,
+                    token: success.token,
                     expected: expected.into(),
                     source: Some(Box::new(e)),
                     rest: success.rest,
@@ -269,11 +255,11 @@ impl<'t, V> Success<'t, V> {
     }
 
     /// Joins a failure result to a previously successful result, expanding the
-    /// context of the failure.
+    /// token of the failure.
     pub fn join_failure(&self, mut other: Failure<'t>, text: &'t str)
         -> Failure<'t>
     {
-        other.context = &text[..self.token.len() + other.context.len()];
+        other.token = &text[..self.token.len() + other.token.len()];
         other.rest = text;
         other
     }
@@ -289,9 +275,9 @@ pub struct Failure<'t> {
     /// The parsable text. This is expected to contain any successfully parsed
     /// text, and optionally include any text which should be skipped if the
     /// parse is to recover from errors.
-    pub context: &'t str,
+    pub token: &'t str,
     /// The expected result of the failing parse. Recommended to be a literal,
-    /// function name, or description of the context.
+    /// function name, or description of the token.
     pub expected: Cow<'static, str>,
     /// The parse failure that caused this one.
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
@@ -303,13 +289,13 @@ pub struct Failure<'t> {
 impl<'t> Failure<'t> {
     /// Advances the parse text remainder past the failing token.
     pub fn rest_continuing(&self) -> &'t str {
-        &self.rest[self.context.len()..]
+        &self.rest[self.token.len()..]
     }
 
     /// Converts a borrowed `Failure` into a `FailureOwned`.
     pub fn to_owned(self) -> FailureOwned {
         FailureOwned {
-            context: self.context.to_owned(),
+            token: self.token.to_owned(),
             expected: self.expected,
             source: self.source,
         }
@@ -319,8 +305,8 @@ impl<'t> Failure<'t> {
 impl<'t> std::fmt::Display for Failure<'t> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "parse error: expected {}", self.expected)?;
-        if !self.context.is_empty() {
-            write!(f, ", found \"{}\"", self.context)?;
+        if !self.token.is_empty() {
+            write!(f, ", found \"{}\"", self.token)?;
         }
         Ok(())
     }
@@ -339,7 +325,7 @@ impl<'t> std::error::Error for Failure<'t> {
 #[cfg(test)]
 impl<'t> PartialEq for Failure<'t> {
     fn eq(&self, other: &Self) -> bool {
-        self.context == other.context &&
+        self.token == other.token &&
         self.rest == other.rest
     }
 }
@@ -360,7 +346,7 @@ impl<'t> PartialEq for Failure<'t> {
 pub struct FailureOwned {
     /// The previously successful parse text. Usually non-empty for any parse
     /// function which employs sequential sub-parsers.
-    pub context: String,
+    pub token: String,
     /// The expected result of the failing parse. Recommended to be a literal,
     /// function name, or contextual description.
     pub expected: Cow<'static, str>,
@@ -371,8 +357,8 @@ pub struct FailureOwned {
 impl std::fmt::Display for FailureOwned {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "parse error: expected {}", self.expected)?;
-        if !self.context.is_empty() {
-            write!(f, ", found \"{}\"", self.context)?;
+        if !self.token.is_empty() {
+            write!(f, ", found \"{}\"", self.token)?;
         }
         Ok(())
     }
