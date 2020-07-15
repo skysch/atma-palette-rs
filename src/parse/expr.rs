@@ -28,6 +28,7 @@ use crate::parse::float;
 use crate::parse::intersperse_collect;
 use crate::parse::literal_ignore_ascii_case;
 use crate::parse::maybe;
+use crate::parse::atomic;
 use crate::parse::ParseResult;
 use crate::parse::ParseResultExt as _;
 use crate::parse::postfix;
@@ -131,7 +132,7 @@ pub fn insert_expr_ramp<'t>(text: &'t str) -> ParseResult<'t, InsertExpr> {
 
 /// Parses an BlendFunction.
 pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
-    let (color_space, suc) = maybe(postfix(color_space, char('_')))
+    let (color_space, suc) = atomic(postfix(color_space, char('_')))
         (text)?
         .take_value();
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
@@ -152,7 +153,7 @@ pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
         .with_join_previous(suc, text)?
         .take_value();
 
-    let (interpolate, suc) = maybe(
+    let (interpolate, suc) = atomic(
             prefix(
                 interpolate,
                 circumfix(
@@ -184,7 +185,7 @@ pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
 
 /// Parses an BlendFunction.
 pub fn blend_function<'t>(text: &'t str) -> ParseResult<'t, BlendFunction> {
-    let (color_space, suc) = maybe(postfix(color_space, char('_')))
+    let (color_space, suc) = atomic(postfix(color_space, char('_')))
         (text)?
         .take_value();
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
@@ -306,7 +307,7 @@ pub fn interpolate_linear<'t>(text: &'t str) -> ParseResult<'t, Interpolate> {
 pub fn interpolate_linear_args<'t>(text: &'t str)
     -> ParseResult<'t, Interpolate>
 {
-    let (color_space, suc) = maybe(color_space)
+    let (color_space, suc) = atomic(color_space)
         (text)?
         .take_value();
     let cs_sep = color_space.is_some();
@@ -347,7 +348,7 @@ pub fn interpolate_cubic<'t>(text: &'t str) -> ParseResult<'t, Interpolate> {
 pub fn interpolate_cubic_args<'t>(text: &'t str)
     -> ParseResult<'t, Interpolate>
 {
-    let (color_space, suc) = maybe(color_space)
+    let (color_space, suc) = atomic(color_space)
         (text)?
         .take_value();
     let cs_sep = color_space.is_some();
@@ -364,7 +365,7 @@ pub fn interpolate_cubic_args<'t>(text: &'t str)
         .with_join_previous(suc, text)?
         .take_value();
 
-    maybe(
+    atomic(
         prefix(
             intersperse_collect(2, Some(2),
                 float::<f32>("f32"),
@@ -418,7 +419,7 @@ pub fn interpolate_range_linear<'t>(text: &'t str)
 {
     let suc = literal_ignore_ascii_case("linear")(text)?;
 
-    maybe(
+    atomic(
         bracket(
             interpolate_range_linear_args,
             postfix(
@@ -442,13 +443,13 @@ pub fn interpolate_range_linear<'t>(text: &'t str)
 pub fn interpolate_range_linear_args<'t>(text: &'t str)
     -> ParseResult<'t, InterpolateRange>
 {
-    let (color_space, suc) = maybe(color_space)
+    let (color_space, suc) = atomic(color_space)
         (text)?
         .take_value();
     let cs_sep = color_space.is_some();
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
 
-    maybe(
+    atomic(
         prefix(
             intersperse_collect(2, Some(2),
                 float::<f32>("f32"),
@@ -484,7 +485,7 @@ pub fn interpolate_range_cubic<'t>(text: &'t str)
 {
     let suc = literal_ignore_ascii_case("cubic")(text)?;
 
-    maybe(
+    atomic(
         bracket(
             interpolate_range_cubic_args,
             postfix(
@@ -513,7 +514,7 @@ pub fn interpolate_range_cubic_args<'t>(text: &'t str)
     let cs_sep = color_space.is_some();
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
 
-    let (range, suc) = maybe(
+    let (range, suc) = atomic(
             prefix(
                 intersperse_collect(2, Some(2),
                     float::<f32>("f32"),
@@ -536,7 +537,7 @@ pub fn interpolate_range_cubic_args<'t>(text: &'t str)
     let r_sep = range.is_some();
     let (start, end) = range.clone().unwrap_or((0.0, 1.0));
     
-    maybe(
+    atomic(
         prefix(
             intersperse_collect(2, Some(2),
                 float::<f32>("f32"),

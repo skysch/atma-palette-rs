@@ -9,10 +9,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
+use crate::parse::atomic;
 use crate::parse::Failure;
 use crate::parse::maybe;
 use crate::parse::ParseResult;
 use crate::parse::ParseResultExt as _;
+use crate::parse::postfix;
 use crate::parse::repeat;
 use crate::parse::Success;
 
@@ -372,7 +374,10 @@ pub fn float<'t, T>(float_type: &'static str)
         // Digit  ::= [0-9]
         
         // Parse the sign.
-        let sign_suc = maybe(char_in(FLOAT_SIGN))
+        let sign_suc = maybe(
+                postfix(
+                    char_in(FLOAT_SIGN),
+                    maybe(whitespace)))
             (text)
             .expect("infallible maybe parse");
 
@@ -430,9 +435,9 @@ pub fn float<'t, T>(float_type: &'static str)
         let full = sign_suc.join(r_digit_suc, text);
 
         // Parse the exponent.
-        let exp_suc = maybe(float_exp)
+        let exp_suc = atomic(float_exp)
             (full.rest)
-            .expect("infallible maybe parse");
+            .with_join_context(&full, text)?;
         let exp_suc = full.join(exp_suc, text);
         
         match T::from_str(exp_suc.token) {

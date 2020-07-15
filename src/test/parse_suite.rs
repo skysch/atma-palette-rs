@@ -1619,19 +1619,24 @@ fn float_f32_match() {
         }));
 
     assert_eq!(
-        float::<f32>("f32")("-110.0123141eabcd"),
-        Ok(Success {
-            value: -110.0123141f32,
-            token: "-110.0123141",
-            rest: "eabcd",
-        }));
-
-    assert_eq!(
         float::<f32>("f32")("-110.0123141e1abcd"),
         Ok(Success {
             value: -110.0123141e1f32,
             token: "-110.0123141e1",
             rest: "abcd",
+        }));
+}
+
+/// Tests `parse::float` with `f32` values.
+#[test]
+fn float_f32_nonmatch() {
+    assert_eq!(
+        float::<f32>("f32")("-110.0123141eabcd"),
+        Err(Failure {
+            context: "-110.0123141e",
+            rest: "-110.0123141eabcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
         }));
 }
 

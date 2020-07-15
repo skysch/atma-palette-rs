@@ -49,6 +49,26 @@ pub fn maybe<'t, F, V>(mut parser: F)
     }
 }
 
+/// Returns a parser which will attempt a parse, expecting it to succeed or
+/// parse nothing.
+#[inline]
+pub fn atomic<'t, F, V>(mut parser: F)
+    -> impl FnMut(&'t str) -> ParseResult<'t, Option<V>>
+    where F: FnMut(&'t str) -> ParseResult<'t, V>,
+{
+    move |text| {
+        match (parser)(text) {
+            Ok(success) => Ok(success.map_value(Some)),
+            Err(fail) if fail.context.is_empty() => Ok(Success {
+                value: None,
+                token: "",
+                rest: text,
+            }),
+            Err(fail) => Err(fail),
+        }
+    }
+}
+
 /// Returns a parser which will require a parse to succeed if the given
 /// predicate fails.
 #[inline]
