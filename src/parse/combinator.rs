@@ -63,6 +63,7 @@ pub fn require_if<'t, E, F, V, P>(expected: E, mut pred: P, mut parser: F)
     move |text| {
         if (pred)() {
             (parser)(text)
+                .source_for(expected.clone())
                 .map_value(Some)
         } else {
             match (parser)(text) {

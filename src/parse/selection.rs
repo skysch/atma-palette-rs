@@ -22,7 +22,6 @@ use crate::parse::postfix;
 use crate::parse::prefix;
 use crate::parse::repeat;
 use crate::parse::intersperse_collect;
-use crate::parse::Success;
 use crate::parse::uint;
 use crate::parse::whitespace;
 use crate::cell::CellSelection;

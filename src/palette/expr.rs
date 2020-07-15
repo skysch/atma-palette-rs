@@ -18,7 +18,6 @@ use crate::parse::blend_method;
 use crate::parse::color_space;
 use crate::parse::FailureOwned;
 use crate::parse::insert_expr;
-use crate::parse::interpolate;
 use crate::parse::ParseResultExt as _;
 
 // External library imports.
@@ -205,10 +204,10 @@ impl BlendFunction {
         {
             (Some(a), Some(b)) => {
                 let blend_fn = |a, b| self.blend_method.apply(a, b);
-                let res = self
+                let blended = self
                     .color_space
                     .map_channels_binary(a, b, blend_fn);
-                Ok(Some(res))
+                Ok(Some(int.apply(a, blended)))
             },
             _ => Ok(None),
         }

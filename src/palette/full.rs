@@ -15,12 +15,10 @@ use crate::cell::CellSelection;
 use crate::cell::Position;
 use crate::cell::PositionSelector;
 use crate::command::Positioning;
-use crate::palette::Interpolate;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
 use crate::error::PaletteError;
 use crate::palette::BasicPalette;
-use crate::palette::Expr;
 use crate::palette::InsertExpr;
 use crate::palette::History;
 use crate::palette::Operation;
@@ -272,99 +270,95 @@ impl Palette {
     //     -> Result<(), PaletteError>
     //     where S: ToString
     // {
-    //     use Operation::*;
-    //     // Get start index.
-    //     let mut idx = self.inner
-    //         .unoccupied_index_or_next(0)
-    //         .expect("no free indices"); // TODO: Handle with an error.
-    //     // Get start position.
-    //     let mut next = match position {
-    //         Positioning::Position(p) => p,
-    //         Positioning::Open => Position::ZERO,
-    //         Positioning::Cursor => self.position_cursor,
-    //         Positioning::None => Position::ZERO,
-    //     };
-    //     if !position.is_none() {
-    //         next = self.inner
-    //             .unoccupied_position_or_next(next)
-    //             .expect("no free positions"); // TODO: Handle with an error.
-    //     }
 
-    //     // Convert name into proper format.
-    //     let name: Option<Cow<'static, str>> = name
-    //         .map(|n| n.to_string().into());
-
-    //     let mut ops = Vec::with_capacity(targets.len() * 2);
-    //     for target in targets {
-    //         let expr = match target {
-    //             ExprTarget::Color(color)
-    //                 => Expr::Color(color.clone()),
-
-    //             ExprTarget::CellRef(cell_ref) => {
-    //                 // "insert colors" always resolves to color.
-    //                 let color = self.inner
-    //                     .color(cell_ref)?
-    //                     .unwrap_or_default();
-    //                 Expr::Color(color.clone())
-    //             }
-    //         };
-
-    //         // insert_cell
-    //         ops.push(InsertCell {
-    //             idx,
-    //             cell: Cell::new_with_expr(expr),
-    //         });
-    //         if !position.is_none() { 
-    //             ops.push(AssignPosition {
-    //                 cell_ref: CellRef::Index(idx),
-    //                 position: next.clone(),
-    //             });
-    //         }
-    //         if let Some(name) = &name {
-    //             // assign_group
-    //             ops.push(AssignGroup {
-    //                 cell_ref: CellRef::Index(idx),
-    //                 group: name.clone(),
-    //                 idx: None,
-    //             });
-    //         }
-
-    //         // Shift to next index.
-    //         idx = self.inner
-    //             .unoccupied_index_or_next(idx.wrapping_add(1))
-    //             .expect("no free indices"); 
-
-    //         // Shift to next position.
-    //         if !position.is_none() {
-    //             next = self.inner
-    //                 .unoccupied_position_or_next(next.wrapping_succ())
-    //                 .expect("no free positions");
-    //         }
-    //     }
-
-    //     match name {
-    //         Some(name) if targets.len() == 1 => ops.push(AssignName {
-    //             selector: PositionSelector::from(next),
-    //             name,
-    //         }),
-    //         _ => (),
-    //     }
-
-    //     if !position.is_none() { self.position_cursor = next.succ(); }
-    //     self.apply_operations(&ops[..])
     // }
     
     /// Inserts the given color expression objects into the palette.
     pub fn insert_objects<'name, S>(
         &mut self,
-        inputs: &[InsertExpr],
+        insert_exprs: &[InsertExpr],
         name: Option<S>,
         position: Positioning)
         -> Result<(), PaletteError>
         where S: ToString
     {
-        // TODO: Implement this.
-        unimplemented!()
+        use Operation::*;
+        // Get start index.
+        let mut idx = self.inner
+            .unoccupied_index_or_next(0)
+            .expect("no free indices"); // TODO: Handle with an error.
+        // Get start position.
+        let mut next = match position {
+            Positioning::Position(p) => p,
+            Positioning::Open => Position::ZERO,
+            Positioning::Cursor => self.position_cursor,
+            Positioning::None => Position::ZERO,
+        };
+        if !position.is_none() {
+            next = self.inner
+                .unoccupied_position_or_next(next)
+                .expect("no free positions"); // TODO: Handle with an error.
+        }
+
+        // Convert name into proper format.
+        let name: Option<Cow<'static, str>> = name
+            .map(|n| n.to_string().into());
+
+
+        let mut name_used = false;
+        let mut ops = Vec::with_capacity(insert_exprs.len() * 2);
+        for insert_expr in insert_exprs {
+            for exprs in insert_expr.exprs(&self.inner) {
+                for expr in exprs {
+                    // Insert Cell
+                    ops.push(InsertCell {
+                        idx,
+                        cell: Cell::new_with_expr(expr),
+                    });
+
+                    // Assign position.
+                    if !position.is_none() { 
+                        ops.push(AssignPosition {
+                            cell_ref: CellRef::Index(idx),
+                            position: next.clone(),
+                        });
+                    }
+
+                    // Assign group.
+                    if let Some(name) = &name {
+                        name_used = true;
+                        ops.push(AssignGroup {
+                            cell_ref: CellRef::Index(idx),
+                            group: name.clone(),
+                            idx: None,
+                        });
+                    }
+
+                    // Shift to next index.
+                    idx = self.inner
+                        .unoccupied_index_or_next(idx.wrapping_add(1))
+                        .expect("no free indices"); 
+
+                    // Shift to next position.
+                    if !position.is_none() {
+                        next = self.inner
+                            .unoccupied_position_or_next(next.wrapping_succ())
+                            .expect("no free positions");
+                    }
+                }
+            }
+        }
+
+        match name {
+            Some(name) if !name_used => ops.push(AssignName {
+                selector: PositionSelector::from(next),
+                name,
+            }),
+            _ => (),
+        }
+
+        if !position.is_none() { self.position_cursor = next.succ(); }
+        self.apply_operations(&ops[..])
     }
 
     /// Deletes the selected cells from the palette.

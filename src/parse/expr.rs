@@ -9,40 +9,38 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
+use crate::cell::CellRef;
 use crate::palette::BlendExpr;
 use crate::palette::BlendFunction;
 use crate::palette::BlendMethod;
 use crate::palette::ColorSpace;
 use crate::palette::InsertExpr;
 use crate::palette::Interpolate;
-use crate::cell::CellRef;
 use crate::palette::InterpolateFunction;
 use crate::palette::InterpolateRange;
-use crate::error::PaletteError;
 use crate::parse::any_literal_map_once;
 use crate::parse::bracket;
 use crate::parse::cell_ref;
-use crate::parse::float;
-use crate::parse::color;
-use crate::parse::uint;
-use crate::parse::require_if;
 use crate::parse::char;
 use crate::parse::circumfix;
+use crate::parse::color;
+use crate::parse::float;
 use crate::parse::intersperse_collect;
 use crate::parse::literal_ignore_ascii_case;
 use crate::parse::maybe;
 use crate::parse::ParseResult;
-use crate::parse::Success;
 use crate::parse::ParseResultExt as _;
 use crate::parse::postfix;
 use crate::parse::prefix;
+use crate::parse::require_if;
+use crate::parse::uint;
 use crate::parse::whitespace;
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // insert_expr
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Parses an InsertExpr.
 pub fn insert_expr<'t>(text: &'t str) -> ParseResult<'t, InsertExpr> {
     // Ramp
@@ -83,9 +81,11 @@ pub fn insert_expr<'t>(text: &'t str) -> ParseResult<'t, InsertExpr> {
         .map_value(InsertExpr::Reference)
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // ramp_expr
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Parses an `InsertExpr` if it is a `Ramp` variant.
 pub fn insert_expr_ramp<'t>(text: &'t str) -> ParseResult<'t, InsertExpr> {
     let (count, suc) = prefix(
@@ -128,6 +128,7 @@ pub fn insert_expr_ramp<'t>(text: &'t str) -> ParseResult<'t, InsertExpr> {
 ////////////////////////////////////////////////////////////////////////////////
 // blend_expr
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Parses an BlendFunction.
 pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
     let (color_space, suc) = maybe(postfix(color_space, char('_')))
@@ -176,9 +177,11 @@ pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
         })
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // blend_function
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Parses an BlendFunction.
 pub fn blend_function<'t>(text: &'t str) -> ParseResult<'t, BlendFunction> {
     let (color_space, suc) = maybe(postfix(color_space, char('_')))
@@ -217,6 +220,7 @@ pub fn blend_function<'t>(text: &'t str) -> ParseResult<'t, BlendFunction> {
 ////////////////////////////////////////////////////////////////////////////////
 // blend_method
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Parses a BlendMethod.
 pub fn blend_method<'t>(text: &'t str) -> ParseResult<'t, BlendMethod> {
     any_literal_map_once(
@@ -242,9 +246,11 @@ pub fn blend_method<'t>(text: &'t str) -> ParseResult<'t, BlendMethod> {
         (text)
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // color_space
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Parses a BlendMethod.
 pub fn color_space<'t>(text: &'t str) -> ParseResult<'t, ColorSpace> {
     any_literal_map_once(
@@ -260,6 +266,7 @@ pub fn color_space<'t>(text: &'t str) -> ParseResult<'t, ColorSpace> {
 ////////////////////////////////////////////////////////////////////////////////
 // interpolate
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Parses an Interpolate.
 pub fn interpolate<'t>(text: &'t str) -> ParseResult<'t, Interpolate> {
     let linear = interpolate_linear(text);
@@ -387,6 +394,7 @@ pub fn interpolate_cubic_args<'t>(text: &'t str)
 ////////////////////////////////////////////////////////////////////////////////
 // interpolate_range
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Parses an InterpolateRange.
 pub fn interpolate_range<'t>(text: &'t str)
     -> ParseResult<'t, InterpolateRange>
@@ -494,8 +502,6 @@ pub fn interpolate_range_cubic<'t>(text: &'t str)
             end: 1.0,
         }))
 }
-
-
 
 /// Parses an InterpolateRange from arguments for cubic interpolation.
 pub fn interpolate_range_cubic_args<'t>(text: &'t str)

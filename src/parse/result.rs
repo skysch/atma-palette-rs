@@ -60,10 +60,10 @@ pub trait ParseResultExt<'t, V>: Sized {
     fn with_new_context(self, context: &'t str, text: &'t str)
         -> ParseResult<'t, V>;
 
-
+    /// Sets the context for a parse by combining it with a previously
+    /// successful parse.
     fn with_join_previous<U>(self, success: Success<'t, U>, text: &'t str)
         -> ParseResult<'t, V>;
-
 
     /// Applies the given closure to the parsed value, causing the parse to fail
     /// if the closure is Err. Will only be called if the parse was successful.
