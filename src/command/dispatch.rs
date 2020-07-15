@@ -17,7 +17,6 @@ use crate::command::AtmaOptions;
 use crate::command::CommandOption;
 use crate::command::ExportOption;
 use crate::Config;
-use crate::DEFAULT_PALETTE_PATH;
 use crate::error::FileError;
 use crate::palette::Palette;
 use crate::Settings;
@@ -67,7 +66,8 @@ pub fn dispatch(
             set_active,
         } => new_palette(
                 palette.unwrap_or(Palette::new()
-                    .with_load_path(cur_dir.join(DEFAULT_PALETTE_PATH))),
+                    .with_load_path(
+                        cur_dir.join(&config.default_palette_path))),
                 name,
                 no_history,
                 if no_config_file { None } else { Some(config) },

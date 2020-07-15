@@ -44,6 +44,12 @@ use std::path::PathBuf;
 /// [`Config`]: struct.Config.html
 pub const DEFAULT_CONFIG_PATH: &'static str = ".atma-config";
 
+/// Default value for default_settings_path.
+const DEFAULT_DEFAULT_SETTINGS_PATH: &'static str = ".atma-settings";
+
+/// The default value for default_palette_path.
+pub const DEFAULT_DEFAULT_PALETTE_PATH: &'static str = "palette.atma";
+
 /// Default value for load_default_palette.
 const DEFAULT_LOAD_DEFAULT_PALETTE: bool = true;
 
@@ -71,6 +77,20 @@ pub struct Config {
     #[serde(default = "Config::default_log_levels")]
     pub log_levels: BTreeMap<Cow<'static, str>, LevelFilter>,
 
+    /// The default path to look for the [`Settings`] file, relative to the
+    /// application root.
+    ///
+    /// [`Settings`]: struct.Settings.html
+    #[serde(default = "Config::default_default_settings_path")]
+    pub default_settings_path: PathBuf,
+
+    /// The default path for the [`Palette`] file, relative to the application
+    /// root.
+    ///
+    /// [`Palette`]: struct.Palette.html
+    #[serde(default = "Config::default_default_palette_path")]
+    pub default_palette_path: PathBuf,
+
     /// Attempt to load the default palette if no active palette is set.
     #[serde(default = "Config::default_load_default_palette")]
     pub load_default_palette: bool,
@@ -88,6 +108,8 @@ impl Config {
             load_path: None,
             logger_config: Config::default_logger_config(),
             log_levels: Config::default_log_levels(),
+            default_settings_path: Config::default_default_settings_path(),
+            default_palette_path: Config::default_default_palette_path(),
             load_default_palette: DEFAULT_LOAD_DEFAULT_PALETTE,
             default_positioning: DEFAULT_DEFAULT_POSITIONING,
         }
@@ -245,6 +267,10 @@ impl Config {
             .map(|p| normalize_path(base, p));
     }
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Default constructors for serde.
+    ////////////////////////////////////////////////////////////////////////////
+
     /// Returns the default [`LoggerConfig`].
     ///
     /// [`LoggerConfig`]: ../logger/struct.LoggerConfig.html
@@ -260,6 +286,18 @@ impl Config {
     #[inline(always)]
     fn default_log_levels() -> BTreeMap<Cow<'static, str>, LevelFilter> {
         Default::default()
+    }
+
+    /// Returns the default value for default_settings_path.
+    #[inline(always)]
+    fn default_default_settings_path() -> PathBuf {
+        DEFAULT_DEFAULT_SETTINGS_PATH.to_owned().into()
+    }
+
+    /// Returns the default value for default_palette_path.
+    #[inline(always)]
+    fn default_default_palette_path() -> PathBuf {
+        DEFAULT_DEFAULT_PALETTE_PATH.to_owned().into()
     }
 
     /// Returns the default value for load_default_palette.

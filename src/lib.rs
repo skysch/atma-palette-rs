@@ -60,5 +60,4 @@ pub mod color {
 }
 pub use palette::Expr;
 pub use palette::Palette;
-pub use palette::DEFAULT_PALETTE_PATH;
 pub use setup::*;

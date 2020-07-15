@@ -1,25 +1,57 @@
 
-# Palette data
 
-The Palette consists of an array of Cells, together with information needed to manipulate, order, and group those cells.
+# Supported Command Syntax
 
-# Cell references.
+    atma
+        [--config [PATH]]
+        [--settings [PATH]]
+        [--palette [PATH]]
+        [-v|--verbose]
+        [-q|--quiet|--silent]
+        [--ztrace]
 
-Cell in the palette are typically identified by resolving a `CellRef`. There are four variants of  `CellRef`:
+    atma new
+        [--name NAME]
+        [--no-history]
+        [--no-config-file]
+        [--no-settings-file]
+        [--set-active]
 
-+ `Index`, parsed as `:X`. Refers to the cell by its index in the palette.
+    atma list [SELECTION]..
 
-+ `Name`, parsed as `[name]`. Refers to the cell by an assigned name.
+    atma insert [INSERT_EXPR]..
+        [--name NAME]
+        [--at POSITIONING]
 
-+ `Group`, parsed as `[name]:[uint]`. Refers to the cell by its index in an assigned group.
+    atma delete [SELECTION]..
 
-+ `Position`, parsed as `:X.Y.Z`. Refers to the cell by its assigned page, line, and column numbers.
+    atma move [SELECTION]..
+        [--to POSITIONING]
 
-In the above notation, `[name]` consists of any sequence of characters excluding `:`,`,`,`-`,`.`,`*`, and whitespace, while `X`,`Y`, and `Z` refer to a sequence of digits or `_` characters, with an optional base prefix (`0b`, `0o`, or `0x`.)
+    atma undo [COUNT]
+    atma redo [COUNT]
 
-# Resolving cell references: Assigned vs Occupied.
+    atma export png [SELECTION]..
+        [(-o|--output) PATH]
 
-Names, positions, and groups are only meaningful if they've been assigned to an index. However, the index may or may not be associated with a cell in the palette. If they are, it is called an occupied index. Index references are always occupied if they are assigned, so there is no difference there. However, an index which is unassigned is still useful (to assign it), wheras names, positions, and groups are not useful if they are unassigned.
+
+# Unimplemented Command Syntax
+    
+    delete cursor positioning
+    insert cursor positioning
+    move cursor positioning
+    set cursor positioning
+    new config-file
+    new settings-file
+
+
+    atma import png
+    atma set name [name] SELECTION..
+    atma set expr [SetExpr] SELECTION..
+    atma set active_palette [path]
+    atma set cursor [Position]
+    atma set history [enable|disable|clear]
+
 
 
 
@@ -44,19 +76,6 @@ group:0-group:1
 group:*
 ## Name
 name
-
-
-# Command Operations
-## atma list {page #|selection}
-## atma insert {expr|ramp} {@cellref}
-## atma delete {selection}
-## atma move {selection} {@cellref}
-## atma set {name|position|group|label} {selection}
-## atma unset {name|position|group|label} {selection}
-## atma undo {#}
-## atma redo {#}
-## atma import {subpalette}
-## atma export {subpalette}
 
 
 # Insertable objects
@@ -107,30 +126,27 @@ name
     cubic([RGB], [(f32, f32)], [(f32, f32)])
 
 
-# Composite Operations
-## Undo
-## Redo
+# Palette data
 
-## InsertRamp
-## InsertRange
-## DeleteRange
-## MoveRange
-## SetRange
-## FixRange
-## SetParameters
+The Palette consists of an array of Cells, together with information needed to manipulate, order, and group those cells.
 
+# Cell references.
 
-# Primitive Operations
-## InsertCell
-## RemoveCell
-## AssignName
-## UnassignName
-## AssignPosition
-## UnassignPosition
-## AssignGroup
-## UnassignGroup
-## ClearGroup
-## SetExpr
+Cell in the palette are typically identified by resolving a `CellRef`. There are four variants of  `CellRef`:
+
++ `Index`, parsed as `:X`. Refers to the cell by its index in the palette.
+
++ `Name`, parsed as `[name]`. Refers to the cell by an assigned name.
+
++ `Group`, parsed as `[name]:[uint]`. Refers to the cell by its index in an assigned group.
+
++ `Position`, parsed as `:X.Y.Z`. Refers to the cell by its assigned page, line, and column numbers.
+
+In the above notation, `[name]` consists of any sequence of characters excluding `:`,`,`,`-`,`.`,`*`, and whitespace, while `X`,`Y`, and `Z` refer to a sequence of digits or `_` characters, with an optional base prefix (`0b`, `0o`, or `0x`.)
+
+# Resolving cell references: Assigned vs Occupied.
+
+Names, positions, and groups are only meaningful if they've been assigned to an index. However, the index may or may not be associated with a cell in the palette. If they are, it is called an occupied index. Index references are always occupied if they are assigned, so there is no difference there. However, an index which is unassigned is still useful (to assign it), wheras names, positions, and groups are not useful if they are unassigned.
 
 
 # Parser design principles
@@ -146,11 +162,6 @@ name
 ## Return context, expected, source, and rest on failure.
 
 
-
-
-insert ramp #AAAAAA #BBBBBB --count=5 --interpolate=linear --name=blah --at=:1.2.3
-
-insert colors #AAAAAA #BBBBB --name=blah --at=:1.2.3
 
 
 # Overwrite behavior when inserting multiple cells.
@@ -170,7 +181,8 @@ Overwrite any existing cells, preserving any existing structure.
 ## Remove
 Remove any existing cells and anything referencing them.
 
-# Space behaviors when there is no room for a new cell.
+# Behaviors when there is no room for a new cell.
+
 ## Error
 ## Stop
 ## WrapLine

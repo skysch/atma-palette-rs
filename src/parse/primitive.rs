@@ -24,6 +24,7 @@ use std::convert::TryInto as _;
 use std::borrow::Cow;
 use std::str::FromStr;
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // Constants
 ////////////////////////////////////////////////////////////////////////////////
@@ -36,6 +37,7 @@ pub const INT_RADIX_PREFIX_OCT: &'static str = "0o";
 
 /// Integer radix prefix for hexadecimal numbers.
 pub const INT_RADIX_PREFIX_HEX: &'static str = "0x";
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Char parsing.
@@ -116,6 +118,7 @@ pub fn char_whitespace<'t>(text: &'t str) -> ParseResult<'t, char> {
     char_matching(char::is_whitespace)(text)
         .source_for("whitespace char")
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // String parsing.
@@ -308,6 +311,7 @@ pub fn uint_digits_value<'t, T>(
 ////////////////////////////////////////////////////////////////////////////////
 // ParseIntegerOverflow
 ////////////////////////////////////////////////////////////////////////////////
+
 /// An overflow error occurred while parsing an integer.
 #[derive(Debug, Clone)]
 pub struct ParseIntegerOverflow {
@@ -329,9 +333,11 @@ impl std::fmt::Display for ParseIntegerOverflow {
 
 impl std::error::Error for ParseIntegerOverflow {}
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // Float parsing.
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Returns a parser which parses a float value.
 pub fn float<'t, T>(float_type: &'static str)
     -> impl FnMut(&'t str) -> ParseResult<'t, T>
@@ -385,7 +391,8 @@ pub fn float<'t, T>(float_type: &'static str)
                 repeat(0, None, char_matching(|c| c.is_digit(10))))
             (suc.rest)
             .tokenize_value()
-            .with_join_previous(suc, text)?;
+            .with_join_previous(suc, text)
+            .expect("infallible repeat parse");
 
         // Parse the exponent.
         atomic(float_exp)
@@ -415,5 +422,3 @@ fn float_exp<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
         .with_join_previous(suc, text)
         .tokenize_value()
 }
-
-

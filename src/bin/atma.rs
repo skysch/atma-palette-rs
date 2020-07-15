@@ -15,8 +15,6 @@ use atma::command::AtmaOptions;
 use atma::Config;
 use atma::Settings;
 use atma::DEFAULT_CONFIG_PATH;
-use atma::DEFAULT_SETTINGS_PATH;
-use atma::DEFAULT_PALETTE_PATH;
 use atma::Logger;
 use atma::Palette;
 use atma::utility::normalize_path;
@@ -103,7 +101,7 @@ pub fn main_facade() -> Result<(), Error> {
     let cur_dir = std::env::current_dir()?;
     let settings_path = match &opts.common.settings {
         Some(path) => path.clone(),
-        None       => cur_dir.join(DEFAULT_SETTINGS_PATH),
+        None       => cur_dir.join(&config.default_settings_path),
     };
 
     // Load the settings file.
@@ -131,7 +129,8 @@ pub fn main_facade() -> Result<(), Error> {
             Some(pal_path) => Some(Palette::read_from_path(&pal_path)?),
             None => if config.load_default_palette {
                 debug!("No active palette, loading default palette.");
-                let default_path = cur_dir.clone().join(DEFAULT_PALETTE_PATH);
+                let default_path = cur_dir.clone()
+                    .join(&config.default_palette_path);
                 Palette::read_from_path(&default_path).ok()
             } else {
                 debug!("No active palette.");
