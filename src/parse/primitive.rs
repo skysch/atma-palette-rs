@@ -37,24 +37,6 @@ pub const INT_RADIX_PREFIX_OCT: &'static str = "0o";
 /// Integer radix prefix for hexadecimal numbers.
 pub const INT_RADIX_PREFIX_HEX: &'static str = "0x";
 
-/// Floating point sign token.
-pub const FLOAT_SIGN: &'static str = "+-";
-
-/// Floating point infinity token.
-pub const FLOAT_INF: &'static str = "inf";
-
-/// Floating point NaN token.
-pub const FLOAT_NAN: &'static str = "NaN";
-
-/// Floating point exponent prefix token.
-pub const FLOAT_EXP: &'static str = "eE";
-
-/// Floating point decimal token.
-pub const FLOAT_DECIMAL: char = '.';
-
-/// Floating point decimal string. Used to ensure digits are parsed.
-const FLOAT_DECIMAL_STR: &'static str = ".";
-
 ////////////////////////////////////////////////////////////////////////////////
 // Char parsing.
 ////////////////////////////////////////////////////////////////////////////////
@@ -372,12 +354,12 @@ pub fn float<'t, T>(float_type: &'static str)
         // Digit  ::= [0-9]
         
         // Parse the sign.
-        let suc = maybe(char_in(FLOAT_SIGN))
+        let suc = maybe(char_in("+-"))
             (text)
             .expect("infallible maybe parse");
 
         // Parse INF literal.
-        let float_inf = literal(FLOAT_INF)
+        let float_inf = literal("inf")
             (suc.rest);
         if float_inf.is_ok() {
             return float_inf
@@ -389,7 +371,7 @@ pub fn float<'t, T>(float_type: &'static str)
         }
 
         // Parse NAN literal.
-        let float_nan = literal(FLOAT_NAN)
+        let float_nan = literal("nan")
             (suc.rest);
         if float_nan.is_ok() {
             return float_nan
@@ -402,13 +384,13 @@ pub fn float<'t, T>(float_type: &'static str)
 
         // Parse the digits.
         let digits = circumfix(
-                maybe(char(FLOAT_DECIMAL)),
+                maybe(char('.')),
                 repeat(0, None, char_matching(|c| c.is_digit(10))))
             (suc.rest)
             .tokenize_value()
             .expect("infallible repeat parse");
 
-        if digits.token == FLOAT_DECIMAL_STR || digits.token.is_empty() {
+        if digits.token == "." || digits.token.is_empty() {
             let full = suc.join(digits, text);
             return Err(Failure {
                 token: full.token,
@@ -433,10 +415,10 @@ pub fn float<'t, T>(float_type: &'static str)
 /// Parses the floating point exponent.
 #[inline]
 fn float_exp<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
-    let suc = char_in(FLOAT_EXP)(text)
+    let suc = char_in("eE")(text)
         .source_for("float exponent")?;
 
-    let suc = maybe(char_in(FLOAT_SIGN))
+    let suc = maybe(char_in("+-"))
         (suc.rest)
         .with_join_previous(suc, text)
         .expect("infallible maybe parse");

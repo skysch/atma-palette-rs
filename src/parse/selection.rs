@@ -235,6 +235,7 @@ pub fn index<'t>(text: &'t str) -> ParseResult<'t, u32> {
 
 /// Parses a name.
 pub fn name<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
+    // TODO: Parse names as text strings requiring delimitters.
     let valid_char = char_matching(|c| ![
         '*',
         ',',
