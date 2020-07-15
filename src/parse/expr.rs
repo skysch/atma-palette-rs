@@ -28,7 +28,7 @@ use crate::parse::float;
 use crate::parse::intersperse_collect;
 use crate::parse::literal_ignore_ascii_case;
 use crate::parse::maybe;
-use crate::parse::atomic;
+use crate::parse::atomic_ignore_whitespace;
 use crate::parse::ParseResult;
 use crate::parse::ParseResultExt as _;
 use crate::parse::postfix;
@@ -132,7 +132,7 @@ pub fn insert_expr_ramp<'t>(text: &'t str) -> ParseResult<'t, InsertExpr> {
 
 /// Parses an BlendFunction.
 pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
-    let (color_space, suc) = atomic(postfix(color_space, char('_')))
+    let (color_space, suc) = atomic_ignore_whitespace(postfix(color_space, char('_')))
         (text)?
         .take_value();
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
@@ -153,7 +153,7 @@ pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
         .with_join_previous(suc, text)?
         .take_value();
 
-    let (interpolate, suc) = atomic(
+    let (interpolate, suc) = atomic_ignore_whitespace(
             prefix(
                 interpolate,
                 circumfix(
@@ -185,7 +185,7 @@ pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
 
 /// Parses an BlendFunction.
 pub fn blend_function<'t>(text: &'t str) -> ParseResult<'t, BlendFunction> {
-    let (color_space, suc) = atomic(postfix(color_space, char('_')))
+    let (color_space, suc) = atomic_ignore_whitespace(postfix(color_space, char('_')))
         (text)?
         .take_value();
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
@@ -307,7 +307,7 @@ pub fn interpolate_linear<'t>(text: &'t str) -> ParseResult<'t, Interpolate> {
 pub fn interpolate_linear_args<'t>(text: &'t str)
     -> ParseResult<'t, Interpolate>
 {
-    let (color_space, suc) = atomic(color_space)
+    let (color_space, suc) = atomic_ignore_whitespace(color_space)
         (text)?
         .take_value();
     let cs_sep = color_space.is_some();
@@ -348,7 +348,7 @@ pub fn interpolate_cubic<'t>(text: &'t str) -> ParseResult<'t, Interpolate> {
 pub fn interpolate_cubic_args<'t>(text: &'t str)
     -> ParseResult<'t, Interpolate>
 {
-    let (color_space, suc) = atomic(color_space)
+    let (color_space, suc) = atomic_ignore_whitespace(color_space)
         (text)?
         .take_value();
     let cs_sep = color_space.is_some();
@@ -365,7 +365,7 @@ pub fn interpolate_cubic_args<'t>(text: &'t str)
         .with_join_previous(suc, text)?
         .take_value();
 
-    atomic(
+    atomic_ignore_whitespace(
         prefix(
             intersperse_collect(2, Some(2),
                 float::<f32>("f32"),
@@ -419,7 +419,7 @@ pub fn interpolate_range_linear<'t>(text: &'t str)
 {
     let suc = literal_ignore_ascii_case("linear")(text)?;
 
-    atomic(
+    atomic_ignore_whitespace(
         bracket(
             interpolate_range_linear_args,
             postfix(
@@ -443,13 +443,13 @@ pub fn interpolate_range_linear<'t>(text: &'t str)
 pub fn interpolate_range_linear_args<'t>(text: &'t str)
     -> ParseResult<'t, InterpolateRange>
 {
-    let (color_space, suc) = atomic(color_space)
+    let (color_space, suc) = atomic_ignore_whitespace(color_space)
         (text)?
         .take_value();
     let cs_sep = color_space.is_some();
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
 
-    atomic(
+    atomic_ignore_whitespace(
         prefix(
             intersperse_collect(2, Some(2),
                 float::<f32>("f32"),
@@ -485,7 +485,7 @@ pub fn interpolate_range_cubic<'t>(text: &'t str)
 {
     let suc = literal_ignore_ascii_case("cubic")(text)?;
 
-    atomic(
+    atomic_ignore_whitespace(
         bracket(
             interpolate_range_cubic_args,
             postfix(
@@ -514,7 +514,7 @@ pub fn interpolate_range_cubic_args<'t>(text: &'t str)
     let cs_sep = color_space.is_some();
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
 
-    let (range, suc) = atomic(
+    let (range, suc) = atomic_ignore_whitespace(
             prefix(
                 intersperse_collect(2, Some(2),
                     float::<f32>("f32"),
@@ -537,7 +537,7 @@ pub fn interpolate_range_cubic_args<'t>(text: &'t str)
     let r_sep = range.is_some();
     let (start, end) = range.clone().unwrap_or((0.0, 1.0));
     
-    atomic(
+    atomic_ignore_whitespace(
         prefix(
             intersperse_collect(2, Some(2),
                 float::<f32>("f32"),

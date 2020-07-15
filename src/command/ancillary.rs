@@ -70,7 +70,6 @@ impl std::str::FromStr for Positioning {
         position(text)
             .end_of_text()
             .source_for("expected 'cursor', 'open', or a position")
-            .with_new_context(text, text)
             .finish()
             .map(Positioning::Position)
     }

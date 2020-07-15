@@ -142,7 +142,6 @@ impl std::str::FromStr for InsertExpr {
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         insert_expr(text)
             .end_of_text()
-            .with_new_context(text, text)
             .finish()
     }
 }
@@ -309,7 +308,6 @@ impl std::str::FromStr for BlendMethod {
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         blend_method(text)
             .end_of_text()
-            .with_new_context(text, text)
             .finish()
     }
 }
@@ -382,7 +380,6 @@ impl std::str::FromStr for ColorSpace {
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         color_space(text)
             .end_of_text()
-            .with_new_context(text, text)
             .finish()
     }
 }

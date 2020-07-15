@@ -17,6 +17,8 @@ use crate::cell::PositionSelector;
 use crate::parse::char;
 use crate::parse::char_matching;
 use crate::parse::circumfix;
+use crate::parse::pair;
+use crate::parse::atomic_ignore_whitespace;
 use crate::parse::Failure;
 use crate::parse::intersperse_collect;
 use crate::parse::maybe;
@@ -54,80 +56,83 @@ pub fn cell_selection<'t>(text: &'t str) -> ParseResult<'t, CellSelection<'t>> {
 
 /// Parses a CellSelector.
 pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
-    if let Ok(all_suc) = char('*')(text) {
-        Ok(all_suc.map_value(|_| CellSelector::All))
-
-    } else if let Ok(pos_suc) = position(text) {
-        if let Ok(ub_suc) = range_suffix(position)(pos_suc.rest) {
-            match CellSelector::position_range(pos_suc.value, ub_suc.value) {
-                Ok(pos_range) => Ok(pos_suc.join_with(ub_suc, text,
-                    |_, _| pos_range)),
-                Err(range_err) => Err(Failure {
-                    token: pos_suc.join(ub_suc, text).token,
-                    rest: text,
-                    expected: "valid position range".into(),
-                    source: Some(Box::new(range_err)),
-                }),
-            }
-        } else {
-            Ok(pos_suc.map_value(
-                |pos| CellSelector::PositionSelector(pos.into())))
-        }
-
-    } else if let Ok(pos_sel_suc) = position_selector(text) {
-            Ok(pos_sel_suc.map_value(
-                |pos_sel| CellSelector::PositionSelector(pos_sel)))
-
-    } else if let Ok(index_suc) = index(text) {
-        if let Ok(ub_suc) = range_suffix(index)(index_suc.rest) {
-            match CellSelector::index_range(index_suc.value, ub_suc.value) {
-                Ok(index_range) => Ok(index_suc.join_with(ub_suc, text,
-                    |_, _| index_range)),
-                Err(range_err) => Err(Failure {
-                    token: index_suc.join(ub_suc, text).token,
-                    rest: text,
-                    expected: "valid index range".into(),
-                    source: Some(Box::new(range_err)),
-                }),
-            }
-        } else {
-            Ok(index_suc.map_value(
-                |index| CellSelector::Index(index)))
-        }
-
-    } else if let Ok(group_all_suc) = group_all(text) {
-            Ok(group_all_suc.map_value(
-                |group| CellSelector::GroupAll(group.into())))
-
-    } else if let Ok(group_suc) = group(text) {
-        if let Ok(ub_suc) = range_suffix(group)(group_suc.rest) {
-            match CellSelector::group_range(
-                group_suc.value.0.into(),
-                group_suc.value.1,
-                ub_suc.value.0.into(),
-                ub_suc.value.1)
-            {
-                Ok(group_range) => Ok(group_suc.join_with(ub_suc, text,
-                    |_, _| group_range)),
-                Err(range_err) => Err(Failure {
-                    token: group_suc.join(ub_suc, text).token,
-                    rest: text,
-                    expected: "valid group range".into(),
-                    source: Some(Box::new(range_err)),
-                }),
-            }
-        } else {
-            Ok(group_suc.map_value(|(group, idx)| CellSelector::Group {
-                group: group.into(), 
-                idx 
-            }))
-        }
-
-    } else {
-        name(text)
-            .map_value(|name| CellSelector::Name(name.into()))
-            .source_for("cell selector value")
+    // Parse All.
+    let all = char('*')(text);
+    if all.is_ok() {
+        return all.map_value(|_| CellSelector::All);
     }
+
+    // Parse Position or PositionRange.
+    let pos = pair(
+            position,
+            atomic_ignore_whitespace(range_suffix(position)))
+        (text);
+    if pos.is_ok() {
+        return pos.convert_value(
+                "valid position range", 
+                |(pos, pos_up)| if let Some(end) = pos_up {
+                    CellSelector::position_range(pos.into(), end.into())
+                } else {
+                    Ok(CellSelector::PositionSelector(pos.into()))
+                })
+            .with_failure_rest(text);
+    }
+
+    // Parse PositionSelector.
+    let pos_sel = position_selector(text);
+    if pos_sel.is_ok() {
+        return pos_sel.map_value(CellSelector::PositionSelector);
+    }
+
+    // Parse Index or IndexRange.
+    let idx = pair(
+            index,
+            atomic_ignore_whitespace(range_suffix(index)))
+        (text);
+    if idx.is_ok() {
+        return idx.convert_value(
+                "valid index range", 
+                |(idx, idx_up)| if let Some(end) = idx_up {
+                    CellSelector::index_range(idx.into(), end.into())
+                } else {
+                    Ok(CellSelector::Index(idx.into()))
+                })
+            .with_failure_rest(text);
+    }
+
+    // Parse GroupAll.
+    let grp_all = group_all(text);
+    if grp_all.is_ok() {
+        return grp_all.map_value(|g| CellSelector::GroupAll(g.into()));
+    }
+
+    // Parse Group or GroupRange.
+    let grp = pair(
+            group,
+            atomic_ignore_whitespace(range_suffix(group)))
+        (text);
+    if grp.is_ok() {
+        return grp.convert_value(
+                "valid group range", 
+                |(grp, grp_up)| if let Some(end) = grp_up {
+                    CellSelector::group_range(
+                        grp.0.into(),
+                        grp.1,
+                        end.0.into(),
+                        end.1)
+                } else {
+                    Ok(CellSelector::Group {
+                        group: grp.0.into(),
+                        idx: grp.1,
+                    })
+                })
+            .with_failure_rest(text);
+    }
+
+    // Parse Name.
+    name
+        (text)
+        .map_value(|n| CellSelector::Name(n.into()))
 }
 
 /// Parses a PositionSelector.
@@ -189,23 +194,31 @@ pub fn group_all<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
 
 /// Parses a CellRef.
 pub fn cell_ref<'t>(text: &'t str) -> ParseResult<'t, CellRef<'t>> {
-    if let Ok(pos_suc) = position(text) {
-        Ok(pos_suc.map_value(|pos| CellRef::Position(pos)))
-    
-    } else if let Ok(idx_suc) = index(text) {
-        Ok(idx_suc.map_value(|idx| CellRef::Index(idx)))
-    
-    } else if let Ok(group_suc) = group(text) {
-        Ok(group_suc.map_value(|(group, idx)| CellRef::Group {
+    // Parse Position.
+    let position = position(text);
+    if position.is_ok() {
+        return position.map_value(CellRef::Position);
+    }
+
+    // Parse Index.
+    let index = index(text);
+    if index.is_ok() {
+        return index.map_value(CellRef::Index);
+    }
+
+    // Parse Group.
+    let group = group(text);
+    if group.is_ok() {
+        return group.map_value(|(group, idx)| CellRef::Group {
             group: group.into(),
             idx,
-        }))
-
-    } else {
-        name(text)
-            .map_value(|name| CellRef::Name(name.into()))
-            .source_for("cell ref value")
+        });
     }
+
+    // Parse Name.
+    name
+        (text)
+        .map_value(|name| CellRef::Name(name.into()))
 }
 
 /// Parses a Position.

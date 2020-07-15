@@ -69,6 +69,27 @@ pub fn atomic<'t, F, V>(mut parser: F)
     }
 }
 
+
+/// Returns a parser which will attempt a parse, expecting it to succeed or
+/// parse only whitespace.
+#[inline]
+pub fn atomic_ignore_whitespace<'t, F, V>(mut parser: F)
+    -> impl FnMut(&'t str) -> ParseResult<'t, Option<V>>
+    where F: FnMut(&'t str) -> ParseResult<'t, V>,
+{
+    move |text| {
+        match (parser)(text) {
+            Ok(success) => Ok(success.map_value(Some)),
+            Err(fail) if fail.token.trim().is_empty() => Ok(Success {
+                token: fail.token,
+                rest: &fail.rest[fail.token.len()..],
+                value: None,
+            }),
+            Err(fail) => Err(fail),
+        }
+    }
+}
+
 /// Returns a parser which will require a parse to succeed if the given
 /// predicate fails.
 #[inline]
@@ -146,8 +167,7 @@ pub fn intersperse<'t, F, G, V, U>(
                         Some(high) if high != low => format!(" to {}", high),
                         Some(high) if high == low => "".into(),
                         _ => "+".into(),
-                    }))
-                .with_new_context("", text)
+                    })),
         };
 
         let mut count = 1;
@@ -220,8 +240,7 @@ pub fn intersperse_collect<'t, F, G, V, U>(
                         Some(high) if high != low => format!(" to {}", high),
                         Some(high) if high == low => "".into(),
                         _ => "+".into(),
-                    }))
-                .with_new_context("", text),
+                    })),
         };
 
         let mut count = 1;
@@ -269,6 +288,27 @@ pub fn intersperse_collect<'t, F, G, V, U>(
 /// Returns a parser which will attempt to parse with the second argument and
 /// then the first, joining the tokens while discarding the value of the second
 /// parser.
+pub fn pair<'t, F, G, V, U>(mut fst_parser: F, mut snd_parser: G)
+    -> impl FnMut(&'t str) -> ParseResult<'t, (V, U)>
+    where
+        F: FnMut(&'t str) -> ParseResult<'t, V>,
+        G: FnMut(&'t str) -> ParseResult<'t, U>,
+{
+    move |text| {
+        let (fst, suc) = (fst_parser)
+            (text)?
+            .take_value();
+
+        (snd_parser)
+            (suc.rest)
+            .with_join_previous(suc, text)
+            .map_value(|snd| (fst, snd))
+    }
+}
+
+/// Returns a parser which will attempt to parse with the second argument and
+/// then the first, joining the tokens while discarding the value of the second
+/// parser.
 pub fn prefix<'t, F, G, V, U>(mut parser: F, mut prefix_parser: G)
     -> impl FnMut(&'t str) -> ParseResult<'t, V>
     where
@@ -276,8 +316,7 @@ pub fn prefix<'t, F, G, V, U>(mut parser: F, mut prefix_parser: G)
         G: FnMut(&'t str) -> ParseResult<'t, U>,
 {
     move |text| {
-        let suc = (prefix_parser)(text)
-            .with_new_context("", text)?;
+        let suc = (prefix_parser)(text)?;
 
         (parser)(suc.rest)
             .with_join_previous(suc, text)
@@ -294,8 +333,7 @@ pub fn postfix<'t, F, G, V, U>(mut parser: F, mut postfix_parser: G)
         G: FnMut(&'t str) -> ParseResult<'t, U>,
 {
     move |text| {
-        let (val, suc) = (parser)(text)
-            .with_new_context("", text)?
+        let (val, suc) = (parser)(text)?
             .take_value();
 
         (postfix_parser)(suc.rest)
@@ -314,8 +352,7 @@ pub fn circumfix<'t, F, G, V, U>(mut parser: F, mut circumfix_parser: G)
         G: FnMut(&'t str) -> ParseResult<'t, U>,
 {
     move |text| {
-        let suc = (circumfix_parser)(text)
-            .with_new_context("", text)?;
+        let suc = (circumfix_parser)(text)?;
 
         let (val, suc) = (parser)(suc.rest)
             .with_join_previous(suc, text)?
@@ -341,8 +378,7 @@ pub fn bracket<'t, F, G, H, V, U, T>(
         H: FnMut(&'t str) -> ParseResult<'t, T>,
 {
     move |text| {
-        let suc = (prefix_parser)(text)
-            .with_new_context("", text)?;
+        let suc = (prefix_parser)(text)?;
 
         let (val, suc) = (parser)(suc.rest)
             .with_join_previous(suc, text)?
@@ -368,8 +404,7 @@ pub fn dynamic_bracket<'t, F, G, H, V, U, T>(
         H: FnMut(&'t str, U) -> ParseResult<'t, T>,
 {
     move |text| {
-        let (pre, suc) = (prefix_parser)(text)
-            .with_new_context("", text)?
+        let (pre, suc) = (prefix_parser)(text)?
             .take_value();
 
         let (val, suc) = (parser)(suc.rest)

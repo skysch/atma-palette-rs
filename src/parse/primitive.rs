@@ -9,7 +9,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::parse::atomic;
+use crate::parse::atomic_ignore_whitespace;
 use crate::parse::Failure;
 use crate::parse::maybe;
 use crate::parse::ParseResult;
@@ -395,7 +395,7 @@ pub fn float<'t, T>(float_type: &'static str)
             .expect("infallible repeat parse");
 
         // Parse the exponent.
-        atomic(float_exp)
+        atomic_ignore_whitespace(float_exp)
             (suc.rest)
             .with_join_previous(suc, text)
             .tokenize_value()

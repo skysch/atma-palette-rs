@@ -44,12 +44,12 @@ pub trait ParseResultExt<'t, V>: Sized {
     fn source_for<E>(self, expected: E) -> Self
         where E: Into<Cow<'static, str>>;
 
-    /// Sets a new token for a failed parse.
+    /// Sets a new start point for a parse failure.
     ///
     /// This is typically used by a parser combinator to establish a recovery
     /// point before any subparser calls. The `token` argument sets the token directly, and should only be
     /// non-empty if there is a known recovery point for the parse.
-    fn with_new_context(self, token: &'t str, text: &'t str)
+    fn with_failure_rest(self, text: &'t str)
         -> ParseResult<'t, V>;
 
     /// Sets the token for a parse by combining it with a previously
@@ -113,11 +113,10 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
         })
     }
 
-    fn with_new_context(self, token: &'t str, text: &'t str)
+    fn with_failure_rest(self, text: &'t str)
         -> ParseResult<'t, V>
     {
         self.map_err(|mut failure| {
-            failure.token = token;
             failure.rest = text;
             failure
         })
