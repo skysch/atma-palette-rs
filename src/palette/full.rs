@@ -251,30 +251,8 @@ impl Palette {
     // Commands
     ////////////////////////////////////////////////////////////////////////////
     
-    // /// Inserts the given colors into the palette.
-    // ///
-    // /// ### Parameters
-    // ///
-    // /// + `colors`: The [`Colors`] to insert.
-    // /// + `name`: The name of the colors. Creates a name association for a
-    // /// single color, or a group association for multiple colors.
-    // /// + `position`: The starting [`Position`] of the colors.
-    // ///
-    // /// [`Colors`]: ../color/struct.Color.html
-    // /// [`Position`]: ../cell/struct.Position.html
-    // pub fn insert_colors<'name, S>(
-    //     &mut self,
-    //     targets: &[ExprTarget],
-    //     name: Option<S>,
-    //     position: Positioning)
-    //     -> Result<(), PaletteError>
-    //     where S: ToString
-    // {
-
-    // }
-    
     /// Inserts the given color expression objects into the palette.
-    pub fn insert_objects<'name, S>(
+    pub fn insert_exprs<'name, S>(
         &mut self,
         insert_exprs: &[InsertExpr],
         name: Option<S>,
