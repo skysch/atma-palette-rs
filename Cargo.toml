@@ -1,6 +1,6 @@
 [package]
 name = "atma"
-version = "0.0.166"
+version = "0.0.167"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT or Apache-2.0"

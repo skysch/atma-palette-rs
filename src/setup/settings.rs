@@ -13,6 +13,7 @@
 use crate::utility::normalize_path;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
+use crate::command::CursorBehavior;
 
 // External library imports.
 use serde::Deserialize;
@@ -27,6 +28,7 @@ use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,6 +46,18 @@ pub struct Settings {
     /// The name of the palette to open when no palette is specified.
     #[serde(default)]
     pub active_palette: Option<PathBuf>,
+
+    /// The behavior of the cursor after a delete command is run.
+    #[serde(default)]
+    pub delete_cursor_behavior: Option<CursorBehavior>,
+    
+    /// The behavior of the cursor after an insert command is run.
+    #[serde(default)]
+    pub insert_cursor_behavior: Option<CursorBehavior>,
+
+    /// The behavior of the cursor after a move command is run.
+    #[serde(default)]
+    pub move_cursor_behavior: Option<CursorBehavior>,
 }
 
 
@@ -53,6 +67,9 @@ impl Settings {
         Settings {
             load_path: None,
             active_palette: Settings::default_active_palette(),
+            delete_cursor_behavior: None,
+            insert_cursor_behavior: None,
+            move_cursor_behavior: None,
         }
     }
 

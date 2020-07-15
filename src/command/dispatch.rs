@@ -116,8 +116,11 @@ pub fn dispatch(
                 return Ok(()); 
             }
             let at = at.unwrap_or(config.default_positioning);
+            let cursor_behavior = settings
+                .insert_cursor_behavior
+                .unwrap_or(config.default_insert_cursor_behavior);
 
-            pal.insert_exprs(&exprs[..], name, at)
+            pal.insert_exprs(&exprs[..], name, at, cursor_behavior)
                 .context("insert command failed.")?;
 
             pal.write_to_load_path()
@@ -130,7 +133,10 @@ pub fn dispatch(
         Delete { selection } => match selection {
             Some(selection) => {
                 let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
-                pal.delete_selection(selection)
+                let cursor_behavior = settings
+                    .delete_cursor_behavior
+                    .unwrap_or(config.default_delete_cursor_behavior);
+                pal.delete_selection(selection, cursor_behavior)
                     .context("delete command failed.")?;
 
                 pal.write_to_load_path()
@@ -149,7 +155,10 @@ pub fn dispatch(
             Some(selection) => {
                 let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
                 let to = to.unwrap_or(config.default_positioning);
-                pal.move_selection(selection, to)?;
+                let cursor_behavior = settings
+                    .move_cursor_behavior
+                    .unwrap_or(config.default_move_cursor_behavior);
+                pal.move_selection(selection, to, cursor_behavior)?;
 
                 pal.write_to_load_path()
                     .map(|_| ())

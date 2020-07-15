@@ -15,6 +15,7 @@ use crate::cell::CellSelection;
 use crate::cell::Position;
 use crate::cell::PositionSelector;
 use crate::command::Positioning;
+use crate::command::CursorBehavior;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
 use crate::error::PaletteError;
@@ -242,7 +243,8 @@ impl Palette {
         &mut self,
         insert_exprs: &[InsertExpr],
         name: Option<S>,
-        position: Positioning)
+        position: Positioning,
+        cursor_behavior: CursorBehavior)
         -> Result<(), PaletteError>
         where S: ToString
     {
@@ -330,7 +332,8 @@ impl Palette {
     /// Deletes the selected cells from the palette.
     pub fn delete_selection<'name>(
         &mut self,
-        selection: CellSelection<'name>)
+        selection: CellSelection<'name>,
+        cursor_behavior: CursorBehavior)
         -> Result<(), PaletteError>
     {
         use Operation::*;
@@ -349,7 +352,8 @@ impl Palette {
     pub fn move_selection<'name>(
         &mut self,
         selection: CellSelection<'name>,
-        position: Positioning)
+        position: Positioning,
+        cursor_behavior: CursorBehavior)
         -> Result<(), PaletteError>
     {
         use Operation::*;

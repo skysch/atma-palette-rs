@@ -22,6 +22,46 @@ use serde::Serialize;
 use serde::Deserialize;
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+// CursorBehavior
+////////////////////////////////////////////////////////////////////////////////
+/// The behavior of the cursor after an operation is performed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize)]
+pub enum CursorBehavior {
+    /// Move the cursor to the lowest position in the affected selection.
+    MoveToStart,
+    /// Move the cursor after the highest position in the affected selection.
+    MoveAfterEnd,
+    /// Move the cursor to the lowest open position.
+    MoveToOpen,
+    /// Do not move the cursor.
+    RemainInPlace,
+}
+
+impl std::str::FromStr for CursorBehavior {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        any_literal_map_once(
+                literal_ignore_ascii_case,
+                "",
+                vec![
+                    ("move_to_start",   CursorBehavior::MoveToStart),
+                    ("move_after_end",  CursorBehavior::MoveAfterEnd),
+                    ("move_to_open",    CursorBehavior::MoveToOpen),
+                    ("remain_in_place", CursorBehavior::RemainInPlace),
+                ])
+            (text)
+            .end_of_text()
+            .source_for("expected one of 'move_to_start', 'move_after_end', \
+                'move_to_open', or 'remain_in_place'")
+            .finish()
+    }
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Positioning
 ////////////////////////////////////////////////////////////////////////////////

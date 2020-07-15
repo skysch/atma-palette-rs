@@ -12,11 +12,12 @@
 // Local imports.
 use crate::LevelFilter;
 use crate::LoggerConfig;
-use crate::StdoutLogOutput;
+use crate::command::CursorBehavior;
 use crate::command::Positioning;
-use crate::utility::normalize_path;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
+use crate::StdoutLogOutput;
+use crate::utility::normalize_path;
 
 // External library imports.
 use serde::Deserialize;
@@ -55,6 +56,18 @@ const DEFAULT_LOAD_DEFAULT_PALETTE: bool = true;
 
 /// Default value for default_positioning.
 const DEFAULT_DEFAULT_POSITIONING: Positioning = Positioning::Cursor;
+
+/// Default value for default_delete_cursor_behavior.
+pub const DEFAULT_DEFAULT_DELETE_CURSOR_BEHAVIOR: CursorBehavior
+    = CursorBehavior::MoveToStart;
+
+/// Default value for default_default_delete_cursor_behavior.
+pub const DEFAULT_DEFAULT_INSERT_CURSOR_BEHAVIOR: CursorBehavior
+    = CursorBehavior::MoveAfterEnd;
+
+/// Default value for default_default_move_cursor_behavior.
+pub const DEFAULT_DEFAULT_MOVE_CURSOR_BEHAVIOR: CursorBehavior
+    = CursorBehavior::RemainInPlace;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Config
@@ -98,6 +111,19 @@ pub struct Config {
     /// Default value when positioning is not given.
     #[serde(default = "Config::default_default_positioning")]
     pub default_positioning: Positioning,
+
+
+    /// The default behavior of the cursor after a delete command is run.
+    #[serde(default = "Config::default_default_delete_cursor_behavior")]
+    pub default_delete_cursor_behavior: CursorBehavior,
+    
+    /// The default behavior of the cursor after an insert command is run.
+    #[serde(default = "Config::default_default_insert_cursor_behavior")]
+    pub default_insert_cursor_behavior: CursorBehavior,
+
+    /// The default behavior of the cursor after a move command is run.
+    #[serde(default = "Config::default_default_move_cursor_behavior")]
+    pub default_move_cursor_behavior: CursorBehavior,
 }
 
 
@@ -112,6 +138,12 @@ impl Config {
             default_palette_path: Config::default_default_palette_path(),
             load_default_palette: DEFAULT_LOAD_DEFAULT_PALETTE,
             default_positioning: DEFAULT_DEFAULT_POSITIONING,
+            default_delete_cursor_behavior: 
+                DEFAULT_DEFAULT_DELETE_CURSOR_BEHAVIOR,
+            default_insert_cursor_behavior: 
+                DEFAULT_DEFAULT_INSERT_CURSOR_BEHAVIOR,
+            default_move_cursor_behavior: 
+                DEFAULT_DEFAULT_MOVE_CURSOR_BEHAVIOR,
         }
     }
 
@@ -311,6 +343,25 @@ impl Config {
     fn default_default_positioning() -> Positioning {
         DEFAULT_DEFAULT_POSITIONING
     }
+
+    /// Returns the default value for default_delete_cursor_behavior.
+    #[inline]
+    pub fn default_default_delete_cursor_behavior() -> CursorBehavior {
+        DEFAULT_DEFAULT_DELETE_CURSOR_BEHAVIOR
+    }
+
+    /// Returns the default value for default_insert_cursor_behavior.
+    #[inline]
+    pub fn default_default_insert_cursor_behavior() -> CursorBehavior {
+        DEFAULT_DEFAULT_INSERT_CURSOR_BEHAVIOR
+    }
+
+    /// Returns the default value for default_move_cursor_behavior.
+    #[inline]
+    pub fn default_default_move_cursor_behavior() -> CursorBehavior {
+        DEFAULT_DEFAULT_MOVE_CURSOR_BEHAVIOR
+    }
+
 }
 
 impl Default for Config {
