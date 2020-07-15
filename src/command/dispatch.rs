@@ -114,7 +114,8 @@ pub fn dispatch(
             }
             let at = at.unwrap_or(config.default_positioning);
 
-            pal.insert_exprs(&exprs[..], name, at)?;
+            pal.insert_exprs(&exprs[..], name, at)
+                .context("insert command failed.")?;
 
             pal.write_to_load_path()
                 .map(|_| ())
@@ -126,7 +127,8 @@ pub fn dispatch(
         Delete { selection } => match selection {
             Some(selection) => {
                 let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
-                pal.delete_selection(selection)?;
+                pal.delete_selection(selection)
+                    .context("delete command failed.")?;
 
                 pal.write_to_load_path()
                     .map(|_| ())
