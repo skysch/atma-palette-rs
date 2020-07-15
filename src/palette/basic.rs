@@ -53,12 +53,16 @@ use std::path::Path;
 #[cfg_attr(test, derive(PartialEq))]
 #[derive(Serialize, Deserialize)]
 pub struct BasicPalette {
+    // TODO: Consider using a Vec here.
     /// BasicPalette cells storage. Holds cells containing color expressions.
     cells: BTreeMap<u32, Cell>,
     /// The next free cell index.
     next_index: u32,
     /// A map of assigned names.
     names: BiMap<Cow<'static, str>, PositionSelector>,
+    // TODO: Consider allowing positions to be assigned based on ranges. E.g.,
+    // any position following an assigned one is implicitely assigned to the
+    // following index.
     /// A map of assigned positions.
     positions: BiMap<Position, u32>,
     /// A map of names assigned to groups of cells.

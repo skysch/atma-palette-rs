@@ -15,6 +15,7 @@ use crate::palette::BlendMethod;
 use crate::palette::ColorSpace;
 use crate::palette::InsertExpr;
 use crate::palette::Interpolate;
+use crate::cell::CellRef;
 use crate::palette::InterpolateFunction;
 use crate::palette::InterpolateRange;
 use crate::error::PaletteError;
@@ -22,6 +23,8 @@ use crate::parse::any_literal_map_once;
 use crate::parse::bracket;
 use crate::parse::cell_ref;
 use crate::parse::float;
+use crate::parse::color;
+use crate::parse::uint;
 use crate::parse::require_if;
 use crate::parse::char;
 use crate::parse::circumfix;
@@ -42,8 +45,85 @@ use crate::parse::whitespace;
 ////////////////////////////////////////////////////////////////////////////////
 /// Parses an InsertExpr.
 pub fn insert_expr<'t>(text: &'t str) -> ParseResult<'t, InsertExpr> {
-    unimplemented!()
+    // Ramp
+    let ramp = insert_expr_ramp
+        (text);
+    if ramp.is_ok() { return ramp; }
+
+    // Blend
+    let blend = blend_expr
+        (text)
+        .map_value(InsertExpr::Blend);
+    if blend.is_ok() { return blend; }
+
+    // Color
+    let color = color
+        (text)
+        .map_value(InsertExpr::Color);
+    if color.is_ok() { return color; }
+
+    // Copy
+    let copy_ref = bracket(
+            circumfix(
+                cell_ref,
+                maybe(whitespace)),
+            prefix(
+                char('('),
+                maybe(literal_ignore_ascii_case("copy"))),
+            char(')'))
+        (text)
+        .map_value(CellRef::into_static)
+        .map_value(InsertExpr::Copy);
+    if copy_ref.is_ok() { return copy_ref; }
+
+    // Reference
+    cell_ref
+        (text)
+        .map_value(CellRef::into_static)
+        .map_value(InsertExpr::Reference)
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// ramp_expr
+////////////////////////////////////////////////////////////////////////////////
+/// Parses an `InsertExpr` if it is a `Ramp` variant.
+pub fn insert_expr_ramp<'t>(text: &'t str) -> ParseResult<'t, InsertExpr> {
+    let (count, suc) = prefix(
+            uint::<u8>("u8"),
+            postfix(
+                literal_ignore_ascii_case("ramp"),
+                postfix(char('('), maybe(whitespace))))
+        (text)?
+        .take_value();
+
+    let (blend_fn, suc) = prefix(
+            blend_function,
+            circumfix(
+                char(','),
+                maybe(whitespace)))
+        (suc.rest)
+        .with_join_previous(suc, text)?
+        .take_value();
+
+    postfix(
+            maybe(
+                prefix(
+                    interpolate_range,
+                    circumfix(
+                        char(','),
+                        maybe(whitespace)))),
+            prefix(
+                char(')'),
+                maybe(whitespace)))
+        (suc.rest)
+        .with_join_previous(suc, text)
+        .map_value(|interp| InsertExpr::Ramp {
+            count,
+            blend_fn,
+            interpolate: interp.unwrap_or_default(),
+        })
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // blend_expr
@@ -55,14 +135,12 @@ pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
         .take_value();
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
 
-    let (blend_method, suc) = blend_method
+    let (blend_method, suc) = postfix(
+            blend_method,
+            postfix(char('('), maybe(whitespace)))
         (suc.rest)
         .with_join_previous(suc, text)?
         .take_value();
-
-    let suc = postfix(char('('), maybe(whitespace))
-        (suc.rest)
-        .with_join_previous(suc, text)?;
 
     let (refs, suc) = intersperse_collect(2, Some(2), 
             cell_ref,
@@ -108,14 +186,12 @@ pub fn blend_function<'t>(text: &'t str) -> ParseResult<'t, BlendFunction> {
         .take_value();
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
 
-    let (blend_method, suc) = blend_method
+    let (blend_method, suc) = postfix(
+            blend_method,
+            postfix(char('('), maybe(whitespace)))
         (suc.rest)
         .with_join_previous(suc, text)?
         .take_value();
-
-    let suc = postfix(char('('), maybe(whitespace))
-        (suc.rest)
-        .with_join_previous(suc, text)?;
 
     let (refs, suc) = intersperse_collect(2, Some(2), 
             cell_ref,

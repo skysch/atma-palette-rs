@@ -82,23 +82,23 @@ impl Default for Expr {
 #[derive(Debug, Clone, PartialEq)]
 #[derive(Serialize, Deserialize)]
 pub enum InsertExpr {
-    /// Insert a color.
-    Color(Color),
-    /// Insert a reference to a cell.
-    Reference(CellRef<'static>),
-    /// Insert a copy of the color from a cell.
-    Copy(CellRef<'static>),
-    /// Insert a color blend operation.
-    Blend(BlendExpr),
     /// Insert an interpolated range of color blend operations.
     Ramp {
         /// The number of colors in the ramp.
-        count: u32,
+        count: u8,
         /// The ramp blend function.
         blend_fn: BlendFunction,
         /// The range of values to interpolate over.
         interpolate: InterpolateRange,
     },
+    /// Insert a color blend operation.
+    Blend(BlendExpr),
+    /// Insert a color.
+    Color(Color),
+    /// Insert a copy of the color from a cell.
+    Copy(CellRef<'static>),
+    /// Insert a reference to a cell.
+    Reference(CellRef<'static>),
 }
 
 impl InsertExpr {
@@ -107,12 +107,18 @@ impl InsertExpr {
         -> Result<Vec<Expr>, PaletteError>
     {
         match self {
-            InsertExpr::Color(color) => Ok(vec![
-                Expr::Color(color.clone())
+            InsertExpr::Ramp { count, blend_fn, interpolate } => Ok(interpolate
+                .blend_exprs(*count, blend_fn)
+                .into_iter()
+                .map(Expr::Blend)
+                .collect()),
+            
+            InsertExpr::Blend(blend_expr) => Ok(vec![
+                Expr::Blend(blend_expr.clone())
             ]),
 
-            InsertExpr::Reference(cell_ref) => Ok(vec![
-                Expr::Reference(cell_ref.clone())
+            InsertExpr::Color(color) => Ok(vec![
+                Expr::Color(color.clone())
             ]),
             
             // TODO: Config to generate default color instead of error?
@@ -123,16 +129,10 @@ impl InsertExpr {
                         circular: false,
                     })?)
             ]),
-            
-            InsertExpr::Blend(blend_expr) => Ok(vec![
-                Expr::Blend(blend_expr.clone())
+
+            InsertExpr::Reference(cell_ref) => Ok(vec![
+                Expr::Reference(cell_ref.clone())
             ]),
-            
-            InsertExpr::Ramp { count, blend_fn, interpolate } => Ok(interpolate
-                .blend_exprs(*count, blend_fn)
-                .into_iter()
-                .map(Expr::Blend)
-                .collect())
         }
     }
 }
@@ -478,7 +478,7 @@ impl InterpolateRange {
     }
 
     /// Compute the `BlendExpr`s for the ramp, using the given `BlendFunction`.
-    pub fn blend_exprs(&self, count: u32, blend_fn: &BlendFunction)
+    pub fn blend_exprs(&self, count: u8, blend_fn: &BlendFunction)
         -> Vec<BlendExpr>
     {
         let mut exprs = Vec::with_capacity(count.try_into().unwrap());
