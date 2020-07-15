@@ -19,7 +19,6 @@ use crate::parse::char_matching;
 use crate::parse::circumfix;
 use crate::parse::pair;
 use crate::parse::atomic_ignore_whitespace;
-use crate::parse::Failure;
 use crate::parse::intersperse_collect;
 use crate::parse::maybe;
 use crate::parse::ParseResult;
@@ -157,11 +156,15 @@ pub fn position_selector<'t>(text: &'t str)
 /// Parses a u16 or an 'all' selector token. Return Some if a u16 was parsed, or
 /// None if 'all' was parsed.
 pub fn u16_or_all<'t>(text: &'t str) -> ParseResult<'t, Option<u16>> {
-    if let Ok(all_suc) = char('*')(text) {
-        Ok(all_suc.map_value(|_| None))
-    } else {
-        uint::<u16>("u16")(text).map_value(Some)
+    let all = char('*')
+        (text);
+    if all.is_ok() {
+        return all.map_value(|_| None);
     }
+
+    uint::<u16>("u16")
+        (text)
+        .map_value(Some)
 }
 
 /// Returns a parser which parses the separator and upper bound of a range using
@@ -240,7 +243,9 @@ pub fn position<'t>(text: &'t str) -> ParseResult<'t, Position> {
 
 /// Parses a Index.
 pub fn index<'t>(text: &'t str) -> ParseResult<'t, u32> {
-    prefix(uint::<u32>("u32"), char(':'))
+    prefix(
+            uint::<u32>("u32"),
+            char(':'))
         (text)
         .source_for("cell ref index")
 }
@@ -267,12 +272,6 @@ pub fn name<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
 
 /// Parses a group name with its index.
 pub fn group<'t>(text: &'t str) -> ParseResult<'t, (&'t str, u32)> {
-    let (group, suc) = name
-        (text)?
-        .take_value();
-
-    index
-        (suc.rest)
-        .with_join_previous(suc, text)
-        .map_value(|idx| (group, idx))
+    pair(name, index)
+        (text)
 }
