@@ -36,21 +36,19 @@
 
 
 # Unimplemented Command Syntax
-    
-    new config-file
-    new settings-file
 
-
+    atma export script [--parametric]
+    atma script SCRIPT_FILE
+    atma import parameters
     atma import png
-    atma set name [name] SELECTION..
-    atma set expr [SetExpr] SELECTION..
+    atma set name [name] POSITION_SELECTOR..
+    atma set expr [SetExpr] CELL_REF..
     atma set active_palette [path]
     atma set cursor [Position]
     atma set history [enable|disable|clear]
-    atma set delete cursor positioning
-    atma set insert cursor positioning
-    atma set move cursor positioning
-    atma set set cursor positioning
+    atma set delete_cursor_positioning CURSOR_POSITIONING
+    atma set insert_cursor_positioning CURSOR_POSITIONING
+    atma set move_cursor_positioning CURSOR_POSITIONING
 
 
 

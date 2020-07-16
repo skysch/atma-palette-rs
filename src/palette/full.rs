@@ -332,7 +332,7 @@ impl Palette {
                     => ops.push(SetPositionCursor { position: start_position }),
                 
                 CursorBehavior::MoveAfterEnd
-                    => ops.push(SetPositionCursor { position: next.succ() }),
+                    => ops.push(SetPositionCursor { position: next }),
                 
                 CursorBehavior::MoveToOpen => {
                     let position = self.inner
@@ -457,7 +457,7 @@ impl Palette {
                     => ops.push(SetPositionCursor { position: start_position }),
                 
                 CursorBehavior::MoveAfterEnd
-                    => ops.push(SetPositionCursor { position: next.succ() }),
+                    => ops.push(SetPositionCursor { position: next }),
                 
                 CursorBehavior::MoveToOpen => {
                     let position = self.inner
