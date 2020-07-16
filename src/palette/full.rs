@@ -243,7 +243,7 @@ impl Palette {
         &mut self,
         insert_exprs: &[InsertExpr],
         name: Option<S>,
-        position: Positioning,
+        positioning: Positioning,
         cursor_behavior: CursorBehavior)
         -> Result<(), PaletteError>
         where S: ToString
@@ -254,17 +254,18 @@ impl Palette {
             .unoccupied_index_or_next(0)
             .expect("no free indices"); // TODO: Handle with an error.
         // Get start position.
-        let mut next = match position {
+        let mut next = match positioning {
             Positioning::Position(p) => p,
             Positioning::Open => Position::ZERO,
             Positioning::Cursor => self.inner.position_cursor(),
             Positioning::None => Position::ZERO,
         };
-        if !position.is_none() {
+        if !positioning.is_none() {
             next = self.inner
                 .unoccupied_position_or_next(next)
                 .expect("no free positions"); // TODO: Handle with an error.
         }
+        let start_position = next.clone();
 
         // Convert name into proper format.
         let name: Option<Cow<'static, str>> = name
@@ -283,7 +284,7 @@ impl Palette {
                     });
 
                     // Assign position.
-                    if !position.is_none() { 
+                    if !positioning.is_none() { 
                         ops.push(AssignPosition {
                             cell_ref: CellRef::Index(idx),
                             position: next.clone(),
@@ -306,7 +307,7 @@ impl Palette {
                         .expect("no free indices"); 
 
                     // Shift to next position.
-                    if !position.is_none() {
+                    if !positioning.is_none() {
                         next = self.inner
                             .unoccupied_position_or_next(next.wrapping_succ())
                             .expect("no free positions");
@@ -323,8 +324,24 @@ impl Palette {
             _ => (),
         }
 
-        if !position.is_none() {
-            ops.push(SetPositionCursor { position: next.succ() });
+        
+        if !positioning.is_none() {
+            match cursor_behavior {
+                CursorBehavior::RemainInPlace => (),
+
+                CursorBehavior::MoveToStart
+                    => ops.push(SetPositionCursor { position: start_position }),
+                
+                CursorBehavior::MoveAfterEnd
+                    => ops.push(SetPositionCursor { position: next.succ() }),
+                
+                CursorBehavior::MoveToOpen => {
+                    let position = self.inner
+                        .unoccupied_position_or_next(Position::ZERO)
+                        .expect("no free positions");
+                    ops.push(SetPositionCursor { position })
+                },
+            }
         }
         self.apply_operations(&ops[..])
     }
@@ -339,11 +356,52 @@ impl Palette {
         use Operation::*;
 
         let index_selection = selection.resolve(self.inner());    
+        let mut saved_position: Option<Position> = None;
         let mut ops = Vec::new();
+
         for idx in index_selection {
-            ops.push(RemoveCell { cell_ref: CellRef::Index(idx) });
+            let cell_ref = CellRef::Index(idx);
+            saved_position = match cursor_behavior {
+                CursorBehavior::MoveToStart => match (
+                    self.inner().assigned_position(&cell_ref).cloned(), 
+                    saved_position.take())
+                {
+                    (Some(a), None)             => Some(a),
+                    (Some(a), Some(s)) if a < s => Some(a),
+                    (_,       Some(s))          => Some(s),
+                    (None,    None)             => None,
+                },
+                CursorBehavior::MoveAfterEnd => match (
+                    self.inner().assigned_position(&cell_ref).cloned(), 
+                    saved_position.take())
+                {
+                    (Some(a), None)             => Some(a),
+                    (Some(a), Some(s)) if a > s => Some(a),
+                    (_,       Some(s))          => Some(s),
+                    (None,    None)             => None,
+                },
+                _ => saved_position,
+            };
+
+            ops.push(RemoveCell { cell_ref });
         }
 
+        match cursor_behavior {
+            CursorBehavior::RemainInPlace => (),
+
+            CursorBehavior::MoveToStart |
+            CursorBehavior::MoveAfterEnd
+                => if let Some(position) = saved_position
+            {
+                ops.push(SetPositionCursor { position });
+            }
+            
+            CursorBehavior::MoveToOpen => if let Some(position) = self.inner
+                .unoccupied_position_or_next(Position::ZERO)
+            {
+                ops.push(SetPositionCursor { position })
+            },
+        }
         self.apply_operations(&ops[..])
     }
 
@@ -352,7 +410,7 @@ impl Palette {
     pub fn move_selection<'name>(
         &mut self,
         selection: CellSelection<'name>,
-        position: Positioning,
+        positioning: Positioning,
         cursor_behavior: CursorBehavior)
         -> Result<(), PaletteError>
     {
@@ -362,14 +420,16 @@ impl Palette {
 
         let index_selection = selection.resolve(self.inner());    
         let mut ops = Vec::new();
-        let mut next = match position {
+        let mut next = match positioning {
             Positioning::Position(p) => p,
             Positioning::Open => Position::ZERO,
             Positioning::Cursor => self.inner.position_cursor(),
             Positioning::None => Position::ZERO,
         };
+        let start_position = next.clone();
+
         for idx in index_selection {
-            if position.is_none() {
+            if positioning.is_none() {
                 ops.push(UnassignPosition {
                     cell_ref: CellRef::Index(idx)
                 });
@@ -390,8 +450,23 @@ impl Palette {
             }
         }
 
-        if !position.is_none() {
-            ops.push(SetPositionCursor { position: next.succ() });
+        if !positioning.is_none() {
+            match cursor_behavior {
+                CursorBehavior::RemainInPlace => (),
+
+                CursorBehavior::MoveToStart
+                    => ops.push(SetPositionCursor { position: start_position }),
+                
+                CursorBehavior::MoveAfterEnd
+                    => ops.push(SetPositionCursor { position: next.succ() }),
+                
+                CursorBehavior::MoveToOpen => {
+                    let position = self.inner
+                        .unoccupied_position_or_next(Position::ZERO)
+                        .unwrap_or(next.succ());
+                    ops.push(SetPositionCursor { position })
+                },
+            }
         }
         self.apply_operations(&ops[..])
     }
