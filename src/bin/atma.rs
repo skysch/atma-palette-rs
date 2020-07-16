@@ -118,25 +118,30 @@ pub fn main_facade() -> Result<(), Error> {
     trace!("{:#?}", settings); 
 
     // Load the palette.
-    let palette = match &opts.common.palette {
-        Some(pal_path) => {
-            let path = normalize_path(cur_dir.clone(), pal_path);
-            Some(Palette::read_from_path(&path)
-                .unwrap_or_else(|_| Palette::new().with_load_path(path)))
-        },
-
-        None => match &settings.active_palette {
-            Some(pal_path) => Some(Palette::read_from_path(&pal_path)?),
-            None => if config.load_default_palette {
-                debug!("No active palette, loading default palette.");
-                let default_path = cur_dir.clone()
-                    .join(&config.default_palette_path);
-                Palette::read_from_path(&default_path).ok()
-            } else {
-                debug!("No active palette.");
-                None
+    let palette = if opts.should_load_palette() {
+        match &opts.common.palette {
+            Some(pal_path) => {
+                let path = normalize_path(cur_dir.clone(), pal_path);
+                Some(Palette::read_from_path(&path)
+                    .unwrap_or_else(|_| Palette::new().with_load_path(path)))
             },
-        },
+
+            None => match &settings.active_palette {
+                Some(pal_path) => Some(Palette::read_from_path(&pal_path)?),
+                None => if config.load_default_palette {
+                    debug!("No specified active palette, loading from default \
+                        location.");
+                    let default_path = cur_dir.clone()
+                        .join(&config.default_palette_path);
+                    Palette::read_from_path(&default_path).ok()
+                } else {
+                    debug!("No active palette.");
+                    None
+                },
+            },
+        }
+    } else {
+        None
     };
     trace!("Palette: {:#?}", palette);
 

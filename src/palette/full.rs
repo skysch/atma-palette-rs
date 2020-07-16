@@ -323,7 +323,6 @@ impl Palette {
             }),
             _ => (),
         }
-
         
         if !positioning.is_none() {
             match cursor_behavior {

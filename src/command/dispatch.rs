@@ -16,10 +16,13 @@ use crate::cell::PositionSelector;
 use crate::command::AtmaOptions;
 use crate::command::CommandOption;
 use crate::command::ExportOption;
+use crate::command::NewOption;
 use crate::Config;
+use crate::DEFAULT_CONFIG_PATH;
 use crate::error::FileError;
 use crate::palette::Palette;
 use crate::Settings;
+use crate::utility::normalize_path;
 
 // External library imports.
 use log::*;
@@ -46,7 +49,7 @@ pub fn dispatch(
     palette: Option<Palette>,
     opts: AtmaOptions,
     config: Config,
-    settings: Settings,
+    mut settings: Settings,
     cur_dir: PathBuf)
     -> Result<(), anyhow::Error>
 {
@@ -58,22 +61,35 @@ pub fn dispatch(
 
         // New
         ////////////////////////////////////////////////////////////////////////
-        New {
-            name,
-            no_history,
-            no_config_file,
-            no_settings_file,
-            set_active,
-        } => new_palette(
-                palette.unwrap_or(Palette::new()
-                    .with_load_path(
-                        cur_dir.join(&config.default_palette_path))),
-                name,
-                no_history,
-                if no_config_file { None } else { Some(config) },
-                if no_settings_file { None } else { Some(settings) },
-                set_active)
-            .context("Command 'new' failed"),
+        New { new_option } => match new_option {
+            NewOption::Palette { path, set_active, no_history, name } => {
+                new_palette(
+                        normalize_path(
+                            cur_dir.clone(),
+                            path.unwrap_or_else(|| cur_dir
+                                .join(&config.default_palette_path))),
+                        set_active,
+                        no_history,
+                        name,
+                        &mut settings)
+                    .context("Command 'new palette' failed")
+            },
+
+            NewOption::Config { path } => new_config(
+                    normalize_path(
+                        cur_dir.clone(),
+                        path.unwrap_or_else(
+                            || cur_dir.join(dbg!(DEFAULT_CONFIG_PATH))),
+                        ))
+                .context("Command 'new config' failed"),
+
+            NewOption::Settings { path } => new_settings(
+                    normalize_path(
+                        cur_dir.clone(),
+                        path.unwrap_or_else(|| cur_dir
+                            .join(&config.default_settings_path))))
+                .context("Command 'new settings' failed"),
+        },
 
         // List
         ////////////////////////////////////////////////////////////////////////
@@ -102,6 +118,8 @@ pub fn dispatch(
                         print!(" \"{}\"", name);
                     }
                     println!();
+                } else {
+                    println!("{:4X} invalid color", idx);
                 }
             }
             Ok(())
@@ -245,62 +263,38 @@ pub fn dispatch(
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// New command support
+////////////////////////////////////////////////////////////////////////////////
+
+/// Returns true if a FileError has ErrorKind::AlreadyExists.
+fn already_exists(e: &FileError) -> bool {
+    e.is_io_error_kind(std::io::ErrorKind::AlreadyExists)
+}
+
 /// Initializes a new palette.
 fn new_palette(
-    mut palette: Palette,
-    name: Option<String>,
+    path: PathBuf,
+    set_active: bool,
     no_history: bool,
-    config: Option<Config>,
-    settings: Option<Settings>,
-    set_active: bool)
+    name: Option<String>,
+    settings: &mut Settings)
     -> Result<(), anyhow::Error>
 {
-    trace!("Build new palette.");
     use crate::error::FileErrorContext as _;
 
-    fn already_exists(e: &FileError) -> bool {
-        e.is_io_error_kind(std::io::ErrorKind::AlreadyExists)
+    let mut palette = Palette::new().with_load_path(path);
+
+    if set_active {
+        settings.active_palette = palette
+            .load_path()
+            .map(ToOwned::to_owned);
+        let _ = settings.write_to_load_path()?;
     }
 
     if !no_history { palette = palette.with_history(); }
     if let Some(name) = name {
         let _ = palette.inner_mut().assign_name(name, PositionSelector::ALL)?;
-    }
-
-    if let Some(config) = config {
-        let res = config.write_to_load_path_if_new();
-        if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
-            info!("Config file already exists.");
-            debug!("Config {:?}", config.load_path());
-        } else {
-            let _ = res.with_context(|| 
-                if let Some(path) = config.load_path() {
-                    format!("Error writing config file: {}", path.display())
-                } else {
-                    format!("Error writing config file")
-                })?;
-        }
-    }
-
-    if let Some(mut settings) = settings {
-        if set_active {
-            settings.active_palette = palette
-                .load_path()
-                .map(ToOwned::to_owned);
-        }
-        
-        let res = settings.write_to_load_path_if_new();
-        if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
-            info!("Settings file already exists.");
-            debug!("Settings {:?}", settings.load_path());
-        } else {
-            let _ = res.with_context(|| 
-                if let Some(path) = settings.load_path() {
-                    format!("Error writing settings file: {}", path.display())
-                } else {
-                    format!("Error writing settings file")
-                })?;
-        }
     }
 
     let res = palette.write_to_load_path_if_new();
@@ -318,7 +312,51 @@ fn new_palette(
     Ok(())
 }
 
+/// Initializes a new config file.
+fn new_config(path: PathBuf) -> Result<(), FileError> {
+    use crate::error::FileErrorContext as _;
 
+    let new = Config::new().with_load_path(path);
+
+    let res = new.write_to_load_path_if_new();
+    if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
+        info!("Config file already exists.");
+        debug!("Config {:?}", new.load_path());
+    } else {
+        let _ = res.with_context(|| 
+            if let Some(path) = new.load_path() {
+                format!("Error writing config file: {}", path.display())
+            } else {
+                format!("Error writing config file")
+            })?;
+    }
+    Ok(())
+}
+
+/// Initializes a new settings file.
+fn new_settings(path: PathBuf) -> Result<(), FileError> {
+    use crate::error::FileErrorContext as _;
+
+    let new = Settings::new().with_load_path(path);
+
+    let res = new.write_to_load_path_if_new();
+    if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
+        info!("Settings file already exists.");
+        debug!("Settings {:?}", new.load_path());
+    } else {
+        let _ = res.with_context(|| 
+            if let Some(path) = new.load_path() {
+                format!("Error writing settings file: {}", path.display())
+            } else {
+                format!("Error writing settings file")
+            })?;
+    }
+    Ok(())
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Export command support
+////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(not(feature = "png"))]
 fn write_png<'a>(palette: &Palette, selection: CellSelection<'a>, path: &Path)

@@ -1,9 +1,9 @@
 [package]
 name = "atma"
-version = "0.0.168"
+version = "0.0.169"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
-license = "MIT or Apache-2.0"
+license = "MIT OR Apache-2.0"
 # maintenance = { status = "experiemental" }
 repository = "https://github.com/skysch/atma-rs"
 description = "Atma structured color palette library & CLI interface"

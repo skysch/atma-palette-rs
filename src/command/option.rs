@@ -38,6 +38,15 @@ pub struct AtmaOptions {
     pub command: CommandOption,
 }
 
+impl AtmaOptions {
+    /// Returns true if the commands depends on the palette.
+    pub fn should_load_palette(&self) -> bool {
+        match &self.command {
+            CommandOption::New { .. } => false,
+            _ => true,
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // CommonOptions
@@ -89,25 +98,8 @@ pub struct CommonOptions {
 pub enum CommandOption {
     /// Create a new palette.
     New {
-        /// The name of the palette.
-        #[structopt(long = "name")]
-        name: Option<String>,
-
-        /// Disables undo/redo operations for the palette.
-        #[structopt(long = "no-history")]
-        no_history: bool,
-
-        /// Creates a config file in the palette directory.
-        #[structopt(long = "no_config_file")]
-        no_config_file: bool,
-
-        /// Creates a settings file in the palette directory.
-        #[structopt(long = "no_settings_file")]
-        no_settings_file: bool,
-        
-        /// Sets the palette as the default active palette.
-        #[structopt(long = "set-active")]
-        set_active: bool,
+        #[structopt(subcommand)]
+        new_option: NewOption,
     },
 
     /// List palette contents.
@@ -186,16 +178,47 @@ pub enum CommandOption {
     },
 }
 
-impl CommandOption {
-    /// Returns true if the variant is `CommandOption::New`.
-    pub fn is_new(&self) -> bool {
-        match self {
-            CommandOption::New { .. } => true,
-            _ => false,
-        }
-    }
-}
 
+////////////////////////////////////////////////////////////////////////////////
+// NewOption
+////////////////////////////////////////////////////////////////////////////////
+/// Options for the new command.
+#[derive(Debug, Clone)]
+#[derive(StructOpt)]
+pub enum NewOption {
+    /// Create a new palette.
+    Palette {
+        /// The path of the new palette.
+        #[structopt(parse(from_os_str))]
+        path: Option<PathBuf>,
+        
+        /// Sets the palette as the default active palette.
+        #[structopt(long = "set-active")]
+        set_active: bool,
+
+        /// Disables undo/redo operations for the palette.
+        #[structopt(long = "no-history")]
+        no_history: bool,
+
+        /// The name of the palette.
+        #[structopt(long = "name")]
+        name: Option<String>,
+    },
+    
+    /// Create a new config file.
+    Config {
+        /// The path of the new config file.
+        #[structopt(parse(from_os_str))]
+        path: Option<PathBuf>,
+    },
+
+    /// Create a new settings file.
+    Settings {
+        /// The path of the new settings file.
+        #[structopt(parse(from_os_str))]
+        path: Option<PathBuf>,
+    },
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // ExportOption

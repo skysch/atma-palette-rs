@@ -5,17 +5,17 @@
     atma
         [--config [PATH]]
         [--settings [PATH]]
-        [--palette [PATH]]
+        [-p|--palette [PATH]]
         [-v|--verbose]
         [-q|--quiet|--silent]
         [--ztrace]
 
-    atma new
+    atma new palette [PATH]
         [--name NAME]
         [--no-history]
-        [--no-config-file]
-        [--no-settings-file]
         [--set-active]
+    atma new config [PATH]
+    atma new settings [PATH]
 
     atma list [SELECTION]..
 
@@ -37,10 +37,6 @@
 
 # Unimplemented Command Syntax
     
-    delete cursor positioning
-    insert cursor positioning
-    move cursor positioning
-    set cursor positioning
     new config-file
     new settings-file
 
@@ -51,6 +47,10 @@
     atma set active_palette [path]
     atma set cursor [Position]
     atma set history [enable|disable|clear]
+    atma set delete cursor positioning
+    atma set insert cursor positioning
+    atma set move cursor positioning
+    atma set set cursor positioning
 
 
 
