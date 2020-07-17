@@ -12,8 +12,10 @@
 use crate::cell::CellRef;
 use crate::color::Color;
 use crate::color::Rgb;
+use crate::color::Hsv;
 use crate::error::PaletteError;
 use crate::palette::BasicPalette;
+use crate::parse::unary_blend_method;
 use crate::parse::binary_blend_method;
 use crate::parse::color_space;
 use crate::parse::FailureOwned;
@@ -180,7 +182,9 @@ impl BlendExpr {
 #[derive(Debug, Clone, PartialEq)]
 #[derive(Serialize, Deserialize)]
 pub enum BlendFunction {
-    /// A binary blend function
+    /// A unary blend function.
+    Unary(UnaryBlendFunction),
+    /// A binary blend function.
     Binary(BinaryBlendFunction),
 }
 
@@ -197,6 +201,7 @@ impl BlendFunction {
         use BlendFunction::*;
 
         match self {
+            Unary(un_fn) => un_fn.apply(basic, index_list, int),
             Binary(bin_fn) => bin_fn.apply(basic, index_list, int),
         }
     }
@@ -209,12 +214,129 @@ impl BlendFunction {
 #[derive(Debug, Clone, PartialEq)]
 #[derive(Serialize, Deserialize)]
 pub struct UnaryBlendFunction {
-    /// The color space in which to apply the blend method.
-    pub color_space: ColorSpace,
     /// The blend method.
-    pub blend_method: BinaryBlendMethod,
-    /// The source color of the blend.
-    pub source: CellRef<'static>,
+    pub blend_method: UnaryBlendMethod,
+    /// The blend value.
+    pub value: f32,
+    /// The argument of the blend.
+    pub arg: CellRef<'static>,
+}
+
+/// Color blending method for unary blend functions.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize)]
+pub enum UnaryBlendMethod {
+    /// Override the red channel of the source color.
+    SetRed,
+    /// Override the green channel of the source color.
+    SetGreen,
+    /// Override the blue channel of the source color.
+    SetBlue,
+    
+    /// Shift the hue of the source color.
+    HueShift,
+    /// Override the hue of the source color.
+    SetHue,
+    /// Saturate the source color.
+    Saturate,
+    /// Desaturate the source color.
+    Desaturate,
+    /// Lighten the source color.
+    Lighten,
+    /// Darken the source color.
+    Darken,
+}
+
+impl UnaryBlendFunction {
+    /// Resolves the arg_1 and arg_2 references and returns their blended
+    /// result.
+    pub fn apply(
+        &self,
+        basic: &BasicPalette,
+        index_list: &mut HashSet<u32>,
+        int: &Interpolate)
+        -> Result<Option<Color>, PaletteError>
+    {
+        match basic.cycle_detect_color(&self.arg, index_list)? {
+            Some(color) => {
+                let blended = self.blend_method.apply(&color, self.value);
+                Ok(Some(int.apply(color, blended)))
+            },
+            _ => Ok(None),
+        }
+    }
+}
+
+impl UnaryBlendMethod {
+    /// Applies the blend calculation to the given channel values.
+    pub fn apply(&self, arg: &Color, value: f32) -> Color {
+        use UnaryBlendMethod::*;
+        match self {
+            SetRed     => {
+                let rgb = arg.rgb_ratios();
+                Color::from(Rgb::from([value, rgb[1], rgb[2]]))
+            },
+            SetGreen   => {
+                let rgb = arg.rgb_ratios();
+                Color::from(Rgb::from([rgb[0], value, rgb[2]]))
+            },
+            SetBlue    => {
+                let rgb = arg.rgb_ratios();
+                Color::from(Rgb::from([rgb[0], rgb[1], value]))
+            },
+
+            HueShift   => {
+                let hsv = arg.hsv_components();
+                Color::from(Hsv::from([hsv[0] + value, hsv[1], hsv[2]]))
+            },
+            SetHue     => {
+                let hsv = arg.hsv_components();
+                Color::from(Hsv::from([value, hsv[1], hsv[2]]))
+            },
+            Saturate   => {
+                let hsv = arg.hsv_components();
+                Color::from(Hsv::from([hsv[0], hsv[1] + value, hsv[2]]))
+            },
+            Desaturate => {
+                let hsv = arg.hsv_components();
+                Color::from(Hsv::from([hsv[0], hsv[1] - value, hsv[2]]))
+            },
+            Lighten    => {
+                let hsv = arg.hsv_components();
+                Color::from(Hsv::from([hsv[0], hsv[1], hsv[2] + value]))
+            },
+            Darken     => {
+                let hsv = arg.hsv_components();
+                Color::from(Hsv::from([hsv[0], hsv[1], hsv[2] - value]))
+            },
+        }
+    }
+}
+
+impl std::str::FromStr for UnaryBlendMethod {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        unary_blend_method(text)
+            .end_of_text()
+            .finish()
+    }
+}
+
+impl std::fmt::Display for UnaryBlendMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            UnaryBlendMethod::SetRed     => "set_red",
+            UnaryBlendMethod::SetGreen   => "set_green",
+            UnaryBlendMethod::SetBlue    => "set_blue",
+            UnaryBlendMethod::HueShift   => "hue_shift",
+            UnaryBlendMethod::SetHue     => "set_hue",
+            UnaryBlendMethod::Saturate   => "saturate",
+            UnaryBlendMethod::Desaturate => "desaturate",
+            UnaryBlendMethod::Lighten    => "lighten",
+            UnaryBlendMethod::Darken     => "darken",
+        })
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -228,14 +350,14 @@ pub struct BinaryBlendFunction {
     pub color_space: ColorSpace,
     /// The blend method.
     pub blend_method: BinaryBlendMethod,
-    /// The source color of the blend.
-    pub source: CellRef<'static>,
-    /// The target color of the blend.
-    pub target: CellRef<'static>,
+    /// The first argument of the blend.
+    pub arg_1: CellRef<'static>,
+    /// The second argument of the blend.
+    pub arg_2: CellRef<'static>,
 }
 
 impl BinaryBlendFunction {
-    /// Resolves the source and target references and returns their blended
+    /// Resolves the arg_1 and arg_2 references and returns their blended
     /// result.
     pub fn apply(
         &self,
@@ -245,8 +367,8 @@ impl BinaryBlendFunction {
         -> Result<Option<Color>, PaletteError>
     {
         match (
-            basic.cycle_detect_color(&self.source, index_list)?,
-            basic.cycle_detect_color(&self.target, index_list)?)
+            basic.cycle_detect_color(&self.arg_1, index_list)?,
+            basic.cycle_detect_color(&self.arg_2, index_list)?)
         {
             (Some(a), Some(b)) => {
                 let blend_fn = |a, b| self.blend_method.apply(a, b);
@@ -260,7 +382,7 @@ impl BinaryBlendFunction {
     }
 }
 
-/// Color blending method.
+/// Color blending method for binary bland functions.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[derive(Serialize, Deserialize)]
 pub enum BinaryBlendMethod {
@@ -276,24 +398,24 @@ pub enum BinaryBlendMethod {
     Difference,
     /// Multiply inverted channels and invert the result.
     Screen,
-    /// Multiply light channel and screen dark channel of the source.
+    /// Multiply light channel and screen dark channel of the arg_1.
     Overlay,
-    /// Multiply light channel and screen dark channel of the target.
+    /// Multiply light channel and screen dark channel of the arg_2.
     HardLight,
     /// Smoothly interpolate between multiply and screen.
     SoftLight,
-    /// Lighten image by dividing target channel by inverted source channel.
+    /// Lighten image by dividing arg_2 channel by inverted arg_1 channel.
     ColorDodge,
-    /// Darken image by dividing inverted source channel by target channel and
+    /// Darken image by dividing inverted arg_1 channel by arg_2 channel and
     /// subtracting from 1.
     ColorBurn,
-    /// Apply color dodge or burn based on source channel lightness.
+    /// Apply color dodge or burn based on arg_1 channel lightness.
     VividLight,
     /// Lighten image by adding channel.
     LinearDodge,
     /// Darken image by adding channels and subtracting 1.
     LinearBurn,
-    /// Apply linear dodge or burn based on source channel lightness.
+    /// Apply linear dodge or burn based on arg_1 channel lightness.
     LinearLight,
 }
 
@@ -340,12 +462,6 @@ impl BinaryBlendMethod {
             LinearBurn  => a + b - 1.0,
             LinearLight => 2.0 * a + b - 1.0,
         }
-    }
-}
-
-impl Default for BinaryBlendMethod {
-    fn default() -> Self {
-        BinaryBlendMethod::Blend
     }
 }
 

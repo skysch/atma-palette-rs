@@ -11,15 +11,18 @@
 // Local imports.
 use crate::cell::CellRef;
 use crate::palette::BinaryBlendFunction;
+use crate::palette::BinaryBlendMethod;
 use crate::palette::BlendExpr;
 use crate::palette::BlendFunction;
-use crate::palette::BinaryBlendMethod;
 use crate::palette::ColorSpace;
 use crate::palette::InsertExpr;
 use crate::palette::Interpolate;
 use crate::palette::InterpolateFunction;
 use crate::palette::InterpolateRange;
+use crate::palette::UnaryBlendFunction;
+use crate::palette::UnaryBlendMethod;
 use crate::parse::any_literal_map_once;
+use crate::parse::atomic_ignore_whitespace;
 use crate::parse::bracket;
 use crate::parse::cell_ref;
 use crate::parse::char;
@@ -29,7 +32,6 @@ use crate::parse::float;
 use crate::parse::intersperse_collect;
 use crate::parse::literal_ignore_ascii_case;
 use crate::parse::maybe;
-use crate::parse::atomic_ignore_whitespace;
 use crate::parse::ParseResult;
 use crate::parse::ParseResultExt as _;
 use crate::parse::postfix;
@@ -133,7 +135,67 @@ pub fn insert_expr_ramp<'t>(text: &'t str) -> ParseResult<'t, InsertExpr> {
 
 /// Parses an BinaryBlendFunction.
 pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
-    let (color_space, suc) = atomic_ignore_whitespace(postfix(color_space, char('_')))
+    let unary = unary_blend_expr(text);
+    if unary.is_ok() {
+        return unary;
+    }
+
+    binary_blend_expr
+        (text)
+}
+
+/// Parses an BlendExpr if it is a Unary variant.
+pub fn unary_blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
+    let (blend_method, suc) = postfix(
+            unary_blend_method,
+            postfix(char('('), maybe(whitespace)))
+        (text)?
+        .take_value();
+
+    let (cell_ref, suc) = postfix(
+            cell_ref,
+            circumfix(
+                char(','),
+                maybe(whitespace)))
+        (suc.rest)
+        .with_join_previous(suc, text)?
+        .take_value();
+
+    let (value, suc) = float::<f32>("f32")
+        (suc.rest)
+        .with_join_previous(suc, text)?
+        .take_value();
+
+    let (interpolate, suc) = atomic_ignore_whitespace(
+            prefix(
+                interpolate,
+                circumfix(
+                    char(','),
+                    maybe(whitespace))))
+        (suc.rest)
+        .with_join_previous(suc, text)?
+        .take_value();
+    let interpolate = interpolate.unwrap_or_default();
+
+    prefix(char(')'), maybe(whitespace))
+        (suc.rest)
+        .with_join_previous(suc, text)
+        .map_value(|_| BlendExpr { 
+            blend_fn: BlendFunction::Unary(UnaryBlendFunction { 
+                blend_method,
+                value,
+                arg: cell_ref.clone().into_static(),
+            }),
+            interpolate,
+        })
+}
+
+/// Parses an BlendExpr if it is a Binary variant.
+pub fn binary_blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
+    let (color_space, suc) = atomic_ignore_whitespace(
+            postfix(
+                color_space,
+                char('_')))
         (text)?
         .take_value();
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
@@ -172,8 +234,8 @@ pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
             blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                 color_space,
                 blend_method,
-                source: refs[0].clone().into_static(),
-                target: refs[1].clone().into_static(),
+                arg_1: refs[0].clone().into_static(),
+                arg_2: refs[1].clone().into_static(),
             }),
             interpolate,
         })
@@ -184,9 +246,60 @@ pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
 // blend_function
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Parses an BinaryBlendFunction.
+/// Parses an BlendFunction.
 pub fn blend_function<'t>(text: &'t str) -> ParseResult<'t, BlendFunction> {
-    let (color_space, suc) = atomic_ignore_whitespace(postfix(color_space, char('_')))
+    let unary = unary_blend_function(text);
+    if unary.is_ok() {
+        return unary.map_value(BlendFunction::Unary);
+    }
+
+    binary_blend_function
+        (text)
+        .map_value(BlendFunction::Binary)
+}
+
+/// Parses an UnaryBlendFunction.
+pub fn unary_blend_function<'t>(text: &'t str)
+    -> ParseResult<'t, UnaryBlendFunction>
+{
+    let (blend_method, suc) = postfix(
+            unary_blend_method,
+            postfix(char('('), maybe(whitespace)))
+        (text)?
+        .take_value();
+
+    let (cell_ref, suc) = postfix(
+            cell_ref,
+            circumfix(
+                char(','),
+                maybe(whitespace)))
+        (suc.rest)
+        .with_join_previous(suc, text)?
+        .take_value();
+
+    let (value, suc) = float::<f32>("f32")
+        (suc.rest)
+        .with_join_previous(suc, text)?
+        .take_value();
+
+    prefix(char(')'), maybe(whitespace))
+        (suc.rest)
+        .with_join_previous(suc, text)
+        .map_value(|_| UnaryBlendFunction { 
+            blend_method,
+            value,
+            arg: cell_ref.clone().into_static(),
+        })
+}
+
+/// Parses an BinaryBlendFunction.
+pub fn binary_blend_function<'t>(text: &'t str)
+    -> ParseResult<'t, BinaryBlendFunction>
+{
+    let (color_space, suc) = atomic_ignore_whitespace(
+            postfix(
+                color_space,
+                char('_')))
         (text)?
         .take_value();
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
@@ -210,18 +323,39 @@ pub fn blend_function<'t>(text: &'t str) -> ParseResult<'t, BlendFunction> {
     prefix(char(')'), maybe(whitespace))
         (suc.rest)
         .with_join_previous(suc, text)
-        .map_value(|_| BlendFunction::Binary(BinaryBlendFunction { 
+        .map_value(|_| BinaryBlendFunction { 
             color_space,
             blend_method,
-            source: refs[0].clone().into_static(),
-            target: refs[1].clone().into_static(),
-        }))
+            arg_1: refs[0].clone().into_static(),
+            arg_2: refs[1].clone().into_static(),
+        })
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // blend_method
 ////////////////////////////////////////////////////////////////////////////////
+
+/// Parses a UnaryBlendMethod.
+pub fn unary_blend_method<'t>(text: &'t str)
+    -> ParseResult<'t, UnaryBlendMethod>
+{
+    any_literal_map_once(
+            literal_ignore_ascii_case,
+            "blend method",
+            vec![
+                ("set_red",      UnaryBlendMethod::SetRed),
+                ("set_green",    UnaryBlendMethod::SetGreen),
+                ("set_blue",     UnaryBlendMethod::SetBlue),
+                ("hue_shift",    UnaryBlendMethod::HueShift),
+                ("set_hue",      UnaryBlendMethod::SetHue),
+                ("saturate",     UnaryBlendMethod::Saturate),
+                ("desaturate",   UnaryBlendMethod::Desaturate),
+                ("lighten",      UnaryBlendMethod::Lighten),
+                ("darken",       UnaryBlendMethod::Darken),
+            ])
+        (text)
+}
 
 /// Parses a BinaryBlendMethod.
 pub fn binary_blend_method<'t>(text: &'t str)
