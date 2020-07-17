@@ -60,6 +60,7 @@ impl AtmaOptions {
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // CommonOptions
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,16 +148,12 @@ pub enum CommandOption {
     
     /// Delete colors and ramps from a palette.
     Delete {
-        // TODO: Consider generalizing this to a string so we can parse simpler
-        // selection terms?
         /// The selection of palette cells to export.
         selection: Option<CellSelection<'static>>,
     },
 
     /// Move colors and ramps in a palette.
     Move {
-        // TODO: Consider generalizing this to a string so we can parse simpler
-        // selection terms?
         /// The selection of palette cells to export.
         selection: Option<CellSelection<'static>>,
 
@@ -234,6 +231,7 @@ pub enum NewOption {
     },
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // ExportOption
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,6 +246,19 @@ pub enum SetOption {
 
         /// The name to assign.
         name: Option<String>,
+    },
+
+    /// Assign or unassign selected cells to a group.
+    Group {
+        /// The selection to assign or unassign.
+        selection: CellSelection<'static>,
+
+        /// The name to assign.
+        name: Option<String>,
+
+        /// Unassign the group from the selected cells.
+        #[structopt(long = "remove")]
+        remove: bool
     },
 
     /// Assign a color expression to a cell.

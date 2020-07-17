@@ -10,17 +10,18 @@
 
 // Local imports.
 use crate::cell::CellRef;
-use crate::cell::CellSelection;
 use crate::cell::CellSelector;
-use crate::cell::PositionSelector;
 use crate::command::AtmaOptions;
 use crate::command::CommandOption;
 use crate::command::ExportOption;
 use crate::command::NewOption;
 use crate::command::SetOption;
+use crate::command::new::new_config;
+use crate::command::new::new_settings;
+use crate::command::new::new_palette;
+use crate::command::export_png::write_png;
 use crate::Config;
 use crate::DEFAULT_CONFIG_PATH;
-use crate::error::FileError;
 use crate::palette::Palette;
 use crate::Settings;
 use crate::utility::normalize_path;
@@ -31,7 +32,6 @@ use anyhow::anyhow;
 
 // Standard library imports.
 use std::path::PathBuf;
-use std::path::Path;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,8 +194,18 @@ pub fn dispatch(
         Set { set_option } => match set_option {
             SetOption::Name { position_selector, name } => {
                 let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
-                
+
                 pal.set_name(name, position_selector)?;
+
+                pal.write_to_load_path()
+                    .map(|_| ())
+                    .context("Failed to write palette")
+            },
+
+            SetOption::Group { selection, name, remove } => {
+                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+
+                pal.set_group(name, selection, remove)?;
 
                 pal.write_to_load_path()
                     .map(|_| ())
@@ -337,130 +347,3 @@ pub fn dispatch(
     }
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-// New command support
-////////////////////////////////////////////////////////////////////////////////
-
-/// Returns true if a FileError has ErrorKind::AlreadyExists.
-fn already_exists(e: &FileError) -> bool {
-    e.is_io_error_kind(std::io::ErrorKind::AlreadyExists)
-}
-
-/// Initializes a new palette.
-fn new_palette(
-    path: PathBuf,
-    set_active: bool,
-    no_history: bool,
-    name: Option<String>,
-    settings: &mut Settings)
-    -> Result<(), anyhow::Error>
-{
-    use crate::error::FileErrorContext as _;
-
-    let mut palette = Palette::new().with_load_path(path);
-
-    if set_active {
-        settings.active_palette = palette
-            .load_path()
-            .map(ToOwned::to_owned);
-        let _ = settings.write_to_load_path()?;
-    }
-
-    if !no_history { palette = palette.with_history(); }
-    if let Some(name) = name {
-        let _ = palette.inner_mut().assign_name(name, PositionSelector::ALL)?;
-    }
-
-    let res = palette.write_to_load_path_if_new();
-    if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
-        info!("Palette file already exists.");
-        debug!("Palette {:?}", palette.load_path());
-    } else {
-        let _ = res.with_context(|| 
-            if let Some(path) = palette.load_path() {
-                format!("Error writing palette file: {}", path.display())
-            } else {
-                format!("Error writing palette file")
-            })?;
-    }
-    Ok(())
-}
-
-/// Initializes a new config file.
-fn new_config(path: PathBuf) -> Result<(), FileError> {
-    use crate::error::FileErrorContext as _;
-
-    let new = Config::new().with_load_path(path);
-
-    let res = new.write_to_load_path_if_new();
-    if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
-        info!("Config file already exists.");
-        debug!("Config {:?}", new.load_path());
-    } else {
-        let _ = res.with_context(|| 
-            if let Some(path) = new.load_path() {
-                format!("Error writing config file: {}", path.display())
-            } else {
-                format!("Error writing config file")
-            })?;
-    }
-    Ok(())
-}
-
-/// Initializes a new settings file.
-fn new_settings(path: PathBuf) -> Result<(), FileError> {
-    use crate::error::FileErrorContext as _;
-
-    let new = Settings::new().with_load_path(path);
-
-    let res = new.write_to_load_path_if_new();
-    if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
-        info!("Settings file already exists.");
-        debug!("Settings {:?}", new.load_path());
-    } else {
-        let _ = res.with_context(|| 
-            if let Some(path) = new.load_path() {
-                format!("Error writing settings file: {}", path.display())
-            } else {
-                format!("Error writing settings file")
-            })?;
-    }
-    Ok(())
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Export command support
-////////////////////////////////////////////////////////////////////////////////
-
-#[cfg(not(feature = "png"))]
-fn write_png<'a>(palette: &Palette, selection: CellSelection<'a>, path: &Path)
-    -> Result<(), anyhow::Error>
-{
-    Err(anyhow!("Export using PNG format is unsupported."))
-}
-
-#[cfg(feature = "png")]
-fn write_png<'a>(palette: &Palette, selection: CellSelection<'a>, path: &Path)
-    -> Result<(), anyhow::Error>
-{
-    let mut pal_data = Vec::new();
-    let index_selection = selection.resolve(palette.inner());
-    for idx in index_selection {
-        if let Ok(Some(c)) = palette.inner().color(&CellRef::Index(idx)) {
-            pal_data.extend(&c.rgb_octets());
-        }
-    }
-
-    let file = std::fs::File::create(path)?;
-    let ref mut w = std::io::BufWriter::new(file);
-
-    let mut encoder = png::Encoder::new(w, 1, 1);
-    encoder.set_color(png::ColorType::Indexed);
-    encoder.set_depth(png::BitDepth::Eight);
-    encoder.set_palette(pal_data);
-    let mut writer = encoder.write_header()?;
-    writer.write_image_data(&[0])?;
-    println!("Palette exported to {}", path.display());
-    Ok(())
-}

@@ -13,6 +13,10 @@ mod ancillary;
 mod dispatch;
 mod option;
 
+/// Public modules.
+pub mod new;
+pub mod export_png;
+
 // Exports.
 pub use ancillary::*;
 pub use dispatch::*;

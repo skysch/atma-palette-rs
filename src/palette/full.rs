@@ -285,7 +285,7 @@ impl Palette {
                     });
 
                     // Assign position.
-                    if !positioning.is_none() { 
+                    if !positioning.is_none() {
                         ops.push(AssignPosition {
                             cell_ref: CellRef::Index(idx),
                             position: next.clone(),
@@ -494,8 +494,7 @@ impl Palette {
         self.inner.set_position_cursor(position)
     }
 
-
-    /// Assigns a name to a position selector.
+    /// Assigns or unassigns a name to a position selector.
     pub fn set_name<T>(
         &mut self,
         name: Option<T>,
@@ -504,12 +503,32 @@ impl Palette {
         where T: Into<Cow<'static, str>>
     {
         use Operation::*;
-        let ops = match name {
-            Some(name) => [AssignName { name: name.into(), selector }],
-            None => [UnassignName { selector }],
+        let op = match name {
+            Some(name) => AssignName { name: name.into(), selector },
+            None => UnassignName { selector },
         };
         
-        self.apply_operations(&ops)
+        self.apply_operations(&[op])
+    }
+
+    /// Assigns or unassigns a group to a selection.
+    pub fn set_group<'a, T>(
+        &mut self,
+        name: Option<T>,
+        selection: CellSelection<'a>,
+        remove: bool)
+        -> Result<(), PaletteError>
+        where T: Into<Cow<'static, str>>
+    {
+        use Operation::*;
+        let index_selection = selection.resolve(self.inner());    
+        let mut ops: Vec<Operation> = Vec::new();
+
+        for idx in index_selection {
+
+        }
+
+        self.apply_operations(&ops[..])
     }
 
     ////////////////////////////////////////////////////////////////////////////
