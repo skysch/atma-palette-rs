@@ -28,6 +28,7 @@
     atma move [SELECTION]..
         [--to POSITIONING]
 
+    atma set name POSITION_SELECTOR [name]
     atma set expr CELL_REF INSERT_EXPR
     atma set cursor [POSITION]
     atma set history [enable|disable|clear]
@@ -50,7 +51,7 @@
     atma import parameters
     atma import png
     
-    atma set name POSITION_SELECTOR [name]
+    
     atma set group CELL_REF [name]
     
 

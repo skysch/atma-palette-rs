@@ -192,8 +192,14 @@ pub fn dispatch(
         // Set
         ////////////////////////////////////////////////////////////////////////
         Set { set_option } => match set_option {
-            SetOption::Name { position_selector, name, add_group } => {
-                unimplemented!();
+            SetOption::Name { position_selector, name } => {
+                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                
+                pal.set_name(name, position_selector)?;
+
+                pal.write_to_load_path()
+                    .map(|_| ())
+                    .context("Failed to write palette")
             },
 
             SetOption::Expr { at, expr } => {

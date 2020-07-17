@@ -495,6 +495,23 @@ impl Palette {
     }
 
 
+    /// Assigns a name to a position selector.
+    pub fn set_name<T>(
+        &mut self,
+        name: Option<T>,
+        selector: PositionSelector)
+        -> Result<(), PaletteError>
+        where T: Into<Cow<'static, str>>
+    {
+        use Operation::*;
+        let ops = match name {
+            Some(name) => [AssignName { name: name.into(), selector }],
+            None => [UnassignName { selector }],
+        };
+        
+        self.apply_operations(&ops)
+    }
+
     ////////////////////////////////////////////////////////////////////////////
     // Operations
     ////////////////////////////////////////////////////////////////////////////

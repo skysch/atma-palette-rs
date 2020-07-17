@@ -248,20 +248,15 @@ pub enum SetOption {
 
         /// The name to assign.
         name: Option<String>,
-
-        /// Set the name as part of a group.
-        #[structopt(long = "add_group")]
-        add_group: bool,
     },
 
     /// Assign a color expression to a cell.
     Expr {
+        /// The cell to set the expression for.
+        at: CellRef<'static>,
+
         /// The color expression to set.
         expr: InsertExpr,
-
-        /// The cell to set the expression for.
-        #[structopt(long = "at")]
-        at: CellRef<'static>,
     },
 
     /// Sets the palette cursor position.

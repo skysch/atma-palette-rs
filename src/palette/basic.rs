@@ -702,7 +702,7 @@ impl BasicPalette {
         }
     }
 
-    /// Assigns a name to a position.
+    /// Assigns a name to a position selector.
     pub fn assign_name<T>(
         &mut self,
         name: T,
