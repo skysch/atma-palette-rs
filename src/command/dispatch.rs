@@ -192,14 +192,20 @@ pub fn dispatch(
         // Set
         ////////////////////////////////////////////////////////////////////////
         Set { set_option } => match set_option {
-            SetOption::Name { position_selector, name } => unimplemented!(),
+            SetOption::Name { position_selector, name, add_group } => {
+                unimplemented!();
+            },
+
+            SetOption::Expr { expr, at } => {
+                unimplemented!();
+            },
 
             SetOption::Cursor { position } => {
                 let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
                 let _ = pal.set_position_cursor(position);
                 pal.write_to_load_path()
                     .map(|_| ())
-                    .context("Failed to write palette")                
+                    .context("Failed to write palette")
             }
 
             SetOption::History { history_set_option } => {
@@ -420,7 +426,7 @@ fn write_png<'a>(palette: &Palette, selection: CellSelection<'a>, path: &Path)
     -> Result<(), anyhow::Error>
 {
     let mut pal_data = Vec::new();
-    let index_selection = selection.resolve(palette.inner());    
+    let index_selection = selection.resolve(palette.inner());
     for idx in index_selection {
         if let Ok(Some(c)) = palette.inner().color(&CellRef::Index(idx)) {
             pal_data.extend(&c.rgb_octets());
