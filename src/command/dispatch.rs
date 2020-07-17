@@ -118,6 +118,12 @@ pub fn dispatch(
                     {
                         print!(" \"{}\"", name);
                     }
+
+                    for group in pal.inner()
+                        .assigned_groups(&CellRef::Index(idx))?
+                    {
+                        print!(" \"{}\"", group);
+                    }
                     println!();
                 } else {
                     println!("{:4X} invalid color", idx);

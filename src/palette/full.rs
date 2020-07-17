@@ -523,9 +523,21 @@ impl Palette {
         use Operation::*;
         let index_selection = selection.resolve(self.inner());    
         let mut ops: Vec<Operation> = Vec::new();
+        let name = name.map(Into::into);
 
-        for idx in index_selection {
+        for cell_idx in index_selection {
+            let cell_ref = CellRef::Index(cell_idx);
+            let idx = None;
+            match (name.as_ref(), remove) {
+                (Some(g), true)  => ops.push(
+                    UnassignGroup { cell_ref, group: g.clone() }),
+                
+                (Some(g), false) => ops.push(
+                    AssignGroup { cell_ref, group: g.clone(), idx }),
 
+                (None,    true)  => ops.push(ClearGroups { cell_ref }),
+                (None,    false) => (),
+            }
         }
 
         self.apply_operations(&ops[..])

@@ -397,6 +397,20 @@ impl BasicPalette {
             })
     }
 
+    /// Returns the name of each group assigned to the given cell reference.
+    pub fn assigned_groups<'name>(&self, cell_ref: &CellRef<'name>)
+        -> Result<Vec<&Cow<'static, str>>, PaletteError>
+    {
+        let idx = self.resolve_ref_to_index(cell_ref)?;
+        Ok(self.groups
+            .iter()
+            .filter_map(|(k, v)| if v.contains(&idx) {
+                Some(k)
+            } else {
+                None
+            })
+            .collect())
+    }
 
     /// Returns true if the given group index is assigned in the palette.
     pub fn is_assigned_group(&self, group: &str, idx: u32) -> bool {
