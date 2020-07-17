@@ -211,7 +211,14 @@ pub fn dispatch(
             },
 
             SetOption::ActivePalette { path } => {
-                settings.active_palette = path;
+                if let Some(path) = path {
+                    settings.active_palette = Some(normalize_path(
+                        cur_dir,
+                        path));
+                } else {
+                    settings.active_palette = None;
+                }
+
                 settings.write_to_load_path()
                     .map(|_| ())
                     .context("Failed to write settings file")

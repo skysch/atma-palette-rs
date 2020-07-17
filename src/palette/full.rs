@@ -473,8 +473,11 @@ impl Palette {
     /// Changes the palette's history setting.
     pub fn set_history<'name>(&mut self, setting: HistorySetOption) {
         match setting {
-            HistorySetOption::Clear |
-            HistorySetOption::Enable => {
+            HistorySetOption::Clear => {
+                self.history = Some(History::new());
+            },
+
+            HistorySetOption::Enable => if self.history.is_none() {
                 self.history = Some(History::new());
             },
 
