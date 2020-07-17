@@ -196,8 +196,21 @@ pub fn dispatch(
                 unimplemented!();
             },
 
-            SetOption::Expr { expr, at } => {
-                unimplemented!();
+            SetOption::Expr { at, expr } => {
+                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+
+                let mut exprs = expr.exprs(pal.inner())?;
+                if exprs.len() > 1 {
+                    return Err(anyhow!("The `set` command does not support \
+                        ramp expressions."));
+                }
+                
+                *pal.cell_mut(&at)?.expr_mut() = exprs.pop()
+                    .ok_or(anyhow!("No expression to set."))?;
+
+                pal.write_to_load_path()
+                    .map(|_| ())
+                    .context("Failed to write palette")
             },
 
             SetOption::Cursor { position } => {

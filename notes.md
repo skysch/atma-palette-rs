@@ -28,12 +28,13 @@
     atma move [SELECTION]..
         [--to POSITIONING]
 
-    atma set cursor [Position]
+    atma set expr CELL_REF INSERT_EXPR
+    atma set cursor [POSITION]
     atma set history [enable|disable|clear]
-    atma set active_palette [path]
-    atma set delete_cursor_behavior CURSOR_BEHAVIOR
-    atma set insert_cursor_behavior CURSOR_BEHAVIOR
-    atma set move_cursor_behavior CURSOR_BEHAVIOR
+    atma set active-palette [PATH]
+    atma set delete-cursor-behavior CURSOR_BEHAVIOR
+    atma set insert-cursor-behavior CURSOR_BEHAVIOR
+    atma set move-cursor-behavior CURSOR_BEHAVIOR
 
     atma undo [COUNT]
     atma redo [COUNT]
@@ -51,7 +52,7 @@
     
     atma set name POSITION_SELECTOR [name]
     atma set group CELL_REF [name]
-    atma set expr CELL_REF [SetExpr]
+    
 
 
 

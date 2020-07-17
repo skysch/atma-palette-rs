@@ -11,6 +11,7 @@
 
 // Local library imports.
 use crate::cell::CellSelection;
+use crate::cell::CellRef;
 use crate::cell::Position;
 use crate::cell::PositionSelector;
 use crate::command::Positioning;
@@ -258,9 +259,9 @@ pub enum SetOption {
         /// The color expression to set.
         expr: InsertExpr,
 
-        /// The position of the cell to set.
+        /// The cell to set the expression for.
         #[structopt(long = "at")]
-        at: Positioning,
+        at: CellRef<'static>,
     },
 
     /// Sets the palette cursor position.
