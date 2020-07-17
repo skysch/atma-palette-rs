@@ -28,6 +28,13 @@
     atma move [SELECTION]..
         [--to POSITIONING]
 
+    atma set cursor [Position]
+    atma set history [enable|disable|clear]
+    atma set active_palette [path]
+    atma set delete_cursor_behavior CURSOR_BEHAVIOR
+    atma set insert_cursor_behavior CURSOR_BEHAVIOR
+    atma set move_cursor_behavior CURSOR_BEHAVIOR
+
     atma undo [COUNT]
     atma redo [COUNT]
 
@@ -41,15 +48,10 @@
     atma script SCRIPT_FILE
     atma import parameters
     atma import png
-    atma set name [name] POSITION_SELECTOR..
-    atma set expr [SetExpr] CELL_REF..
-    atma set active_palette [path]
-    atma set cursor [Position]
-    atma set history [enable|disable|clear]
-    atma set delete_cursor_positioning CURSOR_POSITIONING
-    atma set insert_cursor_positioning CURSOR_POSITIONING
-    atma set move_cursor_positioning CURSOR_POSITIONING
-
+    
+    atma set name POSITION_SELECTOR [name]
+    atma set group CELL_REF [name]
+    atma set expr CELL_REF [SetExpr]
 
 
 

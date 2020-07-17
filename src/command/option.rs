@@ -11,7 +11,11 @@
 
 // Local library imports.
 use crate::cell::CellSelection;
+use crate::cell::Position;
+use crate::cell::PositionSelector;
 use crate::command::Positioning;
+use crate::command::CursorBehavior;
+use crate::command::HistorySetOption;
 use crate::palette::InsertExpr;
 
 // External library imports.
@@ -43,6 +47,13 @@ impl AtmaOptions {
     pub fn should_load_palette(&self) -> bool {
         match &self.command {
             CommandOption::New { .. } => false,
+            CommandOption::Set { set_option } => match set_option {
+                SetOption::ActivePalette { .. } |
+                SetOption::DeleteCursorBehavior { .. } |
+                SetOption::InsertCursorBehavior { .. } |
+                SetOption::MoveCursorBehavior { .. } => false,
+                _ => true,
+            },
             _ => true,
         }
     }
@@ -153,10 +164,12 @@ pub enum CommandOption {
         to: Option<Positioning>
     },
 
-    /// Set color expressions, names, or metadata for cells.
-    Set,
-    /// Unset color expressions, names, or metadata for cells.
-    Unset,
+    /// Change settings, or assign color expressions, names, or metadata to
+    /// cells.
+    Set {
+        #[structopt(subcommand)]
+        set_option: SetOption,
+    },
     
     /// Revert previous operations.
     Undo {
@@ -219,6 +232,63 @@ pub enum NewOption {
         path: Option<PathBuf>,
     },
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// ExportOption
+////////////////////////////////////////////////////////////////////////////////
+/// Options for the set command.
+#[derive(Debug, Clone)]
+#[derive(StructOpt)]
+pub enum SetOption {
+    /// Assign or unassign a name to a position selector.
+    Name {
+        /// The position selector to name.
+        position_selector: PositionSelector,
+
+        /// The name to assign.
+        name: Option<String>,
+    },
+
+    // Expr,
+
+    /// Sets the palette cursor position.
+    Cursor {
+        /// The cursor position.
+        position: Position,
+    },
+
+    /// Sets the history for the palette.
+    History {
+        /// The history setting.
+        history_set_option: HistorySetOption,
+    },
+
+    /// Sets the active palette.
+    ActivePalette {
+        /// The path of the active palette.
+        #[structopt(parse(from_os_str))]
+        path: Option<PathBuf>,
+    },
+
+    /// Sets the cursor positioning behavior for the delete command.
+    DeleteCursorBehavior {
+        /// The behavior of the cursor.
+        cursor_behavior: Option<CursorBehavior>,
+    },
+
+    /// Sets the cursor positioning behavior for the delete command.
+    InsertCursorBehavior {
+        /// The behavior of the cursor.
+        cursor_behavior: Option<CursorBehavior>,
+    },
+
+    /// Sets the cursor positioning behavior for the delete command.
+    MoveCursorBehavior {
+        /// The behavior of the cursor.
+        cursor_behavior: Option<CursorBehavior>,
+    },
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // ExportOption

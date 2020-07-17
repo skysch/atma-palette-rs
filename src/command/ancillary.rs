@@ -115,3 +115,37 @@ impl std::str::FromStr for Positioning {
     }
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// HistorySetOption
+////////////////////////////////////////////////////////////////////////////////
+/// Option parse result for setting palette history.
+#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize)]
+pub enum HistorySetOption {
+    /// Enables the palette history.
+    Enable,
+    /// Disables and clears the palette history.
+    Disable,
+    /// Clears the palette history.
+    Clear,
+}
+
+impl std::str::FromStr for HistorySetOption {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        any_literal_map_once(
+                literal_ignore_ascii_case,
+                "",
+                vec![
+                    ("enable",  HistorySetOption::Enable),
+                    ("disable", HistorySetOption::Disable),
+                    ("clear",   HistorySetOption::Clear),
+                ])
+            (text)
+            .end_of_text()
+            .source_for("expected 'enable', 'disable', or 'clear'.")
+            .finish()
+    }
+}

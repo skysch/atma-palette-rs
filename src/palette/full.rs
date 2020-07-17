@@ -14,14 +14,15 @@ use crate::cell::CellRef;
 use crate::cell::CellSelection;
 use crate::cell::Position;
 use crate::cell::PositionSelector;
-use crate::command::Positioning;
 use crate::command::CursorBehavior;
+use crate::command::HistorySetOption;
+use crate::command::Positioning;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
 use crate::error::PaletteError;
 use crate::palette::BasicPalette;
-use crate::palette::InsertExpr;
 use crate::palette::History;
+use crate::palette::InsertExpr;
 use crate::palette::Operation;
 
 // External library imports.
@@ -393,7 +394,7 @@ impl Palette {
                 => if let Some(position) = saved_position
             {
                 ops.push(SetPositionCursor { position });
-            }
+            },
             
             CursorBehavior::MoveToOpen => if let Some(position) = self.inner
                 .unoccupied_position_or_next(Position::ZERO)
@@ -403,7 +404,6 @@ impl Palette {
         }
         self.apply_operations(&ops[..])
     }
-
 
     /// Moves the selected cells within the palette.
     pub fn move_selection<'name>(
@@ -469,6 +469,28 @@ impl Palette {
         }
         self.apply_operations(&ops[..])
     }
+
+    /// Changes the palette's history setting.
+    pub fn set_history<'name>(&mut self, setting: HistorySetOption) {
+        match setting {
+            HistorySetOption::Clear |
+            HistorySetOption::Enable => {
+                self.history = Some(History::new());
+            },
+
+            HistorySetOption::Disable => {
+                self.history = None;
+            },
+        }
+    }
+
+    /// Sets the palette's `Position` cursor, returning its previous value.
+    pub fn set_position_cursor<'name>(&mut self, position: Position)
+        -> Position
+    {
+        self.inner.set_position_cursor(position)
+    }
+
 
     ////////////////////////////////////////////////////////////////////////////
     // Operations

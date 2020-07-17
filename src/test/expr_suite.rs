@@ -341,7 +341,7 @@ fn interpolate_range_match() {
         }));
 
     assert_eq!(
-        interpolate_range_linear("linear( rgb )abcd"),
+        interpolate_range("linear( rgb )abcd"),
         Ok(Success {
             value: InterpolateRange {
                 color_space: ColorSpace::Rgb,

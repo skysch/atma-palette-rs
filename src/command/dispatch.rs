@@ -17,6 +17,7 @@ use crate::command::AtmaOptions;
 use crate::command::CommandOption;
 use crate::command::ExportOption;
 use crate::command::NewOption;
+use crate::command::SetOption;
 use crate::Config;
 use crate::DEFAULT_CONFIG_PATH;
 use crate::error::FileError;
@@ -190,11 +191,53 @@ pub fn dispatch(
 
         // Set
         ////////////////////////////////////////////////////////////////////////
-        Set => unimplemented!(),
+        Set { set_option } => match set_option {
+            SetOption::Name { position_selector, name } => unimplemented!(),
 
-        // Unset
-        ////////////////////////////////////////////////////////////////////////
-        Unset => unimplemented!(),
+            SetOption::Cursor { position } => {
+                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                let _ = pal.set_position_cursor(position);
+                pal.write_to_load_path()
+                    .map(|_| ())
+                    .context("Failed to write palette")                
+            }
+
+            SetOption::History { history_set_option } => {
+                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                pal.set_history(history_set_option);
+                pal.write_to_load_path()
+                    .map(|_| ())
+                    .context("Failed to write palette")
+            },
+
+            SetOption::ActivePalette { path } => {
+                settings.active_palette = path;
+                settings.write_to_load_path()
+                    .map(|_| ())
+                    .context("Failed to write settings file")
+            },
+
+            SetOption::DeleteCursorBehavior { cursor_behavior } => {
+                settings.delete_cursor_behavior = cursor_behavior;
+                settings.write_to_load_path()
+                    .map(|_| ())
+                    .context("Failed to write settings file")
+            },
+
+            SetOption::InsertCursorBehavior { cursor_behavior } => {
+                settings.insert_cursor_behavior = cursor_behavior;
+                settings.write_to_load_path()
+                    .map(|_| ())
+                    .context("Failed to write settings file")
+            },
+
+            SetOption::MoveCursorBehavior { cursor_behavior } => {
+                settings.move_cursor_behavior = cursor_behavior;
+                settings.write_to_load_path()
+                    .map(|_| ())
+                    .context("Failed to write settings file")
+            },
+        },
 
         // Undo
         ////////////////////////////////////////////////////////////////////////
