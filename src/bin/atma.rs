@@ -19,11 +19,12 @@ use atma::Logger;
 use atma::Palette;
 use atma::utility::normalize_path;
 
-// External library imports.
-use structopt::StructOpt;
-
+// Standard library imports.
 use log::*;
 use log::LevelFilter;
+
+// External library imports.
+use structopt::StructOpt;
 
 
 ////////////////////////////////////////////////////////////////////////////////

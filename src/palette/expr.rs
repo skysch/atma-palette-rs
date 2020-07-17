@@ -14,7 +14,7 @@ use crate::color::Color;
 use crate::color::Rgb;
 use crate::error::PaletteError;
 use crate::palette::BasicPalette;
-use crate::parse::blend_method;
+use crate::parse::binary_blend_method;
 use crate::parse::color_space;
 use crate::parse::FailureOwned;
 use crate::parse::insert_expr;
@@ -154,7 +154,7 @@ impl std::str::FromStr for InsertExpr {
 #[derive(Debug, Clone, PartialEq)]
 #[derive(Serialize, Deserialize)]
 pub struct BlendExpr {
-    /// the blend function
+    /// The blend function.
     pub blend_fn: BlendFunction,
     /// The blend interpolation.
     pub interpolate: Interpolate,
@@ -173,21 +173,68 @@ impl BlendExpr {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// BlendFunction
+////////////////////////////////////////////////////////////////////////////////
 /// A color blend function.
 #[derive(Debug, Clone, PartialEq)]
 #[derive(Serialize, Deserialize)]
-pub struct BlendFunction {
+pub enum BlendFunction {
+    /// A binary blend function
+    Binary(BinaryBlendFunction),
+}
+
+impl BlendFunction {
+    /// Resolves the source and target references and returns their blended
+    /// result.
+    pub fn apply(
+        &self,
+        basic: &BasicPalette,
+        index_list: &mut HashSet<u32>,
+        int: &Interpolate)
+        -> Result<Option<Color>, PaletteError>
+    {
+        use BlendFunction::*;
+
+        match self {
+            Binary(bin_fn) => bin_fn.apply(basic, index_list, int),
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// UnaryBlendFunction
+////////////////////////////////////////////////////////////////////////////////
+/// A color blend function.
+#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize)]
+pub struct UnaryBlendFunction {
     /// The color space in which to apply the blend method.
     pub color_space: ColorSpace,
     /// The blend method.
-    pub blend_method: BlendMethod,
+    pub blend_method: BinaryBlendMethod,
+    /// The source color of the blend.
+    pub source: CellRef<'static>,
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// BinaryBlendFunction
+////////////////////////////////////////////////////////////////////////////////
+/// A color blend function.
+#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize)]
+pub struct BinaryBlendFunction {
+    /// The color space in which to apply the blend method.
+    pub color_space: ColorSpace,
+    /// The blend method.
+    pub blend_method: BinaryBlendMethod,
     /// The source color of the blend.
     pub source: CellRef<'static>,
     /// The target color of the blend.
     pub target: CellRef<'static>,
 }
 
-impl BlendFunction {
+impl BinaryBlendFunction {
     /// Resolves the source and target references and returns their blended
     /// result.
     pub fn apply(
@@ -216,7 +263,7 @@ impl BlendFunction {
 /// Color blending method.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[derive(Serialize, Deserialize)]
-pub enum BlendMethod {
+pub enum BinaryBlendMethod {
     /// Simple alpha blend of color channels.
     Blend,
     /// Mutiply color channels.
@@ -250,10 +297,10 @@ pub enum BlendMethod {
     LinearLight,
 }
 
-impl BlendMethod {
+impl BinaryBlendMethod {
     /// Applies the blend calculation to the given channel values.
     pub fn apply(&self, a: f32, b: f32) -> f32 {
-        use BlendMethod::*;
+        use BinaryBlendMethod::*;
         match self {
             Blend       => b,
             Multiply    => a * b,
@@ -296,40 +343,40 @@ impl BlendMethod {
     }
 }
 
-impl Default for BlendMethod {
+impl Default for BinaryBlendMethod {
     fn default() -> Self {
-        BlendMethod::Blend
+        BinaryBlendMethod::Blend
     }
 }
 
-impl std::str::FromStr for BlendMethod {
+impl std::str::FromStr for BinaryBlendMethod {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        blend_method(text)
+        binary_blend_method(text)
             .end_of_text()
             .finish()
     }
 }
 
-impl std::fmt::Display for BlendMethod {
+impl std::fmt::Display for BinaryBlendMethod {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            BlendMethod::Blend       => "blend",
-            BlendMethod::Multiply    => "multiply",
-            BlendMethod::Divide      => "divide",
-            BlendMethod::Subtract    => "subtract",
-            BlendMethod::Difference  => "difference",
-            BlendMethod::Screen      => "screen",
-            BlendMethod::Overlay     => "overlay",
-            BlendMethod::HardLight   => "hard_light",
-            BlendMethod::SoftLight   => "soft_light",
-            BlendMethod::ColorDodge  => "color_dodge",
-            BlendMethod::ColorBurn   => "color_burn",
-            BlendMethod::VividLight  => "vivid_light",
-            BlendMethod::LinearDodge => "linear_dodge",
-            BlendMethod::LinearBurn  => "linear_burn",
-            BlendMethod::LinearLight => "linear_light",
+            BinaryBlendMethod::Blend       => "blend",
+            BinaryBlendMethod::Multiply    => "multiply",
+            BinaryBlendMethod::Divide      => "divide",
+            BinaryBlendMethod::Subtract    => "subtract",
+            BinaryBlendMethod::Difference  => "difference",
+            BinaryBlendMethod::Screen      => "screen",
+            BinaryBlendMethod::Overlay     => "overlay",
+            BinaryBlendMethod::HardLight   => "hard_light",
+            BinaryBlendMethod::SoftLight   => "soft_light",
+            BinaryBlendMethod::ColorDodge  => "color_dodge",
+            BinaryBlendMethod::ColorBurn   => "color_burn",
+            BinaryBlendMethod::VividLight  => "vivid_light",
+            BinaryBlendMethod::LinearDodge => "linear_dodge",
+            BinaryBlendMethod::LinearBurn  => "linear_burn",
+            BinaryBlendMethod::LinearLight => "linear_light",
         })
     }
 }
@@ -473,7 +520,7 @@ impl InterpolateRange {
         }
     }
 
-    /// Compute the `BlendExpr`s for the ramp, using the given `BlendFunction`.
+    /// Compute the `BlendExpr`s for the ramp, using the given `BinaryBlendFunction`.
     pub fn blend_exprs(&self, count: u8, blend_fn: &BlendFunction)
         -> Vec<BlendExpr>
     {

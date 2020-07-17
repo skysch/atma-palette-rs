@@ -29,6 +29,7 @@
         [--to POSITIONING]
 
     atma set name POSITION_SELECTOR [name]
+    atma set group CELL_REF [name] [--remove]
     atma set expr CELL_REF INSERT_EXPR
     atma set cursor [POSITION]
     atma set history [enable|disable|clear]
@@ -51,10 +52,6 @@
     atma import parameters
     atma import png
     
-    
-    atma set group CELL_REF [name]
-    
-
 
 
 # Cell selection & Cell selector
@@ -97,21 +94,31 @@ name
     + copy(CellRef)
 
 ## Blend Expr
-    + [rgb_]blend(CellRef, CellRef, [Interpolate])
-    + [rgb_]multiply(CellRef, CellRef, [Interpolate])
-    + [rgb_]divide(CellRef, CellRef, [Interpolate])
-    + [rgb_]subtract(CellRef, CellRef, [Interpolate])
-    + [rgb_]difference(CellRef, CellRef, [Interpolate])
-    + [rgb_]screen(CellRef, CellRef, [Interpolate])
-    + [rgb_]overlay(CellRef, CellRef, [Interpolate])
-    + [rgb_]hard_light(CellRef, CellRef, [Interpolate])
-    + [rgb_]soft_light(CellRef, CellRef, [Interpolate])
-    + [rgb_]color_dodge(CellRef, CellRef, [Interpolate])
-    + [rgb_]color_burn(CellRef, CellRef, [Interpolate])
-    + [rgb_]linear_dodge(CellRef, CellRef, [Interpolate])
-    + [rgb_]linear_burn(CellRef, CellRef, [Interpolate])
-    + [rgb_]vivid_light(CellRef, CellRef, [Interpolate])
-    + [rgb_]linear_light(CellRef, CellRef, [Interpolate])
+    + lighten(CELL_REF, VALUE)
+    + darken(CELL_REF, VALUE)
+    + saturate(CELL_REF, VALUE)
+    + desaturate(CELL_REF, VALUE)
+    + shift_hue(CELL_REF, VALUE)
+    + set_r(CELL_REF, VALUE)
+    + set_g(CELL_REF, VALUE)
+    + set_b(CELL_REF, VALUE)
+    + set_hue(CELL_REF, VALUE)
+
+    + [rgb_]blend(CELL_REF, CELL_REF, [Interpolate])
+    + [rgb_]multiply(CELL_REF, CELL_REF, [Interpolate])
+    + [rgb_]divide(CELL_REF, CELL_REF, [Interpolate])
+    + [rgb_]subtract(CELL_REF, CELL_REF, [Interpolate])
+    + [rgb_]difference(CELL_REF, CELL_REF, [Interpolate])
+    + [rgb_]screen(CELL_REF, CELL_REF, [Interpolate])
+    + [rgb_]overlay(CELL_REF, CELL_REF, [Interpolate])
+    + [rgb_]hard_light(CELL_REF, CELL_REF, [Interpolate])
+    + [rgb_]soft_light(CELL_REF, CELL_REF, [Interpolate])
+    + [rgb_]color_dodge(CELL_REF, CELL_REF, [Interpolate])
+    + [rgb_]color_burn(CELL_REF, CELL_REF, [Interpolate])
+    + [rgb_]linear_dodge(CELL_REF, CELL_REF, [Interpolate])
+    + [rgb_]linear_burn(CELL_REF, CELL_REF, [Interpolate])
+    + [rgb_]vivid_light(CELL_REF, CELL_REF, [Interpolate])
+    + [rgb_]linear_light(CELL_REF, CELL_REF, [Interpolate])
 
 ### [Interpolate]
     f32

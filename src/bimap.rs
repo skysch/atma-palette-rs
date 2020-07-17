@@ -217,7 +217,7 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
     /// Returns an iterator over the left-right pairs within the range keyed by
     /// the left in left-ascending order.
     pub fn left_range<'a, A>(&'a self, range: A) -> LeftRange<'a, L, R>
-        where A: std::ops::RangeBounds<L>
+        where A: core::ops::RangeBounds<L>
     {
         LeftRange {
             inner: self.forward.range(range),
@@ -227,7 +227,7 @@ impl<L, R> BiMap<L, R> where L: Ord, R: Ord {
     /// Returns an iterator over the left-right pairs within the range keyed by
     /// the right in right-ascending order.
     pub fn right_range<'a, A>(&'a self, range: A) -> RightRange<'a, L, R>
-        where A: std::ops::RangeBounds<R>
+        where A: core::ops::RangeBounds<R>
     {
         RightRange {
             inner: self.reverse.range(range),

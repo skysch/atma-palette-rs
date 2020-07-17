@@ -12,8 +12,8 @@
 use crate::cell::CellRef;
 use crate::cell::Position;
 use crate::palette::BlendExpr;
-use crate::palette::BlendFunction;
-use crate::palette::BlendMethod;
+use crate::palette::BinaryBlendFunction;
+use crate::palette::BinaryBlendMethod;
 use crate::color::Rgb;
 use crate::palette::ColorSpace;
 use crate::palette::InsertExpr;
@@ -35,9 +35,9 @@ fn insert_expr_ramp_match() {
         Ok(Success {
             value: InsertExpr::Ramp {
                 count: 3,
-                blend_fn: BlendFunction {
+                blend_fn: BinaryBlendFunction {
                     color_space: ColorSpace::default(),
-                    blend_method: BlendMethod::Overlay,
+                    blend_method: BinaryBlendMethod::Overlay,
                     source: CellRef::Index(0),
                     target: CellRef::Index(1),
                 },
@@ -52,9 +52,9 @@ fn insert_expr_ramp_match() {
         Ok(Success {
             value: InsertExpr::Ramp {
                 count: 3,
-                blend_fn: BlendFunction {
+                blend_fn: BinaryBlendFunction {
                     color_space: ColorSpace::default(),
-                    blend_method: BlendMethod::Overlay,
+                    blend_method: BinaryBlendMethod::Overlay,
                     source: CellRef::Index(0),
                     target: CellRef::Index(1),
                 },
@@ -74,9 +74,9 @@ fn insert_expr_ramp_match() {
         Ok(Success {
             value: InsertExpr::Ramp {
                 count: 3,
-                blend_fn: BlendFunction {
+                blend_fn: BinaryBlendFunction {
                     color_space: ColorSpace::default(),
-                    blend_method: BlendMethod::Overlay,
+                    blend_method: BinaryBlendMethod::Overlay,
                     source: CellRef::Index(0),
                     target: CellRef::Index(1),
                 },
@@ -96,9 +96,9 @@ fn insert_expr_ramp_match() {
         Ok(Success {
             value: InsertExpr::Ramp {
                 count: 3,
-                blend_fn: BlendFunction {
+                blend_fn: BinaryBlendFunction {
                     color_space: ColorSpace::default(),
-                    blend_method: BlendMethod::Overlay,
+                    blend_method: BinaryBlendMethod::Overlay,
                     source: CellRef::Index(0),
                     target: CellRef::Index(1),
                 },
@@ -118,9 +118,9 @@ fn insert_expr_ramp_match() {
         Ok(Success {
             value: InsertExpr::Ramp {
                 count: 3,
-                blend_fn: BlendFunction {
+                blend_fn: BinaryBlendFunction {
                     color_space: ColorSpace::default(),
-                    blend_method: BlendMethod::Overlay,
+                    blend_method: BinaryBlendMethod::Overlay,
                     source: CellRef::Index(0),
                     target: CellRef::Index(1),
                 },
@@ -144,9 +144,9 @@ fn insert_expr_blend_match() {
         insert_expr("blend(:0,:1,0.5)abcd"),
         Ok(Success {
             value: InsertExpr::Blend(BlendExpr {
-                blend_fn: BlendFunction {
+                blend_fn: BinaryBlendFunction {
                     color_space: ColorSpace::default(),
-                    blend_method: BlendMethod::Blend,
+                    blend_method: BinaryBlendMethod::Blend,
                     source: CellRef::Index(0),
                     target: CellRef::Index(1),
                 },
@@ -188,9 +188,9 @@ fn blend_expr_match() {
         blend_expr("blend(:0,:1,0.5)abcd"),
         Ok(Success {
             value: BlendExpr {
-                blend_fn: BlendFunction {
+                blend_fn: BinaryBlendFunction {
                     color_space: ColorSpace::default(),
-                    blend_method: BlendMethod::Blend,
+                    blend_method: BinaryBlendMethod::Blend,
                     source: CellRef::Index(0),
                     target: CellRef::Index(1),
                 },
@@ -208,9 +208,9 @@ fn blend_expr_match() {
         blend_expr("rgb_subtract(:0,:1,linear( 0.5 ))abcd"),
         Ok(Success {
             value: BlendExpr {
-                blend_fn: BlendFunction {
+                blend_fn: BinaryBlendFunction {
                     color_space: ColorSpace::Rgb,
-                    blend_method: BlendMethod::Subtract,
+                    blend_method: BinaryBlendMethod::Subtract,
                     source: CellRef::Index(0),
                     target: CellRef::Index(1),
                 },
@@ -232,9 +232,9 @@ fn blend_function_match() {
     assert_eq!(
         blend_function("blend(:0,:1)abcd"),
         Ok(Success {
-            value: BlendFunction {
+            value: BinaryBlendFunction {
                 color_space: ColorSpace::default(),
-                blend_method: BlendMethod::Blend,
+                blend_method: BinaryBlendMethod::Blend,
                 source: CellRef::Index(0),
                 target: CellRef::Index(1),
             },
@@ -245,9 +245,9 @@ fn blend_function_match() {
     assert_eq!(
         blend_function("rgb_vivid_light(:0.1.1,whatever)abcd"),
         Ok(Success {
-            value: BlendFunction {
+            value: BinaryBlendFunction {
                 color_space: ColorSpace::Rgb,
-                blend_method: BlendMethod::VividLight,
+                blend_method: BinaryBlendMethod::VividLight,
                 source: CellRef::Position(Position { 
                     page: 0,
                     line: 1,
@@ -262,9 +262,9 @@ fn blend_function_match() {
     assert_eq!(
         blend_function("rgb_vivid_light( :0.1.1 , whatever )abcd"),
         Ok(Success {
-            value: BlendFunction {
+            value: BinaryBlendFunction {
                 color_space: ColorSpace::Rgb,
-                blend_method: BlendMethod::VividLight,
+                blend_method: BinaryBlendMethod::VividLight,
                 source: CellRef::Position(Position { 
                     page: 0,
                     line: 1,
@@ -279,9 +279,9 @@ fn blend_function_match() {
     assert_eq!(
         blend_function("color_burn(abc,whatever)abcd"),
         Ok(Success {
-            value: BlendFunction {
+            value: BinaryBlendFunction {
                 color_space: ColorSpace::default(),
-                blend_method: BlendMethod::ColorBurn,
+                blend_method: BinaryBlendMethod::ColorBurn,
                 source: CellRef::Name("abc".into()),
                 target: CellRef::Name("whatever".into()),
             },

@@ -10,9 +10,10 @@
 
 // Local imports.
 use crate::cell::CellRef;
+use crate::palette::BinaryBlendFunction;
 use crate::palette::BlendExpr;
 use crate::palette::BlendFunction;
-use crate::palette::BlendMethod;
+use crate::palette::BinaryBlendMethod;
 use crate::palette::ColorSpace;
 use crate::palette::InsertExpr;
 use crate::palette::Interpolate;
@@ -130,7 +131,7 @@ pub fn insert_expr_ramp<'t>(text: &'t str) -> ParseResult<'t, InsertExpr> {
 // blend_expr
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Parses an BlendFunction.
+/// Parses an BinaryBlendFunction.
 pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
     let (color_space, suc) = atomic_ignore_whitespace(postfix(color_space, char('_')))
         (text)?
@@ -138,7 +139,7 @@ pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
 
     let (blend_method, suc) = postfix(
-            blend_method,
+            binary_blend_method,
             postfix(char('('), maybe(whitespace)))
         (suc.rest)
         .with_join_previous(suc, text)?
@@ -168,12 +169,12 @@ pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
         (suc.rest)
         .with_join_previous(suc, text)
         .map_value(|_| BlendExpr { 
-            blend_fn: BlendFunction {
+            blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                 color_space,
                 blend_method,
                 source: refs[0].clone().into_static(),
                 target: refs[1].clone().into_static(),
-            },
+            }),
             interpolate,
         })
 }
@@ -183,7 +184,7 @@ pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
 // blend_function
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Parses an BlendFunction.
+/// Parses an BinaryBlendFunction.
 pub fn blend_function<'t>(text: &'t str) -> ParseResult<'t, BlendFunction> {
     let (color_space, suc) = atomic_ignore_whitespace(postfix(color_space, char('_')))
         (text)?
@@ -191,7 +192,7 @@ pub fn blend_function<'t>(text: &'t str) -> ParseResult<'t, BlendFunction> {
     let color_space = color_space.unwrap_or(ColorSpace::Rgb);
 
     let (blend_method, suc) = postfix(
-            blend_method,
+            binary_blend_method,
             postfix(char('('), maybe(whitespace)))
         (suc.rest)
         .with_join_previous(suc, text)?
@@ -209,12 +210,12 @@ pub fn blend_function<'t>(text: &'t str) -> ParseResult<'t, BlendFunction> {
     prefix(char(')'), maybe(whitespace))
         (suc.rest)
         .with_join_previous(suc, text)
-        .map_value(|_| BlendFunction { 
+        .map_value(|_| BlendFunction::Binary(BinaryBlendFunction { 
             color_space,
             blend_method,
             source: refs[0].clone().into_static(),
             target: refs[1].clone().into_static(),
-        })
+        }))
 }
 
 
@@ -222,27 +223,29 @@ pub fn blend_function<'t>(text: &'t str) -> ParseResult<'t, BlendFunction> {
 // blend_method
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Parses a BlendMethod.
-pub fn blend_method<'t>(text: &'t str) -> ParseResult<'t, BlendMethod> {
+/// Parses a BinaryBlendMethod.
+pub fn binary_blend_method<'t>(text: &'t str)
+    -> ParseResult<'t, BinaryBlendMethod>
+{
     any_literal_map_once(
             literal_ignore_ascii_case,
             "blend method",
             vec![
-                ("blend",        BlendMethod::Blend),
-                ("multiply",     BlendMethod::Multiply),
-                ("divide",       BlendMethod::Divide),
-                ("subtract",     BlendMethod::Subtract),
-                ("difference",   BlendMethod::Difference),
-                ("screen",       BlendMethod::Screen),
-                ("overlay",      BlendMethod::Overlay),
-                ("hard_light",   BlendMethod::HardLight),
-                ("soft_light",   BlendMethod::SoftLight),
-                ("color_dodge",  BlendMethod::ColorDodge),
-                ("color_burn",   BlendMethod::ColorBurn),
-                ("vivid_light",  BlendMethod::VividLight),
-                ("linear_dodge", BlendMethod::LinearDodge),
-                ("linear_burn",  BlendMethod::LinearBurn),
-                ("linear_light", BlendMethod::LinearLight),
+                ("blend",        BinaryBlendMethod::Blend),
+                ("multiply",     BinaryBlendMethod::Multiply),
+                ("divide",       BinaryBlendMethod::Divide),
+                ("subtract",     BinaryBlendMethod::Subtract),
+                ("difference",   BinaryBlendMethod::Difference),
+                ("screen",       BinaryBlendMethod::Screen),
+                ("overlay",      BinaryBlendMethod::Overlay),
+                ("hard_light",   BinaryBlendMethod::HardLight),
+                ("soft_light",   BinaryBlendMethod::SoftLight),
+                ("color_dodge",  BinaryBlendMethod::ColorDodge),
+                ("color_burn",   BinaryBlendMethod::ColorBurn),
+                ("vivid_light",  BinaryBlendMethod::VividLight),
+                ("linear_dodge", BinaryBlendMethod::LinearDodge),
+                ("linear_burn",  BinaryBlendMethod::LinearBurn),
+                ("linear_light", BinaryBlendMethod::LinearLight),
             ])
         (text)
 }
@@ -252,7 +255,7 @@ pub fn blend_method<'t>(text: &'t str) -> ParseResult<'t, BlendMethod> {
 // color_space
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Parses a BlendMethod.
+/// Parses a BinaryBlendMethod.
 pub fn color_space<'t>(text: &'t str) -> ParseResult<'t, ColorSpace> {
     any_literal_map_once(
             literal_ignore_ascii_case,
