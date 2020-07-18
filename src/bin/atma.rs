@@ -90,7 +90,7 @@ pub fn main_facade() -> Result<(), Error> {
         trace!("Rustc git commit: {}", hash);
     }
     trace!("{:#?}", opts);
-    trace!("{:#?}", config); 
+    trace!("{:#?}", config);
 
     // Log any config loading errors.
     if let Err(e) = config_load_status { 

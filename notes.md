@@ -47,9 +47,9 @@
 
 # Unimplemented Command Syntax
 
+    atma new [--script PATH]
     atma export script [--parametric]
-    atma script SCRIPT_FILE
-    atma import parameters
+    atma import script [--parametric]
     atma import png
     
 

@@ -178,7 +178,7 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
 // Success and Failure
 ////////////////////////////////////////////////////////////////////////////////
 /// A struct representing a successful parse.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Success<'t, V> {
     /// The parsed text.

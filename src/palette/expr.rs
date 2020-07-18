@@ -11,16 +11,16 @@
 // Local imports.
 use crate::cell::CellRef;
 use crate::color::Color;
-use crate::color::Rgb;
 use crate::color::Hsv;
+use crate::color::Rgb;
 use crate::error::PaletteError;
 use crate::palette::BasicPalette;
-use crate::parse::unary_blend_method;
 use crate::parse::binary_blend_method;
 use crate::parse::color_space;
 use crate::parse::FailureOwned;
 use crate::parse::insert_expr;
 use crate::parse::ParseResultExt as _;
+use crate::parse::unary_blend_method;
 
 // External library imports.
 use serde::Deserialize;
@@ -201,7 +201,7 @@ impl BlendFunction {
         use BlendFunction::*;
 
         match self {
-            Unary(un_fn) => un_fn.apply(basic, index_list, int),
+            Unary(un_fn)   => un_fn.apply(basic, index_list, int),
             Binary(bin_fn) => bin_fn.apply(basic, index_list, int),
         }
     }
@@ -232,7 +232,7 @@ pub enum UnaryBlendMethod {
     SetGreen,
     /// Override the blue channel of the source color.
     SetBlue,
-    
+
     /// Shift the hue of the source color.
     HueShift,
     /// Override the hue of the source color.
@@ -338,6 +338,7 @@ impl std::fmt::Display for UnaryBlendMethod {
         })
     }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // BinaryBlendFunction

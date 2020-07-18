@@ -11,10 +11,11 @@
 // Local imports.
 use crate::cell::CellRef;
 use crate::cell::Position;
-use crate::palette::BlendExpr;
+use crate::color::Rgb;
 use crate::palette::BinaryBlendFunction;
 use crate::palette::BinaryBlendMethod;
-use crate::color::Rgb;
+use crate::palette::BlendExpr;
+use crate::palette::BlendFunction;
 use crate::palette::ColorSpace;
 use crate::palette::InsertExpr;
 use crate::palette::Interpolate;
@@ -35,12 +36,12 @@ fn insert_expr_ramp_match() {
         Ok(Success {
             value: InsertExpr::Ramp {
                 count: 3,
-                blend_fn: BinaryBlendFunction {
+                blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                     color_space: ColorSpace::default(),
                     blend_method: BinaryBlendMethod::Overlay,
-                    source: CellRef::Index(0),
-                    target: CellRef::Index(1),
-                },
+                    arg_1: CellRef::Index(0),
+                    arg_2: CellRef::Index(1),
+                }),
                 interpolate: InterpolateRange::default(),
             },
             token: "ramp(3, overlay(:0,:1))",
@@ -52,12 +53,12 @@ fn insert_expr_ramp_match() {
         Ok(Success {
             value: InsertExpr::Ramp {
                 count: 3,
-                blend_fn: BinaryBlendFunction {
+                blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                     color_space: ColorSpace::default(),
                     blend_method: BinaryBlendMethod::Overlay,
-                    source: CellRef::Index(0),
-                    target: CellRef::Index(1),
-                },
+                    arg_1: CellRef::Index(0),
+                    arg_2: CellRef::Index(1),
+                }),
                 interpolate: InterpolateRange {
                     color_space: ColorSpace::default(),
                     interpolate_fn: InterpolateFunction::Linear,
@@ -74,12 +75,12 @@ fn insert_expr_ramp_match() {
         Ok(Success {
             value: InsertExpr::Ramp {
                 count: 3,
-                blend_fn: BinaryBlendFunction {
+                blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                     color_space: ColorSpace::default(),
                     blend_method: BinaryBlendMethod::Overlay,
-                    source: CellRef::Index(0),
-                    target: CellRef::Index(1),
-                },
+                    arg_1: CellRef::Index(0),
+                    arg_2: CellRef::Index(1),
+                }),
                 interpolate: InterpolateRange {
                     color_space: ColorSpace::Rgb,
                     interpolate_fn: InterpolateFunction::Linear,
@@ -96,12 +97,12 @@ fn insert_expr_ramp_match() {
         Ok(Success {
             value: InsertExpr::Ramp {
                 count: 3,
-                blend_fn: BinaryBlendFunction {
+                blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                     color_space: ColorSpace::default(),
                     blend_method: BinaryBlendMethod::Overlay,
-                    source: CellRef::Index(0),
-                    target: CellRef::Index(1),
-                },
+                    arg_1: CellRef::Index(0),
+                    arg_2: CellRef::Index(1),
+                }),
                 interpolate: InterpolateRange {
                     color_space: ColorSpace::Rgb,
                     interpolate_fn: InterpolateFunction::Cubic(3.0, 3.0),
@@ -118,12 +119,12 @@ fn insert_expr_ramp_match() {
         Ok(Success {
             value: InsertExpr::Ramp {
                 count: 3,
-                blend_fn: BinaryBlendFunction {
+                blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                     color_space: ColorSpace::default(),
                     blend_method: BinaryBlendMethod::Overlay,
-                    source: CellRef::Index(0),
-                    target: CellRef::Index(1),
-                },
+                    arg_1: CellRef::Index(0),
+                    arg_2: CellRef::Index(1),
+                }),
                 interpolate: InterpolateRange {
                     color_space: ColorSpace::Rgb,
                     interpolate_fn: InterpolateFunction::Cubic(-3.0, -3.0),
@@ -144,12 +145,12 @@ fn insert_expr_blend_match() {
         insert_expr("blend(:0,:1,0.5)abcd"),
         Ok(Success {
             value: InsertExpr::Blend(BlendExpr {
-                blend_fn: BinaryBlendFunction {
+                blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                     color_space: ColorSpace::default(),
                     blend_method: BinaryBlendMethod::Blend,
-                    source: CellRef::Index(0),
-                    target: CellRef::Index(1),
-                },
+                    arg_1: CellRef::Index(0),
+                    arg_2: CellRef::Index(1),
+                }),
                 interpolate: Interpolate {
                     color_space: ColorSpace::Rgb,
                     interpolate_fn: InterpolateFunction::Linear,
@@ -188,12 +189,12 @@ fn blend_expr_match() {
         blend_expr("blend(:0,:1,0.5)abcd"),
         Ok(Success {
             value: BlendExpr {
-                blend_fn: BinaryBlendFunction {
+                blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                     color_space: ColorSpace::default(),
                     blend_method: BinaryBlendMethod::Blend,
-                    source: CellRef::Index(0),
-                    target: CellRef::Index(1),
-                },
+                    arg_1: CellRef::Index(0),
+                    arg_2: CellRef::Index(1),
+                }),
                 interpolate: Interpolate {
                     color_space: ColorSpace::Rgb,
                     interpolate_fn: InterpolateFunction::Linear,
@@ -208,12 +209,12 @@ fn blend_expr_match() {
         blend_expr("rgb_subtract(:0,:1,linear( 0.5 ))abcd"),
         Ok(Success {
             value: BlendExpr {
-                blend_fn: BinaryBlendFunction {
+                blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                     color_space: ColorSpace::Rgb,
                     blend_method: BinaryBlendMethod::Subtract,
-                    source: CellRef::Index(0),
-                    target: CellRef::Index(1),
-                },
+                    arg_1: CellRef::Index(0),
+                    arg_2: CellRef::Index(1),
+                }),
                 interpolate: Interpolate {
                     color_space: ColorSpace::Rgb,
                     interpolate_fn: InterpolateFunction::Linear,
@@ -232,12 +233,12 @@ fn blend_function_match() {
     assert_eq!(
         blend_function("blend(:0,:1)abcd"),
         Ok(Success {
-            value: BinaryBlendFunction {
+            value: BlendFunction::Binary(BinaryBlendFunction {
                 color_space: ColorSpace::default(),
                 blend_method: BinaryBlendMethod::Blend,
-                source: CellRef::Index(0),
-                target: CellRef::Index(1),
-            },
+                arg_1: CellRef::Index(0),
+                arg_2: CellRef::Index(1),
+            }),
             token: "blend(:0,:1)",
             rest: "abcd",
         }));
@@ -245,16 +246,16 @@ fn blend_function_match() {
     assert_eq!(
         blend_function("rgb_vivid_light(:0.1.1,whatever)abcd"),
         Ok(Success {
-            value: BinaryBlendFunction {
+            value: BlendFunction::Binary(BinaryBlendFunction {
                 color_space: ColorSpace::Rgb,
                 blend_method: BinaryBlendMethod::VividLight,
-                source: CellRef::Position(Position { 
+                arg_1: CellRef::Position(Position { 
                     page: 0,
                     line: 1,
                     column: 1,
                 }),
-                target: CellRef::Name("whatever".into()),
-            },
+                arg_2: CellRef::Name("whatever".into()),
+            }),
             token: "rgb_vivid_light(:0.1.1,whatever)",
             rest: "abcd",
         }));
@@ -262,16 +263,16 @@ fn blend_function_match() {
     assert_eq!(
         blend_function("rgb_vivid_light( :0.1.1 , whatever )abcd"),
         Ok(Success {
-            value: BinaryBlendFunction {
+            value: BlendFunction::Binary(BinaryBlendFunction {
                 color_space: ColorSpace::Rgb,
                 blend_method: BinaryBlendMethod::VividLight,
-                source: CellRef::Position(Position { 
+                arg_1: CellRef::Position(Position { 
                     page: 0,
                     line: 1,
                     column: 1,
                 }),
-                target: CellRef::Name("whatever".into()),
-            },
+                arg_2: CellRef::Name("whatever".into()),
+            }),
             token: "rgb_vivid_light( :0.1.1 , whatever )",
             rest: "abcd",
         }));
@@ -279,12 +280,12 @@ fn blend_function_match() {
     assert_eq!(
         blend_function("color_burn(abc,whatever)abcd"),
         Ok(Success {
-            value: BinaryBlendFunction {
+            value: BlendFunction::Binary(BinaryBlendFunction {
                 color_space: ColorSpace::default(),
                 blend_method: BinaryBlendMethod::ColorBurn,
-                source: CellRef::Name("abc".into()),
-                target: CellRef::Name("whatever".into()),
-            },
+                arg_1: CellRef::Name("abc".into()),
+                arg_2: CellRef::Name("whatever".into()),
+            }),
             token: "color_burn(abc,whatever)",
             rest: "abcd",
         }));

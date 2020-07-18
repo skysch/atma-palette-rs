@@ -14,6 +14,7 @@ mod combinator;
 mod expr;
 mod primitive;
 mod result;
+mod script;
 mod selection;
 
 // Exports.
@@ -22,5 +23,6 @@ pub use self::combinator::*;
 pub use self::expr::*;
 pub use self::primitive::*;
 pub use self::result::*;
+pub use self::script::*;
 pub use self::selection::*;
 
