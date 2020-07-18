@@ -174,8 +174,8 @@ pub enum CommandOption {
 
 impl CommandOption {
     /// Returns true if the commands depends on the palette.
-    pub fn should_load_palette(&self) -> bool {
-        match &self {
+    pub fn requires_palette(&self) -> bool {
+        match self {
             CommandOption::New { .. } => false,
             CommandOption::Set { set_option } => match set_option {
                 SetOption::ActivePalette { .. } |
@@ -185,6 +185,25 @@ impl CommandOption {
                 _ => true,
             },
             _ => true,
+        }
+    }
+
+
+    /// Returns true if the command is disallowed in scripts.
+    pub fn disallowed_in_scripts(&self) -> bool {
+        match self {
+            CommandOption::Set { set_option } => match set_option {
+                SetOption::ActivePalette { .. } => true,
+                _ => false,
+            },
+
+            CommandOption::New { .. } |
+            CommandOption::List { .. } |
+            CommandOption::Undo { .. } |
+            CommandOption::Redo { .. } |
+            CommandOption::Export { .. } |
+            CommandOption::Import { .. } => true,
+            _ => false,
         }
     }
 }

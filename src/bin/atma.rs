@@ -120,7 +120,7 @@ pub fn main_facade() -> Result<(), Error> {
     trace!("{:#?}", settings); 
 
     // Load the palette.
-    let mut palette = if command.should_load_palette() {
+    let mut palette = if command.requires_palette() {
         match &common.palette {
             Some(pal_path) => {
                 let path = normalize_path(cur_dir.clone(), pal_path);
