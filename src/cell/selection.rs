@@ -18,9 +18,9 @@ use crate::parse::ParseResultExt as _;
 // External library imports.
 use serde::Serialize;
 use serde::Deserialize;
+use normalize_interval::Selection;
 
 // Standard library imports.
-use std::collections::BTreeSet;
 use std::iter::FromIterator;
 
 
@@ -60,9 +60,9 @@ impl<'name> CellSelection<'name> {
             }
         }
 
-        let mut index_selection = CellIndexSelection(BTreeSet::new());
+        let mut index_selection = CellIndexSelection(Selection::new());
         for selector in &self.0[..] {
-            let _ = index_selection.insert_all(selector.resolve(basic));
+            index_selection.insert_all(selector.resolve(basic));
         }
         index_selection
     }
@@ -141,39 +141,34 @@ impl std::str::FromStr for CellSelection<'static> {
 /// `Cell`s referenced is fixed, and edits to the palette may invalidate the
 /// selection.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Serialize, Deserialize)]
-// TODO: Implement this using a data structure which handles unions of disjoint
-// intervals.
-pub struct CellIndexSelection(BTreeSet<u32>);
+pub struct CellIndexSelection(Selection<u32>);
 
 impl CellIndexSelection {
     /// Inserts cell indices into the selection from an iterator. Returns the
     /// number of new indices inserted.
-    pub fn insert_all<I>(&mut self, indices: I) -> usize 
+    pub fn insert_all<I>(&mut self, indices: I)
         where I: IntoIterator<Item=u32>
     {
-        let mut count = 0;
         for idx in indices.into_iter() {
-            if self.0.insert(idx) { count += 1; }
+            self.0.union_in_place(idx.into())
         }
-        count
     }
 
     /// Returns an iterator oof cell indexes.
-    pub fn iter(&self) -> impl Iterator<Item=&u32> {
+    pub fn iter(&self) -> impl Iterator<Item=u32> + '_ {
         self.0.iter()
     }
 }
 
 impl FromIterator<u32> for CellIndexSelection {
     fn from_iter<I: IntoIterator<Item=u32>>(iter: I) -> CellIndexSelection {
-        CellIndexSelection(BTreeSet::from_iter(iter))
+        CellIndexSelection(Selection::from_iter(iter))
     }
 }
 
 impl IntoIterator for CellIndexSelection {
     type Item = u32;
-    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
+    type IntoIter = normalize_interval::selection::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
