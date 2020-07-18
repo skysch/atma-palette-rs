@@ -17,6 +17,7 @@ mod script;
 /// Public modules.
 pub mod new;
 pub mod export_png;
+pub mod list;
 
 // Exports.
 pub use ancillary::*;

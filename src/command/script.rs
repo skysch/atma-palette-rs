@@ -20,9 +20,6 @@ use crate::parse::script;
 use crate::setup::Config;
 use crate::setup::Settings;
 
-// External library imports.
-use log::*;
-
 // Standard library imports.
 use std::fmt::Debug;
 use std::fs::File;

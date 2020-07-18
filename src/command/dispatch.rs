@@ -9,7 +9,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::cell::CellRef;
 use crate::cell::CellSelector;
 use crate::command::CommandOption;
 use crate::command::CommonOptions;
@@ -18,6 +17,7 @@ use crate::command::ExportOption;
 use crate::command::new::new_config;
 use crate::command::new::new_palette;
 use crate::command::new::new_settings;
+use crate::command::list::list;
 use crate::command::NewOption;
 use crate::command::SetOption;
 use crate::palette::Palette;
@@ -135,39 +135,11 @@ pub fn dispatch(
         List { selection } => {
             let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
 
-            // TODO: Move all of this to an inner function.
-            debug!("Start listing for selection {:?}", selection);
-            let selection = selection.unwrap_or(CellSelector::All.into());
-            let index_selection = selection.resolve(pal.inner());
-            debug!("Start listing for {:?}", index_selection);
-
-            for idx in index_selection {
-                if let Ok(Some(c)) = pal.inner()
-                    .color(&CellRef::Index(idx))
-                {
-                    print!("{:4X} {:X}", idx, c);
-                    if let Some(pos) = pal.inner()
-                        .assigned_position(&CellRef::Index(idx))
-                    {
-                        print!(" {}", pos);
-                    }
-                    if let Some(name) = pal.inner()
-                        .assigned_name(&CellRef::Index(idx))
-                    {
-                        print!(" \"{}\"", name);
-                    }
-
-                    for group in pal.inner()
-                        .assigned_groups(&CellRef::Index(idx))?
-                    {
-                        print!(" \"{}\"", group);
-                    }
-                    println!();
-                } else {
-                    println!("{:4X} invalid color", idx);
-                }
-            }
-            Ok(())
+            list(
+                &pal,
+                selection,
+                config,
+                settings)
         },
 
         // Insert
