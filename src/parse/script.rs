@@ -16,7 +16,9 @@ use crate::parse::bracket;
 use crate::parse::char;
 use crate::parse::char_matching;
 use crate::parse::circumfix;
-use crate::parse::intersperse_collect;
+use crate::parse::prefix;
+use crate::parse::postfix;
+use crate::parse::repeat_collect;
 use crate::parse::escaped_string;
 use crate::parse::Failure;
 use crate::parse::literal;
@@ -33,6 +35,7 @@ use crate::error::ScriptError;
 
 // External library imports.
 use structopt::StructOpt as _;
+use log::*;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -40,7 +43,9 @@ use std::borrow::Cow;
 
 /// Parses a script.
 pub fn script<'t>(text: &'t str) -> ParseResult<'t, Script> {
-    statements
+    postfix(
+        statements,
+        maybe(whitespace))
         (text)
         .map_value(|statements| Script {
             statements,
@@ -49,14 +54,24 @@ pub fn script<'t>(text: &'t str) -> ParseResult<'t, Script> {
 
 /// Parses a series of statements.
 pub fn statements<'t>(text: &'t str) -> ParseResult<'t, Vec<CommandOption>> {
-    intersperse_collect(1, None,
-            statement,
-            char(';'))
+    repeat_collect(1, None,
+            statement)
         (text)
+        .source_for("statements")
+        .map_value(|v| v.into_iter().filter_map(|c| c).collect())
 }
 
 /// Parses a statment.
-pub fn statement<'t>(text: &'t str) -> ParseResult<'t, CommandOption> {
+pub fn statement<'t>(text: &'t str) -> ParseResult<'t, Option<CommandOption>> {
+    trace!("Parsing statement from {:?}", text);
+    let empty_stmt = circumfix(
+            char(';'),
+            maybe(whitespace))
+        (text);
+    if empty_stmt.is_ok() {
+        return empty_stmt.map_value(|_| None);
+    }
+
     command_option(text)
         .convert_value(|opt| {
             if opt.disallowed_in_scripts() {
@@ -64,38 +79,48 @@ pub fn statement<'t>(text: &'t str) -> ParseResult<'t, CommandOption> {
                     msg: "unsupported operation".into() 
                 })
             }
-            Ok(opt)
+            Ok(Some(opt))
         })
+        .source_for("statement")
 }
 
 /// Parses a CommandOption.
 pub fn command_option<'t>(text: &'t str) -> ParseResult<'t, CommandOption> {
-    let mut chunks = Vec::new();
+    trace!("Parsing command_option from {:?}", text);
+    let mut chunks = vec!["script".into()];
     let mut suc = Success { value: (), token: "", rest: text };
 
     loop {
-        match circumfix(
+        match prefix(
                 chunk,
                 maybe(whitespace))
             (suc.rest)
             .with_join_previous(suc, text)
         {
+            Ok(chunk_suc) if chunk_suc.token.trim().is_empty() => {
+                trace!("    Invalid chunk (empty.)");
+                return Ok(suc).convert_value(|_| {
+                    CommandOption::from_iter_safe(chunks)
+                });
+            },
+            Err(_) => {
+                trace!("    Invalid chunk (failed.)");
+                return Ok(suc).convert_value(|_| {
+                    CommandOption::from_iter_safe(chunks)
+                });
+            }
             Ok(chunk_suc) => {
                 let (val, next_suc) = chunk_suc.take_value();
                 chunks.push(val.to_string());
                 suc = next_suc;
             },
-            Err(_) => {
-                return Ok(suc).convert_value(|_| {
-                    CommandOption::from_iter_safe(chunks)
-                });
-            }
         }
     }
 }
 
 /// Parses a potentially quoted chunk of text.
 pub fn chunk<'t>(text: &'t str) -> ParseResult<'t, Cow<'t, str>> {
+    trace!("Parsing chunk from {:?}", text);
     let escaped = escaped_string(
             script_string_open,
             script_string_close,
@@ -110,6 +135,7 @@ pub fn chunk<'t>(text: &'t str) -> ParseResult<'t, Cow<'t, str>> {
         (text)
         .tokenize_value()
         .map_value(Cow::from)
+        .source_for("chunk")
 }
 
 /// Parses a script string opening quote. For use with escaped_string.

@@ -174,25 +174,13 @@ pub fn intersperse<'t, F, G, V, U>(
                 value: 0,
             }),
             Err(fail) => return Err(fail)
-                .map_value(|_: V| 0)
-                .source_for(format!("intersperse {}{}", low,
-                    match high {
-                        Some(high) if high != low => format!(" to {}", high),
-                        Some(high) if high == low => "".into(),
-                        _ => "+".into(),
-                    })),
+                .map_value(|_: V| 0),
         };
 
         let mut count = 1;
         while count < low {
             sub_suc = prefix(&mut parser, &mut inner_parser)(sub_suc.rest)
                 .discard_value()
-                .source_for(format!("intersperse {}{}", low,
-                    match high {
-                        Some(high) if high != low => format!(" to {}", high),
-                        Some(high) if high == low => "".into(),
-                        _ => "+".into(),
-                    }))
                 .with_join_previous(sub_suc, text)?;
 
             count += 1;
@@ -200,13 +188,7 @@ pub fn intersperse<'t, F, G, V, U>(
 
         while high.map_or(true, |h| count < h) {
             let next_res = prefix(&mut parser, &mut inner_parser)(sub_suc.rest)
-                .discard_value()
-                .source_for(format!("intersperse {}{}", low,
-                    match high {
-                        Some(high) if high != low => format!(" to {}", high),
-                        Some(high) if high == low => "".into(),
-                        _ => "+".into(),
-                    }));
+                .discard_value();
 
             match next_res {
                 Ok(next_suc) => {
@@ -247,24 +229,13 @@ pub fn intersperse_collect<'t, F, G, V, U>(
                 value: Vec::new(),
             }),
             Err(fail) => return Err(fail)
-                .map_value(|_: V| Vec::new())
-                .source_for(format!("intersperse {}{}", low,
-                    match high {
-                        Some(high) if high != low => format!(" to {}", high),
-                        Some(high) if high == low => "".into(),
-                        _ => "+".into(),
-                    })),
+                .map_value(|_: V| Vec::new()),
         };
 
         let mut count = 1;
         while count < low {
-            let next_suc = prefix(&mut parser, &mut inner_parser)(sub_suc.rest)
-                .source_for(format!("intersperse {}{}", low,
-                    match high {
-                        Some(high) if high != low => format!(" to {}", high),
-                        Some(high) if high == low => "".into(),
-                        _ => "+".into(),
-                    }))?;
+            let next_suc = prefix(&mut parser, &mut inner_parser)
+                (sub_suc.rest)?;
 
             sub_suc = sub_suc.join_with(next_suc, text,
                 |mut vals, val| { vals.push(val); vals });
@@ -272,13 +243,7 @@ pub fn intersperse_collect<'t, F, G, V, U>(
         }
 
         while high.map_or(true, |h| count < h) {
-            let next_res = prefix(&mut parser, &mut inner_parser)(sub_suc.rest)
-                .source_for(format!("intersperse {}{}", low,
-                    match high {
-                        Some(high) if high != low => format!(" to {}", high),
-                        Some(high) if high == low => "".into(),
-                        _ => "+".into(),
-                    }));
+            let next_res = prefix(&mut parser, &mut inner_parser)(sub_suc.rest);
 
             match next_res {
                 Ok(next_suc) => {
