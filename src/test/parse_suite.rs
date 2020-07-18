@@ -313,6 +313,122 @@ fn literal_ignore_ascii_case_match() {
         }));
 }
 
+
+/// Tests `parse::escaped_string`.
+#[test]
+fn escaped_string_match() {
+    fn str_open<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
+        any_literal_map(
+                literal,
+                "string open quote",
+                vec![
+                    ("\"", "\""),
+                    ("'", "'"),
+                ])
+            (text)
+    }
+    fn str_close<'t>(text: &'t str, open: &'t str) -> ParseResult<'t, &'t str> {
+        literal(open)(text)
+    }
+    fn str_escape<'t>(text: &'t str) -> ParseResult<'t, &'static str> {
+        any_literal_map(
+                literal,
+                "string escape",
+                vec![
+                    ("\\n",  "\n"),
+                    ("\\t",  "\t"),
+                    ("\"",   "\""),
+                    ("\\\\", "\\"),
+                ])
+            (text)
+    }
+
+
+    assert_eq!(
+        escaped_string(
+                str_open,
+                str_close,
+                str_escape)
+            ("'some text'abcd"),
+        Ok(Success {
+            value: "some text".to_string(),
+            token: "'some text'",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        escaped_string(
+                str_open,
+                str_close,
+                str_escape)
+            ("\"some \\nte\\\\xt\"abcd"),
+        Ok(Success {
+            value: "some \nte\\xt".to_string(),
+            token: "\"some \\nte\\\\xt\"",
+            rest: "abcd",
+        }));
+}
+
+
+/// Tests `parse::escaped_string`.
+#[test]
+fn escaped_string_nonmatch() {
+    fn str_open<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
+        any_literal_map(
+                literal,
+                "string open quote",
+                vec![
+                    ("\"", "\""),
+                    ("'", "'"),
+                ])
+            (text)
+    }
+    fn str_close<'t>(text: &'t str, open: &'t str) -> ParseResult<'t, &'t str> {
+        literal(open)(text)
+    }
+    fn str_escape<'t>(text: &'t str) -> ParseResult<'t, &'static str> {
+        any_literal_map(
+                literal,
+                "string escape",
+                vec![
+                    ("\\n",  "\n"),
+                    ("\\t",  "\t"),
+                    ("\"",   "\""),
+                    ("\\\\", "\\"),
+                ])
+            (text)
+    }
+
+    assert_eq!(
+        escaped_string(
+                str_open,
+                str_close,
+                str_escape)
+            ("'some textabcd"),
+        Err(Failure {
+            token: "'some textabcd",
+            rest: "'some textabcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
+
+    assert_eq!(
+        escaped_string(
+                str_open,
+                str_close,
+                str_escape)
+            ("some text'abcd"),
+        Err(Failure {
+            token: "",
+            rest: "some text'abcd",
+            // These fields are unchecked:
+            expected: "".into(), source: None,
+        }));
+}
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Combinators
 ////////////////////////////////////////////////////////////////////////////////

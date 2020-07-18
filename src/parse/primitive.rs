@@ -190,59 +190,51 @@ pub fn literal_ignore_ascii_case<'t>(expect: &'t str)
 
 
 /// Returns a parser that parses a delimmited and escaped string.
-pub fn escaped_string<'t, G, H, U, T>(
+pub fn escaped_string<'t, F, G, H, V, U, T>(
     mut open_parser: G,
     mut close_parser: H,
-    escapes: Vec<(&'static str, &'static str)>)
+    mut escape_parser: F)
     -> impl FnMut(&'t str) -> ParseResult<'t, String>
     where
         G: FnMut(&'t str) -> ParseResult<'t, U>,
         H: FnMut(&'t str, U) -> ParseResult<'t, T>,
+        F: FnMut(&'t str) -> ParseResult<'t, V>,
         U: Clone,
+        V: AsRef<str> + std::fmt::Debug,
+        T: std::fmt::Debug,
 {
     // TODO: This could probably be optimized by building a common prefix
     // matcher for escapes.
     move |text| {
-        let mut suc = Success { token: "", rest: text, value: () };
-        let mut open_value = None;
         
-        if let Ok(open_suc) = (open_parser)(suc.rest) {
-            let (c, v) = open_suc.take_value();
-            suc = v.join(suc, text);
-            open_value = Some(c);
-        }
+        let (open_value, mut suc) = (open_parser)
+            (text)?
+            .take_value();
 
-        if open_value.is_none() {
-            return Err(Failure {
-                token: "",
-                rest: text,
-                expected: "escaped string openning".into(),
-                source: None,
-            });
-        }
-        let open_value = open_value.unwrap();
         let mut string_value = String::new();
 
         loop {
-            if let Ok(close_suc) = (close_parser)(text, open_value.clone())
-            {
-                return Ok(close_suc
-                    .join(suc, text)
-                    .map_value(|_| string_value));
-            }
-
-            for (idx, escape) in escapes.iter().map(|(o, _)| o).enumerate() {
-                if let Ok(esc_suc) = literal(escape)(suc.rest) {
-                    suc = esc_suc.join(suc, text);
-                    string_value.push_str(escapes[idx].1);
-                }
-
-                suc = char_matching(|_| true)
-                    (text)
+            let close = (&mut close_parser)
+                (suc.rest, open_value.clone());
+            if close.is_ok() {
+                return close
                     .with_join_previous(suc, text)
-                    .discard_value()?;
-                string_value.push_str(suc.token);
+                    .map_value(|_| string_value);
             }
+
+            let escape = (&mut escape_parser)(suc.rest);
+            if let Ok(esc_suc) = escape {
+                string_value.push_str(esc_suc.value.as_ref());
+                suc = suc.join(esc_suc, text);
+            }
+            
+            let (next, next_suc) = char_matching(|_| true)
+                (suc.rest)
+                .tokenize_value()
+                .with_join_previous(suc, text)?
+                .take_value();
+            string_value.push_str(next);
+            suc = next_suc;
         }
     }
 }
