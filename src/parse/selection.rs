@@ -19,6 +19,7 @@ use crate::parse::atomic_ignore_whitespace;
 use crate::parse::char;
 use crate::parse::circumfix;
 use crate::parse::escaped_string;
+use crate::parse::Failure;
 use crate::parse::intersperse_collect;
 use crate::parse::literal;
 use crate::parse::literal_once;
@@ -286,7 +287,18 @@ pub fn name_close<'t, 'o: 't>(text: &'t str, open: Cow<'o, str>)
 }
 
 /// Parses a name escape character. For use with escaped_string.
-pub fn name_escape<'t>(text: &'t str) -> ParseResult<'t, &'static str> {
+pub fn name_escape<'t>(text: &'t str, is_escaped: bool)
+    -> ParseResult<'t, &'static str>
+{
+    if !is_escaped {
+        return Err(Failure {
+            token: "",
+            rest: text,
+            expected: "".to_owned().into(),
+            source: None,
+        })
+    }
+
     any_literal_map(
             literal,
             "name escape",

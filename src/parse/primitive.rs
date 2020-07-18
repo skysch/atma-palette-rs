@@ -470,23 +470,24 @@ pub fn rust_string_literal<'t>(text: &'t str) -> ParseResult<'t, Cow<'t, str>> {
 }
 
 /// Returns a parser that parses a delimmited and escaped string.
-pub fn escaped_string<'t, F, G, H, V, U, T>(
+pub fn escaped_string<'t, 'e, F, G, H, V, T, C, E>(
     mut open_parser: G,
     mut close_parser: H,
     mut escape_parser: F)
     -> impl FnMut(&'t str) -> ParseResult<'t, Cow<'t, str>>
     where
-        G: FnMut(&'t str) -> ParseResult<'t, (U, bool)>,
-        H: FnMut(&'t str, U) -> ParseResult<'t, T>,
-        F: FnMut(&'t str) -> ParseResult<'t, V>,
-        U: Clone,
+        G: FnMut(&'t str) -> ParseResult<'t, (C, E)>,
+        H: FnMut(&'t str, C) -> ParseResult<'t, T>,
+        F: FnMut(&'t str, E) -> ParseResult<'t, V>,
+        C: Clone,
+        E: Clone,
         V: AsRef<str>,
 {
     // TODO: This could probably be optimized by building a common prefix
     // matcher for escapes.
     move |text| {
         
-        let ((open_value, check_escapes), mut suc) = (open_parser)
+        let ((open_value, open_escapes), mut suc) = (open_parser)
             (text)?
             .take_value();
 
@@ -501,13 +502,12 @@ pub fn escaped_string<'t, F, G, H, V, U, T>(
                     .map_value(|_| string_value.into());
             }
 
-            if check_escapes {
-                let escape = (&mut escape_parser)(suc.rest);
-                if let Ok(esc_suc) = escape {
-                    string_value.push_str(esc_suc.value.as_ref());
-                    suc = suc.join(esc_suc, text);
-                }
+            let escape = (&mut escape_parser)(suc.rest, open_escapes.clone());
+            if let Ok(esc_suc) = escape {
+                string_value.push_str(esc_suc.value.as_ref());
+                suc = suc.join(esc_suc, text);
             }
+            
             
             let (next, next_suc) = char_matching(|_| true)
                 (suc.rest)
@@ -556,7 +556,18 @@ pub fn rust_string_close<'t, 'o: 't>(text: &'t str, open: Cow<'o, str>)
 }
 
 /// Parses a Rust string escape character. For use with escaped_string.
-pub fn rust_string_escape<'t>(text: &'t str) -> ParseResult<'t, &'static str> {
+pub fn rust_string_escape<'t>(text: &'t str, is_escaped: bool)
+    -> ParseResult<'t, &'static str> 
+{
+    if !is_escaped {
+        return Err(Failure {
+            token: "",
+            rest: text,
+            expected: "".to_owned().into(),
+            source: None,
+        })
+    }
+
     any_literal_map(
             literal,
             "string escape",
@@ -567,4 +578,16 @@ pub fn rust_string_escape<'t>(text: &'t str) -> ParseResult<'t, &'static str> {
                 ("\\\\", "\\"),
             ])
         (text)
+}
+
+/// A flag representing the string quote type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u8)]
+pub enum QuoteType {
+    /// A single-quoted string.
+    Single,
+    /// A double-quoted string.
+    Double,
+    /// A raw string.
+    Raw,
 }

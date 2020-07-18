@@ -342,6 +342,42 @@ fn escaped_string_match() {
             token: "r###\"some text\"###",
             rest: "abcd",
         }));
+
+    assert_eq!(
+        escaped_string(
+                script_string_open,
+                script_string_close,
+                script_string_escape)
+            ("'some \"text'abcd"),
+        Ok(Success {
+            value: "some \"text".into(),
+            token: "'some \"text'",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        escaped_string(
+                script_string_open,
+                script_string_close,
+                script_string_escape)
+            ("'some \\'text'abcd"),
+        Ok(Success {
+            value: "some 'text".into(),
+            token: "'some \\'text'",
+            rest: "abcd",
+        }));
+
+    assert_eq!(
+        escaped_string(
+                script_string_open,
+                script_string_close,
+                script_string_escape)
+            ("\"some \\'text\"abcd"),
+        Ok(Success {
+            value: "some \\'text".into(),
+            token: "\"some \\'text\"",
+            rest: "abcd",
+        }));
 }
 
 

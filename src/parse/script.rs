@@ -17,7 +17,9 @@ use crate::parse::escaped_string;
 use crate::parse::char;
 use crate::parse::tokenize;
 use crate::parse::repeat;
+use crate::parse::Failure;
 use crate::parse::bracket;
+use crate::parse::QuoteType;
 use crate::parse::ParseResult;
 use crate::parse::ParseResultExt as _;
 
@@ -51,7 +53,7 @@ pub fn chunk<'t>(text: &'t str) -> ParseResult<'t, Cow<'t, str>> {
 
 /// Parses a script string opening quote. For use with escaped_string.
 pub fn script_string_open<'t>(text: &'t str)
-    -> ParseResult<'t, (Cow<'static, str>, bool)>
+    -> ParseResult<'t, (Cow<'static, str>, QuoteType)>
 {
     let raw_hashed = bracket(
             tokenize(repeat(1, None, char('#'))),
@@ -63,7 +65,7 @@ pub fn script_string_open<'t>(text: &'t str)
             .map_value(|close| {
                 let mut s = "\"".to_string();
                 s.push_str(close);
-                (s.into(), false)
+                (s.into(), QuoteType::Raw)
             });
     }
 
@@ -71,9 +73,9 @@ pub fn script_string_open<'t>(text: &'t str)
             literal,
             "string open quote",
             vec![
-                ("r\"", ("\"".into(), false)),
-                ("\"",  ("\"".into(), true)),
-                ("'",  ("'".into(), true)),
+                ("r\"", ("\"".into(), QuoteType::Raw)),
+                ("\"",  ("\"".into(), QuoteType::Double)),
+                ("'",   ("'".into(),  QuoteType::Single)),
             ])
         (text)
 }
@@ -86,17 +88,35 @@ pub fn script_string_close<'t, 'o: 't>(text: &'t str, open: Cow<'o, str>)
 }
 
 /// Parses a script string escape character. For use with escaped_string.
-pub fn script_string_escape<'t>(text: &'t str) -> ParseResult<'t, &'static str>
+pub fn script_string_escape<'t>(text: &'t str, quote_type: QuoteType)
+    -> ParseResult<'t, &'static str> 
 {
-    any_literal_map(
-            literal,
-            "string escape",
-            vec![
-                ("\\n",  "\n"),
-                ("\\t",  "\t"),
-                ("\"",   "\""),
-                ("\\'",  "'"),
-                ("\\\\", "\\"),
-            ])
-        (text)
+    match quote_type {
+        QuoteType::Double => any_literal_map(
+                literal,
+                "string escape",
+                vec![
+                    ("\\n",  "\n"),
+                    ("\\t",  "\t"),
+                    ("\"",   "\""),
+                    ("\\\\", "\\"),
+                ])
+            (text),
+        QuoteType::Single => any_literal_map(
+                literal,
+                "string escape",
+                vec![
+                    ("\\n",  "\n"),
+                    ("\\t",  "\t"),
+                    ("\\'",  "'"),
+                    ("\\\\", "\\"),
+                ])
+            (text),
+        QuoteType::Raw => Err(Failure {
+            token: "",
+            rest: text,
+            expected: "".to_owned().into(),
+            source: None,
+        }),
+    }
 }
