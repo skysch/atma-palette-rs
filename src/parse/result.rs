@@ -59,9 +59,8 @@ pub trait ParseResultExt<'t, V>: Sized {
 
     /// Applies the given closure to the parsed value, causing the parse to fail
     /// if the closure is Err. Will only be called if the parse was successful.
-    fn convert_value<F, U, E, T>(self, expected: T, f: F) -> ParseResult<'t, U>
+    fn convert_value<F, U, E>(self, f: F) -> ParseResult<'t, U>
         where
-            T: Into<Cow<'static, str>>,
             F: FnOnce(V) -> Result<U, E>,
             E: std::error::Error + Send + Sync + 'static;
 
@@ -129,9 +128,8 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
             .map(|curr| success.join_with(curr, text, |_, v| v))
     }
 
-    fn convert_value<F, U, E, T>(self, expected: T, f: F) -> ParseResult<'t, U>
+    fn convert_value<F, U, E>(self, f: F) -> ParseResult<'t, U>
         where
-            T: Into<Cow<'static, str>>,
             F: FnOnce(V) -> Result<U, E>,
             E: std::error::Error + Send + Sync + 'static
     {
@@ -146,7 +144,7 @@ impl<'t, V> ParseResultExt<'t, V> for ParseResult<'t, V> {
                 Err(e) => Err(Failure {
                     token: success.token,
                     rest: success.rest,
-                    expected: expected.into(),
+                    expected: "".into(),
                     source: Some(Box::new(e)),
                 }),
             },

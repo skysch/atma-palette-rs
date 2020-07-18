@@ -10,44 +10,107 @@
 
 // Local imports.
 use crate::command::CommandOption;
-use crate::parse::literal_once;
 use crate::parse::any_literal_map;
-use crate::parse::literal;
-use crate::parse::escaped_string;
-use crate::parse::char;
-use crate::parse::tokenize;
-use crate::parse::repeat;
-use crate::parse::Failure;
 use crate::parse::bracket;
-use crate::parse::QuoteType;
+use crate::parse::char;
+use crate::parse::char_matching;
+use crate::parse::circumfix;
+use crate::parse::intersperse_collect;
+use crate::parse::escaped_string;
+use crate::parse::Failure;
+use crate::parse::literal;
+use crate::parse::literal_once;
+use crate::parse::maybe;
 use crate::parse::ParseResult;
 use crate::parse::ParseResultExt as _;
+use crate::parse::QuoteType;
+use crate::parse::repeat;
+use crate::parse::Success;
+use crate::parse::tokenize;
+use crate::parse::whitespace;
+use crate::error::ScriptError;
+
+// External library imports.
+use structopt::StructOpt as _;
 
 // Standard library imports.
 use std::borrow::Cow;
 
+
+
+
+
+/// Parses a series of statements.
+pub fn statements<'t>(text: &'t str) -> ParseResult<'t, Vec<CommandOption>> {
+    intersperse_collect(1, None,
+            statement,
+            char(';'))
+        (text)
+}
+
 /// Parses a statment.
 pub fn statement<'t>(text: &'t str) -> ParseResult<'t, CommandOption> {
     command_option(text)
+        .convert_value(|opt| {
+            match &opt {
+                CommandOption::New { .. } |
+                CommandOption::List { .. } |
+                CommandOption::Undo { .. } |
+                CommandOption::Redo { .. } |
+                CommandOption::Export { .. } |
+                CommandOption::Import { .. } => return Err(ScriptError {
+                    msg: "unsupported operation".into() 
+                }),
+                _ => (),
+            }
+            Ok(opt)
+        })
 }
 
-/// Parses a command option.
-pub fn command_option<'t>(_text: &'t str) -> ParseResult<'t, CommandOption> {
-    
-    unimplemented!()
+
+/// Parses a CommandOption.
+pub fn command_option<'t>(text: &'t str) -> ParseResult<'t, CommandOption> {
+    let mut chunks = Vec::new();
+    let mut suc = Success { value: (), token: "", rest: text };
+
+    loop {
+        match circumfix(
+                chunk,
+                maybe(whitespace))
+            (suc.rest)
+            .with_join_previous(suc, text)
+        {
+            Ok(chunk_suc) => {
+                let (val, next_suc) = chunk_suc.take_value();
+                chunks.push(val.to_string());
+                suc = next_suc;
+            },
+            Err(_) => {
+                return Ok(suc).convert_value(|_| {
+                    CommandOption::from_iter_safe(chunks)
+                });
+            }
+        }
+    }
 }
 
 /// Parses a potentially quoted chunk of text.
 pub fn chunk<'t>(text: &'t str) -> ParseResult<'t, Cow<'t, str>> {
-    
-    escaped_string(
+    let escaped = escaped_string(
             script_string_open,
             script_string_close,
             script_string_escape)
+        (text);
+    if escaped.is_ok() {
+        return escaped;
+    }
+
+    repeat(1, None,
+            char_matching(|c| c != ';' && !c.is_whitespace()))
         (text)
+        .tokenize_value()
+        .map_value(Cow::from)
 }
-
-
 
 
 

@@ -73,7 +73,6 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
         (text);
     if pos.is_ok() {
         return pos.convert_value(
-                "valid position range", 
                 |(pos, pos_up)| if let Some(end) = pos_up {
                     CellSelector::position_range(pos.into(), end.into())
                 } else {
@@ -95,7 +94,6 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
         (text);
     if idx.is_ok() {
         return idx.convert_value(
-                "valid index range", 
                 |(idx, idx_up)| if let Some(end) = idx_up {
                     CellSelector::index_range(idx.into(), end.into())
                 } else {
@@ -117,7 +115,6 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
         (text);
     if grp.is_ok() {
         return grp.convert_value(
-                "valid group range", 
                 |(grp, grp_up)| if let Some(end) = grp_up {
                     CellSelector::group_range(grp.0, grp.1, end.0, end.1)
                 } else {

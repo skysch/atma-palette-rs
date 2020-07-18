@@ -409,10 +409,10 @@ pub fn color_space<'t>(text: &'t str) -> ParseResult<'t, ColorSpace> {
 pub fn interpolate<'t>(text: &'t str) -> ParseResult<'t, Interpolate> {
     let linear = interpolate_linear(text);
     if linear.is_ok() {
-        linear.convert_value("valid interpolate", Interpolate::validate)
+        linear.convert_value(Interpolate::validate)
     } else {
         interpolate_cubic(text)
-            .convert_value("valid interpolate", Interpolate::validate)
+            .convert_value(Interpolate::validate)
     }
 }
 
@@ -539,14 +539,10 @@ pub fn interpolate_range<'t>(text: &'t str)
 {
     let linear = interpolate_range_linear(text);
     if linear.is_ok() {
-        linear.convert_value(
-            "valid interpolate range",
-            InterpolateRange::validate)
+        linear.convert_value(InterpolateRange::validate)
     } else {
         interpolate_range_cubic(text)
-            .convert_value(
-                "valid interpolate range",
-                InterpolateRange::validate)
+            .convert_value(InterpolateRange::validate)
     }
 }
 

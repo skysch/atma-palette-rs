@@ -53,6 +53,29 @@ impl<'t> From<crate::parse::Failure<'t>> for ParseError {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// ScriptError
+////////////////////////////////////////////////////////////////////////////////
+/// A script error occurred.
+#[derive(Debug)]
+pub struct ScriptError {
+    /// The error message.
+    pub msg: Cow<'static, str>,
+}
+
+impl std::fmt::Display for ScriptError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}", self.msg)
+    }
+}
+
+impl std::error::Error for ScriptError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 // FileError
 ////////////////////////////////////////////////////////////////////////////////
 /// A file error occurred.

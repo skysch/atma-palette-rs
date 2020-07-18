@@ -397,9 +397,8 @@ pub fn float<'t, T>(float_type: &'static str)
             return float_inf
                 .with_join_previous(suc, text)
                 .tokenize_value()
-                .convert_value(
-                    format!("parse inf {}", float_type),
-                    T::from_str);
+                .source_for(format!("parse inf {}", float_type))
+                .convert_value(T::from_str);
         }
 
         // Parse NAN literal.
@@ -409,9 +408,8 @@ pub fn float<'t, T>(float_type: &'static str)
             return float_nan
                 .with_join_previous(suc, text)
                 .tokenize_value()
-                .convert_value(
-                    format!("parse inf {}", float_type),
-                    T::from_str);
+                .convert_value(T::from_str)
+                .source_for(format!("parse inf {}", float_type));
         }
 
         // Parse the digits. If not enough digits are parsed, we'll get an error
@@ -429,9 +427,8 @@ pub fn float<'t, T>(float_type: &'static str)
             (suc.rest)
             .with_join_previous(suc, text)
             .tokenize_value()
-            .convert_value(
-                format!("parse inf {}", float_type),
-                T::from_str)
+            .convert_value(T::from_str)
+            .source_for(format!("parse inf {}", float_type))
     }
 }
 
