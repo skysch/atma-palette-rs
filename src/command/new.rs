@@ -10,13 +10,13 @@
 
 // Local imports.
 use crate::cell::PositionSelector;
-use crate::command::Script;
 use crate::command::CommonOptions;
-use crate::Config;
+use crate::command::Script;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
 use crate::palette::Palette;
-use crate::Settings;
+use crate::setup::Config;
+use crate::setup::Settings;
 
 // External library imports.
 use log::*;

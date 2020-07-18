@@ -11,14 +11,14 @@
 // Local imports.
 use crate::command::CommandOption;
 use crate::command::CommonOptions;
-use crate::Config;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
 use crate::palette::Palette;
 use crate::parse::FailureOwned;
 use crate::parse::ParseResultExt as _;
 use crate::parse::script;
-use crate::Settings;
+use crate::setup::Config;
+use crate::setup::Settings;
 
 // External library imports.
 use log::*;

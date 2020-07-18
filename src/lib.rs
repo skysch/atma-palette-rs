@@ -60,4 +60,5 @@ pub mod color {
 }
 pub use palette::Expr;
 pub use palette::Palette;
-pub use setup::*;
+pub use setup::Config;
+pub use setup::Settings;

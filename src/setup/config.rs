@@ -10,13 +10,14 @@
 #![warn(missing_docs)]
 
 // Local imports.
-use crate::LevelFilter;
-use crate::LoggerConfig;
+use crate::setup::LevelFilter;
+use crate::setup::LoggerConfig;
 use crate::command::CursorBehavior;
 use crate::command::Positioning;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
-use crate::StdoutLogOutput;
+use crate::setup::StdoutLogOutput;
+use crate::setup::LoadStatus;
 use crate::utility::normalize_path;
 
 // External library imports.
@@ -78,9 +79,9 @@ pub const DEFAULT_DEFAULT_MOVE_CURSOR_BEHAVIOR: CursorBehavior
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
-    /// The path the config was initially loaded from.
+    /// The Config file's load status.
     #[serde(skip)]
-    load_path: Option<PathBuf>,
+    load_status: LoadStatus,
 
     /// The logger configuration.
     #[serde(default = "Config::default_logger_config")]
@@ -131,7 +132,7 @@ impl Config {
     /// Constructs a new `Config` with the default options.
     pub fn new() -> Self {
         Config {
-            load_path: None,
+            load_status: LoadStatus::default(),
             logger_config: Config::default_logger_config(),
             log_levels: Config::default_log_levels(),
             default_settings_path: Config::default_default_settings_path(),
@@ -151,20 +152,30 @@ impl Config {
     pub fn with_load_path<P>(mut self, path: P) -> Self
         where P: AsRef<Path>
     {
-        self.load_path = Some(path.as_ref().to_owned());
+        self.set_load_path(path);
         self
     }
 
     /// Returns the `Config`'s load path.
     pub fn load_path(&self) -> Option<&Path> {
-        self.load_path.as_ref().map(AsRef::as_ref)
+        self.load_status.load_path()
     }
 
     /// Sets the `Config`'s load path.
     pub fn set_load_path<P>(&mut self, path: P)
         where P: AsRef<Path>
     {
-        self.load_path = Some(path.as_ref().to_owned());
+        self.load_status.set_load_path(path);
+    }
+
+    /// Returns true if the Config was modified.
+    pub fn modified(&self) -> bool {
+        self.load_status.modified()
+    }
+
+    /// Sets the Config modification flag.
+    pub fn set_modified(&mut self, modified: bool) {
+        self.load_status.set_modified(modified);
     }
 
     /// Constructs a new `Config` with options read from the given file path.
@@ -177,7 +188,7 @@ impl Config {
                 "Failed to open config file for reading: {}",
                 path.display()))?;
         let mut config = Config::read_from_file(file)?;
-        config.load_path = Some(path.to_owned());
+        config.set_load_path(path);
         Ok(config)
     }
 
@@ -224,7 +235,7 @@ impl Config {
     pub fn write_to_load_path(&self)
         -> Result<bool, FileError>
     {
-        match &self.load_path {
+        match self.load_status.load_path() {
             Some(path) => {
                 self.write_to_path(path)?;
                 Ok(true)
@@ -238,7 +249,7 @@ impl Config {
     pub fn write_to_load_path_if_new(&self)
         -> Result<bool, FileError>
     {
-        match &self.load_path {
+        match self.load_status.load_path() {
             Some(path) => {
                 self.write_to_path_if_new(path)?;
                 Ok(true)

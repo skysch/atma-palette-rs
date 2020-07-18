@@ -20,10 +20,10 @@ use crate::command::new::new_palette;
 use crate::command::new::new_settings;
 use crate::command::NewOption;
 use crate::command::SetOption;
-use crate::Config;
-use crate::DEFAULT_CONFIG_PATH;
 use crate::palette::Palette;
-use crate::Settings;
+use crate::setup::Config;
+use crate::setup::DEFAULT_CONFIG_PATH;
+use crate::setup::Settings;
 use crate::utility::normalize_path;
 
 // External library imports.
@@ -186,9 +186,8 @@ pub fn dispatch(
             pal.insert_exprs(&exprs[..], name, at, cursor_behavior)
                 .context("insert command failed.")?;
 
-            pal.write_to_load_path()
-                .map(|_| ())
-                .context("Failed to write palette")
+            pal.set_modified(true);
+            Ok(())
         },
 
         // Delete
@@ -202,9 +201,8 @@ pub fn dispatch(
                 pal.delete_selection(selection, cursor_behavior)
                     .context("delete command failed.")?;
 
-                pal.write_to_load_path()
-                    .map(|_| ())
-                    .context("Failed to write palette")
+                pal.set_modified(true);
+                Ok(())
             },
             None => {
                 println!("No cell selection; nothing to delete.");
@@ -223,9 +221,8 @@ pub fn dispatch(
                     .unwrap_or(config.default_move_cursor_behavior);
                 pal.move_selection(selection, to, cursor_behavior)?;
 
-                pal.write_to_load_path()
-                    .map(|_| ())
-                    .context("Failed to write palette")
+                pal.set_modified(true);
+                Ok(())
             },
             None => {
                 println!("No cell selection; nothing to move.");
@@ -241,9 +238,8 @@ pub fn dispatch(
 
                 pal.set_name(name, position_selector)?;
 
-                pal.write_to_load_path()
-                    .map(|_| ())
-                    .context("Failed to write palette")
+                pal.set_modified(true);
+                Ok(())
             },
 
             SetOption::Group { selection, name, remove } => {
@@ -251,9 +247,8 @@ pub fn dispatch(
 
                 pal.set_group(name, selection, remove)?;
 
-                pal.write_to_load_path()
-                    .map(|_| ())
-                    .context("Failed to write palette")
+                pal.set_modified(true);
+                Ok(())
             },
 
             SetOption::Expr { at, expr } => {
@@ -268,25 +263,22 @@ pub fn dispatch(
                 *pal.cell_mut(&at)?.expr_mut() = exprs.pop()
                     .ok_or(anyhow!("No expression to set."))?;
 
-                pal.write_to_load_path()
-                    .map(|_| ())
-                    .context("Failed to write palette")
+                pal.set_modified(true);
+                Ok(())
             },
 
             SetOption::Cursor { position } => {
                 let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
                 let _ = pal.set_position_cursor(position);
-                pal.write_to_load_path()
-                    .map(|_| ())
-                    .context("Failed to write palette")
+                pal.set_modified(true);
+                Ok(())
             }
 
             SetOption::History { history_set_option } => {
                 let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
                 pal.set_history(history_set_option);
-                pal.write_to_load_path()
-                    .map(|_| ())
-                    .context("Failed to write palette")
+                pal.set_modified(true);
+                Ok(())
             },
 
             SetOption::ActivePalette { path } => {
@@ -298,30 +290,26 @@ pub fn dispatch(
                     settings.active_palette = None;
                 }
 
-                settings.write_to_load_path()
-                    .map(|_| ())
-                    .context("Failed to write settings file")
+                settings.set_modified(true);
+                Ok(())
             },
 
             SetOption::DeleteCursorBehavior { cursor_behavior } => {
                 settings.delete_cursor_behavior = cursor_behavior;
-                settings.write_to_load_path()
-                    .map(|_| ())
-                    .context("Failed to write settings file")
+                settings.set_modified(true);
+                Ok(())
             },
 
             SetOption::InsertCursorBehavior { cursor_behavior } => {
                 settings.insert_cursor_behavior = cursor_behavior;
-                settings.write_to_load_path()
-                    .map(|_| ())
-                    .context("Failed to write settings file")
+                settings.set_modified(true);
+                Ok(())
             },
 
             SetOption::MoveCursorBehavior { cursor_behavior } => {
                 settings.move_cursor_behavior = cursor_behavior;
-                settings.write_to_load_path()
-                    .map(|_| ())
-                    .context("Failed to write settings file")
+                settings.set_modified(true);
+                Ok(())
             },
         },
 

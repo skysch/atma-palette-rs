@@ -13,10 +13,10 @@ use anyhow::Context;
 use anyhow::Error;
 use atma::command::AtmaOptions;
 use atma::Config;
-use atma::Settings;
-use atma::DEFAULT_CONFIG_PATH;
-use atma::Logger;
 use atma::Palette;
+use atma::Settings;
+use atma::setup::DEFAULT_CONFIG_PATH;
+use atma::setup::Logger;
 use atma::utility::normalize_path;
 
 // Standard library imports.
@@ -155,6 +155,21 @@ pub fn main_facade() -> Result<(), Error> {
         &config,
         &mut settings,
         Some(&cur_dir))?;
+
+    if let Some(pal) = palette {
+        if pal.modified() {
+            pal.write_to_load_path()
+                .map(|_| ())
+                .context("Failed to write palette")?;
+        }
+    }
+
+    if config.modified() {
+        config.write_to_load_path()
+            .map(|_| ())
+            .context("Failed to write palette")?;
+    }
+    
 
     Ok(())
 }

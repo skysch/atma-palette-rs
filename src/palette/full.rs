@@ -24,6 +24,7 @@ use crate::palette::BasicPalette;
 use crate::palette::History;
 use crate::palette::InsertExpr;
 use crate::palette::Operation;
+use crate::setup::LoadStatus;
 
 // External library imports.
 use serde::Deserialize;
@@ -40,7 +41,6 @@ use std::fs::OpenOptions;
 use std::io::Read;
 use std::io::Write;
 use std::path::Path;
-use std::path::PathBuf;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,9 +50,9 @@ use std::path::PathBuf;
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct Palette {
-    /// The path the palette was initially loaded from.
+    /// The Palette file's load status.
     #[serde(skip)]
-    load_path: Option<PathBuf>,
+    load_status: LoadStatus,
     /// The internal palette data.
     inner: BasicPalette,
     /// The command history for the palette.
@@ -63,7 +63,7 @@ impl Palette {
     /// Constructs a new `Palette`.
     pub fn new() -> Self {
         Palette {
-            load_path: None,
+            load_status: LoadStatus::default(),
             inner: BasicPalette::new(),
             history: None,
         }
@@ -79,20 +79,30 @@ impl Palette {
     pub fn with_load_path<P>(mut self, path: P) -> Self
         where P: AsRef<Path>
     {
-        self.load_path = Some(path.as_ref().to_owned());
+        self.load_status.set_load_path(path);
         self
     }
 
     /// Returns the `Palette`'s load path.
     pub fn load_path(&self) -> Option<&Path> {
-        self.load_path.as_ref().map(AsRef::as_ref)
+        self.load_status.load_path()
     }
 
     /// Sets the `Palette`'s load path.
     pub fn set_load_path<P>(&mut self, path: P)
         where P: AsRef<Path>
     {
-        self.load_path = Some(path.as_ref().to_owned());
+        self.load_status.set_load_path(path);
+    }
+
+    /// Returns true if the Palette was modified.
+    pub fn modified(&self) -> bool {
+        self.load_status.modified()
+    }
+
+    /// Sets the Palette modification flag.
+    pub fn set_modified(&mut self, modified: bool) {
+        self.load_status.set_modified(modified);
     }
 
     /// Constructs a new `Palette` by parsing data from the file at the given
@@ -106,7 +116,7 @@ impl Palette {
             .open(path)
             .with_context(|| format!("Failed to open file {:?}", path))?;
         let mut palette = Palette::read_from_file(&mut file)?;
-        palette.load_path = Some(path.to_owned());
+        palette.load_status.set_load_path(path);
         Ok(palette)
     }
 
@@ -143,7 +153,7 @@ impl Palette {
     /// Write the `Palette` into the file is was loaded from. Returns true if
     /// the data was written.
     pub fn write_to_load_path(&self) -> Result<bool, FileError> {
-        match &self.load_path {
+        match self.load_path() {
             Some(path) => {
                 self.write_to_path(path)?;
                 Ok(true)
@@ -155,7 +165,7 @@ impl Palette {
     /// Write the `Palette` into a new file using the load path. Returns true if
     /// the data was written.
     pub fn write_to_load_path_if_new(&self) -> Result<bool, FileError> {
-        match &self.load_path {
+        match self.load_path() {
             Some(path) => {
                 self.write_to_path_if_new(path)?;
                 Ok(true)

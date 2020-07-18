@@ -11,6 +11,7 @@
 
 // Local imports.
 use crate::utility::normalize_path;
+use crate::setup::LoadStatus;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
 use crate::command::CursorBehavior;
@@ -39,9 +40,9 @@ use std::path::PathBuf;
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Settings {
-    /// The path the settings were initially loaded from.
+    /// The Settings file's load status.
     #[serde(skip)]
-    load_path: Option<PathBuf>,
+    load_status: LoadStatus,
 
     /// The name of the palette to open when no palette is specified.
     #[serde(default)]
@@ -65,7 +66,7 @@ impl Settings {
     /// Constructs a new `Settings` with the default options.
     pub fn new() -> Self {
         Settings {
-            load_path: None,
+            load_status: LoadStatus::default(),
             active_palette: Settings::default_active_palette(),
             delete_cursor_behavior: None,
             insert_cursor_behavior: None,
@@ -77,20 +78,30 @@ impl Settings {
     pub fn with_load_path<P>(mut self, path: P) -> Self
         where P: AsRef<Path>
     {
-        self.load_path = Some(path.as_ref().to_owned());
+        self.set_load_path(path);
         self
     }
 
     /// Returns the `Settings`' load path.
     pub fn load_path(&self) -> Option<&Path> {
-        self.load_path.as_ref().map(AsRef::as_ref)
+        self.load_status.load_path()
     }
 
     /// Sets the `Settings`'s load path.
     pub fn set_load_path<P>(&mut self, path: P)
         where P: AsRef<Path>
     {
-        self.load_path = Some(path.as_ref().to_owned());
+        self.load_status.set_load_path(path);
+    }
+
+    /// Returns true if the Settings was modified.
+    pub fn modified(&self) -> bool {
+        self.load_status.modified()
+    }
+
+    /// Sets the Settings modification flag.
+    pub fn set_modified(&mut self, modified: bool) {
+        self.load_status.set_modified(modified);
     }
 
     /// Constructs a new `Settings` with options read from the given file path.
@@ -103,7 +114,7 @@ impl Settings {
                 "Failed to open settings file for reading: {}",
                 path.display()))?;
         let mut settings = Settings::read_from_file(file)?;
-        settings.load_path = Some(path.to_owned());
+        settings.load_status.set_load_path(path);
         Ok(settings)
     }
 
@@ -150,7 +161,7 @@ impl Settings {
     pub fn write_to_load_path(&self)
         -> Result<bool, FileError>
     {
-        match &self.load_path {
+        match self.load_status.load_path() {
             Some(path) => {
                 self.write_to_path(path)?;
                 Ok(true)
@@ -164,7 +175,7 @@ impl Settings {
     pub fn write_to_load_path_if_new(&self)
         -> Result<bool, FileError>
     {
-        match &self.load_path {
+        match self.load_status.load_path() {
             Some(path) => {
                 self.write_to_path_if_new(path)?;
                 Ok(true)
