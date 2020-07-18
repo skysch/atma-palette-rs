@@ -30,6 +30,19 @@ pub fn null<'t>(text: &'t str) -> ParseResult<'t, ()> {
     })
 }
 
+/// Tokenizes the parsed value.
+#[inline]
+pub fn tokenize<'t, F, V>(mut parser: F)
+    -> impl FnMut(&'t str) -> ParseResult<'t, &'t str>
+    where F: FnMut(&'t str) -> ParseResult<'t, V>,
+{
+    move |text| {
+        (parser)
+            (text)
+            .tokenize_value()
+    }
+}
+
 /// Returns a parser which will attempt a parse, wrapping the result in `Some`
 /// if it succeeds, otherwise converting the failure into a success with `None`.
 #[inline]

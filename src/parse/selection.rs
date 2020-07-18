@@ -14,21 +14,25 @@ use crate::cell::CellSelection;
 use crate::cell::CellSelector;
 use crate::cell::Position;
 use crate::cell::PositionSelector;
-use crate::parse::char;
-use crate::parse::char_matching;
-use crate::parse::circumfix;
-use crate::parse::pair;
+use crate::parse::any_literal_map;
 use crate::parse::atomic_ignore_whitespace;
+use crate::parse::char;
+use crate::parse::circumfix;
+use crate::parse::escaped_string;
 use crate::parse::intersperse_collect;
+use crate::parse::literal;
+use crate::parse::literal_once;
 use crate::parse::maybe;
+use crate::parse::pair;
 use crate::parse::ParseResult;
 use crate::parse::ParseResultExt as _;
 use crate::parse::postfix;
 use crate::parse::prefix;
-use crate::parse::repeat;
 use crate::parse::uint;
 use crate::parse::whitespace;
 
+// Standard library imports.
+use std::borrow::Cow;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,7 +106,7 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
     // Parse GroupAll.
     let grp_all = group_all(text);
     if grp_all.is_ok() {
-        return grp_all.map_value(|g| CellSelector::GroupAll(g.into()));
+        return grp_all.map_value(|group| CellSelector::GroupAll(group));
     }
 
     // Parse Group or GroupRange.
@@ -114,16 +118,9 @@ pub fn cell_selector<'t>(text: &'t str) -> ParseResult<'t, CellSelector<'t>> {
         return grp.convert_value(
                 "valid group range", 
                 |(grp, grp_up)| if let Some(end) = grp_up {
-                    CellSelector::group_range(
-                        grp.0.into(),
-                        grp.1,
-                        end.0.into(),
-                        end.1)
+                    CellSelector::group_range(grp.0, grp.1, end.0, end.1)
                 } else {
-                    Ok(CellSelector::Group {
-                        group: grp.0.into(),
-                        idx: grp.1,
-                    })
+                    Ok(CellSelector::Group { group: grp.0, idx: grp.1 })
                 })
             .with_failure_rest(text);
     }
@@ -181,7 +178,7 @@ pub fn range_suffix<'t, F, V>(parser: F)
 }
 
 /// Parses a group all selector.
-pub fn group_all<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
+pub fn group_all<'t>(text: &'t str) -> ParseResult<'t, Cow<'t, str>> {
     postfix(
         name, 
         postfix(
@@ -212,10 +209,7 @@ pub fn cell_ref<'t>(text: &'t str) -> ParseResult<'t, CellRef<'t>> {
     // Parse Group.
     let group = group(text);
     if group.is_ok() {
-        return group.map_value(|(group, idx)| CellRef::Group {
-            group: group.into(),
-            idx,
-        });
+        return group.map_value(|(group, idx)| CellRef::Group { group, idx });
     }
 
     // Parse Name.
@@ -251,27 +245,56 @@ pub fn index<'t>(text: &'t str) -> ParseResult<'t, u32> {
 }
 
 
-/// Parses a name.
-pub fn name<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
-    // TODO: Parse names as text strings requiring delimitters.
-    let valid_char = char_matching(|c| ![
-        '*',
-        ',',
-        '.',
-        ':',
-        '-',
-        ')',
-        '(',
-    ].contains(&c) && !c.is_whitespace());
-
-    repeat(1, None,
-            valid_char)
-        (text)
-        .tokenize_value()
-}
 
 /// Parses a group name with its index.
-pub fn group<'t>(text: &'t str) -> ParseResult<'t, (&'t str, u32)> {
+pub fn group<'t>(text: &'t str) -> ParseResult<'t, (Cow<'t, str>, u32)> {
     pair(name, index)
+        (text)
+}
+
+
+/// Parses a name.
+pub fn name<'t>(text: &'t str) -> ParseResult<'t, Cow<'t, str>> {
+    escaped_string(
+            name_open,
+            name_close,
+            name_escape)
+        (text)
+        .map_value(|v| v.into())
+}
+
+/// Parses a name opening quote. For use with escaped_string.
+pub fn name_open<'t>(text: &'t str)
+    -> ParseResult<'t, (Cow<'static, str>, bool)>
+{
+    any_literal_map(
+            literal,
+            "name open quote",
+            vec![
+                ("r\"", ("\"".into(), false)),
+                ("\"",  ("\"".into(), true)),
+                ("'",   ("'".into(),  true)),
+            ])
+        (text)
+}
+
+/// Parses a name closing quote. For use with escaped_string.
+pub fn name_close<'t, 'o: 't>(text: &'t str, open: Cow<'o, str>)
+    -> ParseResult<'t, &'t str>
+{
+    literal_once(open.as_ref())(text)
+}
+
+/// Parses a name escape character. For use with escaped_string.
+pub fn name_escape<'t>(text: &'t str) -> ParseResult<'t, &'static str> {
+    any_literal_map(
+            literal,
+            "name escape",
+            vec![
+                (r#"\n"#, "\n"),
+                (r#"\t"#, "\t"),
+                (r#"\""#, "\""),
+                (r#"\\"#, "\\"),
+            ])
         (text)
 }

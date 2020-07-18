@@ -261,7 +261,7 @@ fn cell_selector_resolve_position_selector() {
 fn cell_selection_resolve() {
     let pal = test_palette();
 
-    let selection = CellSelection::from_str(":100-:105, :1.6.6, GroupD:*")
+    let selection = CellSelection::from_str(":100-:105, :1.6.6, 'GroupD':*")
         .unwrap();
     let res: Vec<_> = selection.resolve(&pal).into_iter().collect();
     assert_eq!(res.len(), 8);

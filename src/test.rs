@@ -13,3 +13,4 @@ mod expr_suite;
 mod parse_suite;
 mod operation_suite;
 mod selection_suite;
+mod cell_suite;

@@ -16,6 +16,9 @@ use crate::parse::ParseResult;
 use crate::parse::ParseResultExt as _;
 use crate::parse::repeat;
 use crate::parse::circumfix;
+use crate::parse::tokenize;
+use crate::parse::bracket;
+use crate::parse::any_literal_map;
 use crate::parse::Success;
 
 // Standard library imports.
@@ -121,7 +124,7 @@ pub fn char_whitespace<'t>(text: &'t str) -> ParseResult<'t, char> {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// String parsing.
+// Literal parsing.
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Parses any nonzero amount of whitespace.
@@ -139,6 +142,32 @@ pub fn literal<'t>(expect: &'t str)
 {
     move |text| {
         if text.starts_with(expect) {
+            Ok(Success { 
+                value: &text[..expect.len()],
+                token: &text[..expect.len()],
+                rest: &text[expect.len()..],
+            })
+        } else {
+            Err(Failure { 
+                token: "",
+                expected: expect.to_owned().into(),
+                source: None,
+                rest: text,
+            })
+        }
+    }
+}
+
+/// Parses the given text literal.
+#[inline]
+pub fn literal_once<'t, S>(expect: S)
+    -> impl FnMut(&'t str) -> ParseResult<'t, &'t str>
+    where S: AsRef<str>
+{
+    move |text| {
+        let expect = expect.as_ref();
+        if text.starts_with(expect) {
+            
             Ok(Success { 
                 value: &text[..expect.len()],
                 token: &text[..expect.len()],
@@ -188,56 +217,6 @@ pub fn literal_ignore_ascii_case<'t>(expect: &'t str)
     }
 }
 
-
-/// Returns a parser that parses a delimmited and escaped string.
-pub fn escaped_string<'t, F, G, H, V, U, T>(
-    mut open_parser: G,
-    mut close_parser: H,
-    mut escape_parser: F)
-    -> impl FnMut(&'t str) -> ParseResult<'t, String>
-    where
-        G: FnMut(&'t str) -> ParseResult<'t, U>,
-        H: FnMut(&'t str, U) -> ParseResult<'t, T>,
-        F: FnMut(&'t str) -> ParseResult<'t, V>,
-        U: Clone,
-        V: AsRef<str> + std::fmt::Debug,
-        T: std::fmt::Debug,
-{
-    // TODO: This could probably be optimized by building a common prefix
-    // matcher for escapes.
-    move |text| {
-        
-        let (open_value, mut suc) = (open_parser)
-            (text)?
-            .take_value();
-
-        let mut string_value = String::new();
-
-        loop {
-            let close = (&mut close_parser)
-                (suc.rest, open_value.clone());
-            if close.is_ok() {
-                return close
-                    .with_join_previous(suc, text)
-                    .map_value(|_| string_value);
-            }
-
-            let escape = (&mut escape_parser)(suc.rest);
-            if let Ok(esc_suc) = escape {
-                string_value.push_str(esc_suc.value.as_ref());
-                suc = suc.join(esc_suc, text);
-            }
-            
-            let (next, next_suc) = char_matching(|_| true)
-                (suc.rest)
-                .tokenize_value()
-                .with_join_previous(suc, text)?
-                .take_value();
-            string_value.push_str(next);
-            suc = next_suc;
-        }
-    }
-}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -472,4 +451,120 @@ fn float_exp<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
         .source_for("float exponent digits")
         .with_join_previous(suc, text)
         .tokenize_value()
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// String parsing.
+////////////////////////////////////////////////////////////////////////////////
+
+/// Parses a Rust string literal.
+pub fn rust_string_literal<'t>(text: &'t str) -> ParseResult<'t, Cow<'t, str>> {
+    escaped_string(
+            rust_string_open,
+            rust_string_close,
+            rust_string_escape)
+        (text)
+}
+
+/// Returns a parser that parses a delimmited and escaped string.
+pub fn escaped_string<'t, F, G, H, V, U, T>(
+    mut open_parser: G,
+    mut close_parser: H,
+    mut escape_parser: F)
+    -> impl FnMut(&'t str) -> ParseResult<'t, Cow<'t, str>>
+    where
+        G: FnMut(&'t str) -> ParseResult<'t, (U, bool)>,
+        H: FnMut(&'t str, U) -> ParseResult<'t, T>,
+        F: FnMut(&'t str) -> ParseResult<'t, V>,
+        U: Clone,
+        V: AsRef<str>,
+{
+    // TODO: This could probably be optimized by building a common prefix
+    // matcher for escapes.
+    move |text| {
+        
+        let ((open_value, check_escapes), mut suc) = (open_parser)
+            (text)?
+            .take_value();
+
+        let mut string_value = String::new();
+
+        loop {
+            let close = (&mut close_parser)
+                (suc.rest, open_value.clone());
+            if close.is_ok() {
+                return close
+                    .with_join_previous(suc, text)
+                    .map_value(|_| string_value.into());
+            }
+
+            if check_escapes {
+                let escape = (&mut escape_parser)(suc.rest);
+                if let Ok(esc_suc) = escape {
+                    string_value.push_str(esc_suc.value.as_ref());
+                    suc = suc.join(esc_suc, text);
+                }
+            }
+            
+            let (next, next_suc) = char_matching(|_| true)
+                (suc.rest)
+                .tokenize_value()
+                .with_join_previous(suc, text)?
+                .take_value();
+            string_value.push_str(next);
+            suc = next_suc;
+        }
+    }
+}
+
+/// Parses a Rust string opening quote. For use with escaped_string.
+pub fn rust_string_open<'t>(text: &'t str)
+    -> ParseResult<'t, (Cow<'static, str>, bool)>
+{
+    let raw_hashed = bracket(
+            tokenize(repeat(1, None, char('#'))),
+            char('r'),
+            char('"'))
+        (text);
+    if raw_hashed.is_ok() {
+        return raw_hashed
+            .map_value(|close| {
+                let mut s = "\"".to_string();
+                s.push_str(close);
+                (s.into(), false)
+            });
+    }
+
+    any_literal_map(
+            literal,
+            "string open quote",
+            vec![
+                ("r\"", ("\"".into(), false)),
+                ("\"",  ("\"".into(), true)),
+            ])
+        (text)
+}
+
+/// Parses a Rust string closing quote. For use with escaped_string.
+pub fn rust_string_close<'t, 'o: 't>(text: &'t str, open: Cow<'o, str>)
+    -> ParseResult<'t, &'t str>
+{
+    literal_once(open.as_ref())(text)
+}
+
+/// Parses a Rust string escape character. For use with escaped_string.
+pub fn rust_string_escape<'t>(text: &'t str) -> ParseResult<'t, &'static str> {
+    any_literal_map(
+            literal,
+            "string escape",
+            vec![
+                ("\\n",  "\n"),
+                ("\\t",  "\t"),
+                ("\"",   "\""),
+                ("\\\\", "\\"),
+            ])
+        (text)
 }

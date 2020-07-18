@@ -244,7 +244,7 @@ fn blend_function_match() {
         }));
 
     assert_eq!(
-        blend_function("rgb_vivid_light(:0.1.1,whatever)abcd"),
+        blend_function("rgb_vivid_light(:0.1.1,'whatever')abcd"),
         Ok(Success {
             value: BlendFunction::Binary(BinaryBlendFunction {
                 color_space: ColorSpace::Rgb,
@@ -256,12 +256,12 @@ fn blend_function_match() {
                 }),
                 arg_2: CellRef::Name("whatever".into()),
             }),
-            token: "rgb_vivid_light(:0.1.1,whatever)",
+            token: "rgb_vivid_light(:0.1.1,'whatever')",
             rest: "abcd",
         }));
 
     assert_eq!(
-        blend_function("rgb_vivid_light( :0.1.1 , whatever )abcd"),
+        blend_function("rgb_vivid_light( :0.1.1 , 'whatever' )abcd"),
         Ok(Success {
             value: BlendFunction::Binary(BinaryBlendFunction {
                 color_space: ColorSpace::Rgb,
@@ -273,12 +273,12 @@ fn blend_function_match() {
                 }),
                 arg_2: CellRef::Name("whatever".into()),
             }),
-            token: "rgb_vivid_light( :0.1.1 , whatever )",
+            token: "rgb_vivid_light( :0.1.1 , 'whatever' )",
             rest: "abcd",
         }));
 
     assert_eq!(
-        blend_function("color_burn(abc,whatever)abcd"),
+        blend_function("color_burn('abc','whatever')abcd"),
         Ok(Success {
             value: BlendFunction::Binary(BinaryBlendFunction {
                 color_space: ColorSpace::default(),
@@ -286,7 +286,7 @@ fn blend_function_match() {
                 arg_1: CellRef::Name("abc".into()),
                 arg_2: CellRef::Name("whatever".into()),
             }),
-            token: "color_burn(abc,whatever)",
+            token: "color_burn('abc','whatever')",
             rest: "abcd",
         }));
 }
