@@ -10,42 +10,93 @@
 
 // Local imports.
 use crate::command::CommandOption;
-// use crate::cell::CellRef;
-// use crate::palette::BinaryBlendFunction;
-// use crate::palette::BinaryBlendMethod;
-// use crate::palette::BlendExpr;
-// use crate::palette::BlendFunction;
-// use crate::palette::ColorSpace;
-// use crate::palette::InsertExpr;
-// use crate::palette::Interpolate;
-// use crate::palette::InterpolateFunction;
-// use crate::palette::InterpolateRange;
-// use crate::palette::UnaryBlendFunction;
-// use crate::palette::UnaryBlendMethod;
-// use crate::parse::any_literal_map_once;
-// use crate::parse::atomic_ignore_whitespace;
-// use crate::parse::bracket;
-// use crate::parse::cell_ref;
-// use crate::parse::char;
-// use crate::parse::circumfix;
-// use crate::parse::color;
-// use crate::parse::float;
-// use crate::parse::intersperse_collect;
-// use crate::parse::literal_ignore_ascii_case;
-// use crate::parse::maybe;
+use crate::parse::literal_once;
+use crate::parse::any_literal_map;
+use crate::parse::literal;
+use crate::parse::escaped_string;
+use crate::parse::char;
+use crate::parse::tokenize;
+use crate::parse::repeat;
+use crate::parse::bracket;
 use crate::parse::ParseResult;
-// use crate::parse::ParseResultExt as _;
-// use crate::parse::postfix;
-// use crate::parse::prefix;
-// use crate::parse::require_if;
-// use crate::parse::uint;
-// use crate::parse::whitespace;
+use crate::parse::ParseResultExt as _;
 
+// Standard library imports.
+use std::borrow::Cow;
 
-
+/// Parses a statment.
 pub fn statement<'t>(text: &'t str) -> ParseResult<'t, CommandOption> {
+    command_option(text)
+}
+
+/// Parses a command option.
+pub fn command_option<'t>(_text: &'t str) -> ParseResult<'t, CommandOption> {
     
     unimplemented!()
 }
 
+/// Parses a potentially quoted chunk of text.
+pub fn chunk<'t>(text: &'t str) -> ParseResult<'t, Cow<'t, str>> {
+    
+    escaped_string(
+            script_string_open,
+            script_string_close,
+            script_string_escape)
+        (text)
+}
 
+
+
+
+
+/// Parses a script string opening quote. For use with escaped_string.
+pub fn script_string_open<'t>(text: &'t str)
+    -> ParseResult<'t, (Cow<'static, str>, bool)>
+{
+    let raw_hashed = bracket(
+            tokenize(repeat(1, None, char('#'))),
+            char('r'),
+            char('"'))
+        (text);
+    if raw_hashed.is_ok() {
+        return raw_hashed
+            .map_value(|close| {
+                let mut s = "\"".to_string();
+                s.push_str(close);
+                (s.into(), false)
+            });
+    }
+
+    any_literal_map(
+            literal,
+            "string open quote",
+            vec![
+                ("r\"", ("\"".into(), false)),
+                ("\"",  ("\"".into(), true)),
+                ("'",  ("'".into(), true)),
+            ])
+        (text)
+}
+
+/// Parses a script string closing quote. For use with escaped_string.
+pub fn script_string_close<'t, 'o: 't>(text: &'t str, open: Cow<'o, str>)
+    -> ParseResult<'t, &'t str>
+{
+    literal_once(open.as_ref())(text)
+}
+
+/// Parses a script string escape character. For use with escaped_string.
+pub fn script_string_escape<'t>(text: &'t str) -> ParseResult<'t, &'static str>
+{
+    any_literal_map(
+            literal,
+            "string escape",
+            vec![
+                ("\\n",  "\n"),
+                ("\\t",  "\t"),
+                ("\"",   "\""),
+                ("\\'",  "'"),
+                ("\\\\", "\\"),
+            ])
+        (text)
+}
