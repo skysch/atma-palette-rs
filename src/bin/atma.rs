@@ -119,7 +119,7 @@ pub fn main_facade() -> Result<(), Error> {
     trace!("{:#?}", settings); 
 
     // Load the palette.
-    let palette = if opts.should_load_palette() {
+    let mut palette = if opts.should_load_palette() {
         match &opts.common.palette {
             Some(pal_path) => {
                 let path = normalize_path(cur_dir.clone(), pal_path);
@@ -147,7 +147,12 @@ pub fn main_facade() -> Result<(), Error> {
     trace!("Palette: {:#?}", palette);
 
     // Dispatch to appropriate commands.
-    atma::command::dispatch(palette, opts, config, settings, cur_dir)?;
+    atma::command::dispatch(
+        palette.as_mut(),
+        opts,
+        &config,
+        &mut settings,
+        Some(&cur_dir))?;
 
     Ok(())
 }

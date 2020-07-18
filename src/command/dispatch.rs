@@ -31,7 +31,7 @@ use log::*;
 use anyhow::anyhow;
 
 // Standard library imports.
-use std::path::PathBuf;
+use std::path::Path;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,11 +47,11 @@ const NO_PALETTE: &'static str = "No active palette loaded.";
 ////////////////////////////////////////////////////////////////////////////////
 /// Executes the given `AtmaOptions` on the given `Palette`.
 pub fn dispatch(
-    palette: Option<Palette>,
+    palette: Option<&mut Palette>,
     opts: AtmaOptions,
-    config: Config,
-    mut settings: Settings,
-    cur_dir: PathBuf)
+    config: &Config,
+    settings: &mut Settings,
+    cur_dir: Option<&Path>)
     -> Result<(), anyhow::Error>
 {
     trace!("Begin command dispatch.");
@@ -73,14 +73,17 @@ pub fn dispatch(
                 new_palette(
                         Some(script_path),
                         normalize_path(
-                            cur_dir.clone(),
+                            cur_dir
+                                .expect("Currend directory not determined")
+                                .clone(),
                             path.unwrap_or_else(|| cur_dir
+                                .expect("Currend directory not determined")
                                 .join(&config.default_palette_path))),
                         set_active,
                         no_history,
                         name,
-                        &config,
-                        &mut settings)
+                        config,
+                        settings)
                     .context("Command 'new script' failed")
             },
 
@@ -88,29 +91,38 @@ pub fn dispatch(
                 new_palette(
                         None,
                         normalize_path(
-                            cur_dir.clone(),
+                            cur_dir
+                                .expect("Currend directory not determined")
+                                .clone(),
                             path.unwrap_or_else(|| cur_dir
+                                .expect("Currend directory not determined")
                                 .join(&config.default_palette_path))),
                         set_active,
                         no_history,
                         name,
-                        &config,
-                        &mut settings)
+                        config,
+                        settings)
                     .context("Command 'new palette' failed")
             },
 
             NewOption::Config { path } => new_config(
                     normalize_path(
-                        cur_dir.clone(),
-                        path.unwrap_or_else(
-                            || cur_dir.join(dbg!(DEFAULT_CONFIG_PATH))),
+                        cur_dir
+                            .expect("Currend directory not determined")
+                            .clone(),
+                        path.unwrap_or_else(|| cur_dir
+                                .expect("Currend directory not determined")
+                                .join(dbg!(DEFAULT_CONFIG_PATH))),
                         ))
                 .context("Command 'new config' failed"),
 
             NewOption::Settings { path } => new_settings(
                     normalize_path(
-                        cur_dir.clone(),
+                        cur_dir
+                            .expect("Currend directory not determined")
+                            .clone(),
                         path.unwrap_or_else(|| cur_dir
+                            .expect("Currend directory not determined")
                             .join(&config.default_settings_path))))
                 .context("Command 'new settings' failed"),
         },
@@ -158,7 +170,7 @@ pub fn dispatch(
         // Insert
         ////////////////////////////////////////////////////////////////////////
         Insert { exprs, name, at } => {
-            let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+            let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
             if exprs.is_empty() {
                 println!("No expressions to insert.");
                 return Ok(()); 
@@ -180,7 +192,7 @@ pub fn dispatch(
         ////////////////////////////////////////////////////////////////////////
         Delete { selection } => match selection {
             Some(selection) => {
-                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
                 let cursor_behavior = settings
                     .delete_cursor_behavior
                     .unwrap_or(config.default_delete_cursor_behavior);
@@ -201,7 +213,7 @@ pub fn dispatch(
         ////////////////////////////////////////////////////////////////////////
         Move { selection, to } => match selection {
             Some(selection) => {
-                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
                 let to = to.unwrap_or(config.default_positioning);
                 let cursor_behavior = settings
                     .move_cursor_behavior
@@ -222,7 +234,7 @@ pub fn dispatch(
         ////////////////////////////////////////////////////////////////////////
         Set { set_option } => match set_option {
             SetOption::Name { position_selector, name } => {
-                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
 
                 pal.set_name(name, position_selector)?;
 
@@ -232,7 +244,7 @@ pub fn dispatch(
             },
 
             SetOption::Group { selection, name, remove } => {
-                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
 
                 pal.set_group(name, selection, remove)?;
 
@@ -242,7 +254,7 @@ pub fn dispatch(
             },
 
             SetOption::Expr { at, expr } => {
-                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
 
                 let mut exprs = expr.exprs(pal.inner())?;
                 if exprs.len() > 1 {
@@ -259,7 +271,7 @@ pub fn dispatch(
             },
 
             SetOption::Cursor { position } => {
-                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
                 let _ = pal.set_position_cursor(position);
                 pal.write_to_load_path()
                     .map(|_| ())
@@ -267,7 +279,7 @@ pub fn dispatch(
             }
 
             SetOption::History { history_set_option } => {
-                let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+                let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
                 pal.set_history(history_set_option);
                 pal.write_to_load_path()
                     .map(|_| ())
@@ -277,7 +289,7 @@ pub fn dispatch(
             SetOption::ActivePalette { path } => {
                 if let Some(path) = path {
                     settings.active_palette = Some(normalize_path(
-                        cur_dir,
+                        cur_dir.expect("Currend directory not determined"),
                         path));
                 } else {
                     settings.active_palette = None;
@@ -313,7 +325,7 @@ pub fn dispatch(
         // Undo
         ////////////////////////////////////////////////////////////////////////
         Undo { count } => {
-            let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+            let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
             let count = count.unwrap_or(1);
             if count == 0 {
                 println!("0 undo operations performed.");
@@ -336,7 +348,7 @@ pub fn dispatch(
         // Redo
         ////////////////////////////////////////////////////////////////////////
         Redo { count } => {
-            let mut pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+            let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
             let count = count.unwrap_or(1);
             if count == 0 {
                 println!("0 redo operations performed.");
@@ -369,7 +381,9 @@ pub fn dispatch(
                     write_png(
                         &pal,
                         selection.unwrap_or(CellSelector::All.into()),
-                        &cur_dir.clone().join(output))
+                        &cur_dir.expect("Currend directory not determined")
+                            .clone()
+                            .join(output))
                 },
             }
         },

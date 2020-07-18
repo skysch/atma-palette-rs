@@ -10,6 +10,7 @@
 
 // Local imports.
 use crate::command::CommandOption;
+use crate::command::SetOption;
 use crate::command::Script;
 use crate::parse::any_literal_map;
 use crate::parse::bracket;
@@ -63,14 +64,27 @@ pub fn statement<'t>(text: &'t str) -> ParseResult<'t, CommandOption> {
     command_option(text)
         .convert_value(|opt| {
             match &opt {
+                CommandOption::Set { set_option } => {
+                    match set_option {
+                        SetOption::ActivePalette { .. } => {
+                            return Err(ScriptError {
+                                msg: "unsupported operation".into() 
+                            })
+                        },
+                        _ => (),
+                    }
+                },
+
                 CommandOption::New { .. } |
                 CommandOption::List { .. } |
                 CommandOption::Undo { .. } |
                 CommandOption::Redo { .. } |
                 CommandOption::Export { .. } |
-                CommandOption::Import { .. } => return Err(ScriptError {
-                    msg: "unsupported operation".into() 
-                }),
+                CommandOption::Import { .. } => {
+                    return Err(ScriptError {
+                        msg: "unsupported operation".into() 
+                    })
+                },
                 _ => (),
             }
             Ok(opt)

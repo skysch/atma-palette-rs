@@ -43,7 +43,7 @@ pub struct Script {
 impl Script {
     /// Executes the script on the given palette.
     pub fn execute(
-        &self,
+        self,
         _palette: &mut Palette,
         _config: &Config,
         _settings: &mut Settings)
