@@ -47,11 +47,11 @@ pub fn main() {
 /// The application facade for propagating user errors.
 pub fn main_facade() -> Result<(), Error> {
     // Parse command line options.
-    let opts = AtmaOptions::from_args();
+    let AtmaOptions { common, command } = AtmaOptions::from_args();
 
     // Find the path for the config file.
     let cur_dir = std::env::current_dir()?;
-    let config_path = match &opts.common.config {
+    let config_path = match &common.config {
         Some(path) => path.clone(),
         None       => cur_dir.join(DEFAULT_CONFIG_PATH),
     };
@@ -73,7 +73,7 @@ pub fn main_facade() -> Result<(), Error> {
     for (context, level) in &config.log_levels {
         logger = logger.level_for(context.clone(), *level);
     }
-    match (opts.common.verbose, opts.common.quiet, opts.common.trace) {
+    match (common.verbose, common.quiet, common.trace) {
         (_, _, true) => logger.level_for("atma", LevelFilter::Trace).start(),
         (_, true, _) => (),
         (true, _, _) => logger.level_for("atma", LevelFilter::Debug).start(),
@@ -89,7 +89,8 @@ pub fn main_facade() -> Result<(), Error> {
     if let Some(hash) = rustc_meta.commit_hash {
         trace!("Rustc git commit: {}", hash);
     }
-    trace!("{:#?}", opts);
+    trace!("{:#?}", common);
+    trace!("{:#?}", command);
     trace!("{:#?}", config);
 
     // Log any config loading errors.
@@ -100,7 +101,7 @@ pub fn main_facade() -> Result<(), Error> {
 
     // Find the path for the settings file.
     let cur_dir = std::env::current_dir()?;
-    let settings_path = match &opts.common.settings {
+    let settings_path = match &common.settings {
         Some(path) => path.clone(),
         None       => cur_dir.join(&config.default_settings_path),
     };
@@ -119,8 +120,8 @@ pub fn main_facade() -> Result<(), Error> {
     trace!("{:#?}", settings); 
 
     // Load the palette.
-    let mut palette = if opts.should_load_palette() {
-        match &opts.common.palette {
+    let mut palette = if command.should_load_palette() {
+        match &common.palette {
             Some(pal_path) => {
                 let path = normalize_path(cur_dir.clone(), pal_path);
                 Some(Palette::read_from_path(&path)
@@ -149,7 +150,8 @@ pub fn main_facade() -> Result<(), Error> {
     // Dispatch to appropriate commands.
     atma::command::dispatch(
         palette.as_mut(),
-        opts,
+        command,
+        &common,
         &config,
         &mut settings,
         Some(&cur_dir))?;

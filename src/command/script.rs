@@ -10,14 +10,15 @@
 
 // Local imports.
 use crate::command::CommandOption;
-use crate::palette::Palette;
+use crate::command::CommonOptions;
 use crate::Config;
-use crate::Settings;
 use crate::error::FileError;
-use crate::parse::script;
+use crate::error::FileErrorContext as _;
+use crate::palette::Palette;
 use crate::parse::FailureOwned;
 use crate::parse::ParseResultExt as _;
-use crate::error::FileErrorContext as _;
+use crate::parse::script;
+use crate::Settings;
 
 // External library imports.
 use log::*;
@@ -44,11 +45,23 @@ impl Script {
     /// Executes the script on the given palette.
     pub fn execute(
         self,
-        _palette: &mut Palette,
-        _config: &Config,
-        _settings: &mut Settings)
+        palette: &mut Palette,
+        common: &CommonOptions,
+        config: &Config,
+        settings: &mut Settings)
         -> Result<(), anyhow::Error>
     {
+        for command in self.statements.into_iter() {
+
+            crate::command::dispatch(
+                Some(palette),
+                command,
+                common,
+                config,
+                settings,
+                None,
+            )?;
+        }
         Ok(())
     }
 

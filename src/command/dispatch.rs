@@ -11,15 +11,15 @@
 // Local imports.
 use crate::cell::CellRef;
 use crate::cell::CellSelector;
-use crate::command::AtmaOptions;
 use crate::command::CommandOption;
+use crate::command::CommonOptions;
+use crate::command::export_png::write_png;
 use crate::command::ExportOption;
+use crate::command::new::new_config;
+use crate::command::new::new_palette;
+use crate::command::new::new_settings;
 use crate::command::NewOption;
 use crate::command::SetOption;
-use crate::command::new::new_config;
-use crate::command::new::new_settings;
-use crate::command::new::new_palette;
-use crate::command::export_png::write_png;
 use crate::Config;
 use crate::DEFAULT_CONFIG_PATH;
 use crate::palette::Palette;
@@ -48,7 +48,8 @@ const NO_PALETTE: &'static str = "No active palette loaded.";
 /// Executes the given `AtmaOptions` on the given `Palette`.
 pub fn dispatch(
     palette: Option<&mut Palette>,
-    opts: AtmaOptions,
+    command: CommandOption,
+    common: &CommonOptions,
     config: &Config,
     settings: &mut Settings,
     cur_dir: Option<&Path>)
@@ -58,7 +59,7 @@ pub fn dispatch(
     use CommandOption::*;
     use anyhow::Context as _;
 
-    match opts.command {
+    match command {
 
         // New
         ////////////////////////////////////////////////////////////////////////
@@ -82,6 +83,7 @@ pub fn dispatch(
                         set_active,
                         no_history,
                         name,
+                        common,
                         config,
                         settings)
                     .context("Command 'new script' failed")
@@ -100,6 +102,7 @@ pub fn dispatch(
                         set_active,
                         no_history,
                         name,
+                        common,
                         config,
                         settings)
                     .context("Command 'new palette' failed")

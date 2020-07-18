@@ -11,6 +11,7 @@
 // Local imports.
 use crate::cell::PositionSelector;
 use crate::command::Script;
+use crate::command::CommonOptions;
 use crate::Config;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
@@ -53,6 +54,7 @@ pub fn new_palette(
     set_active: bool,
     no_history: bool,
     name: Option<String>,
+    common: &CommonOptions,
     config: &Config,
     settings: &mut Settings)
     -> Result<(), anyhow::Error>
@@ -69,7 +71,7 @@ pub fn new_palette(
 
     if let Some(script_path) = script_path {
         let script = Script::read_from_path(script_path)?;
-        let _ = script.execute(&mut palette, config, settings)?;
+        let _ = script.execute(&mut palette, common, config, settings)?;
 
     }
 

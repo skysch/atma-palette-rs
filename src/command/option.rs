@@ -43,23 +43,6 @@ pub struct AtmaOptions {
     pub command: CommandOption,
 }
 
-impl AtmaOptions {
-    /// Returns true if the commands depends on the palette.
-    pub fn should_load_palette(&self) -> bool {
-        match &self.command {
-            CommandOption::New { .. } => false,
-            CommandOption::Set { set_option } => match set_option {
-                SetOption::ActivePalette { .. } |
-                SetOption::DeleteCursorBehavior { .. } |
-                SetOption::InsertCursorBehavior { .. } |
-                SetOption::MoveCursorBehavior { .. } => false,
-                _ => true,
-            },
-            _ => true,
-        }
-    }
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // CommonOptions
@@ -187,6 +170,23 @@ pub enum CommandOption {
         #[structopt(subcommand)]
         export_option: ExportOption,
     },
+}
+
+impl CommandOption {
+    /// Returns true if the commands depends on the palette.
+    pub fn should_load_palette(&self) -> bool {
+        match &self {
+            CommandOption::New { .. } => false,
+            CommandOption::Set { set_option } => match set_option {
+                SetOption::ActivePalette { .. } |
+                SetOption::DeleteCursorBehavior { .. } |
+                SetOption::InsertCursorBehavior { .. } |
+                SetOption::MoveCursorBehavior { .. } => false,
+                _ => true,
+            },
+            _ => true,
+        }
+    }
 }
 
 
