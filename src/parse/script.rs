@@ -10,6 +10,7 @@
 
 // Local imports.
 use crate::command::CommandOption;
+use crate::command::Script;
 use crate::parse::any_literal_map;
 use crate::parse::bracket;
 use crate::parse::char;
@@ -38,6 +39,15 @@ use std::borrow::Cow;
 
 
 
+
+/// Parses a script.
+pub fn script<'t>(text: &'t str) -> ParseResult<'t, Script> {
+    statements
+        (text)
+        .map_value(|statements| Script {
+            statements,
+        })
+}
 
 
 /// Parses a series of statements.

@@ -197,6 +197,30 @@ pub enum CommandOption {
 #[derive(Debug, Clone)]
 #[derive(StructOpt)]
 pub enum NewOption {
+
+    /// Create a new palette from a script.
+    Script {
+        /// The path of the script to run.
+        #[structopt(parse(from_os_str))]
+        script_path: PathBuf,
+
+        /// The path of the new palette.
+        #[structopt(parse(from_os_str))]
+        path: Option<PathBuf>,
+        
+        /// Sets the palette as the default active palette.
+        #[structopt(long = "set-active")]
+        set_active: bool,
+
+        /// Disables undo/redo operations for the palette.
+        #[structopt(long = "no-history")]
+        no_history: bool,
+
+        /// The name of the palette.
+        #[structopt(long = "name")]
+        name: Option<String>,
+    },
+
     /// Create a new palette.
     Palette {
         /// The path of the new palette.

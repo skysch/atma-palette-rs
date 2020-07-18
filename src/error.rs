@@ -96,6 +96,14 @@ pub enum FileError {
         /// The error source.
         source: ron::error::Error
     },
+
+    /// A file parse error.
+    ParseError {
+        /// The error message.
+        msg: Option<String>,
+        /// The error source.
+        source: crate::parse::FailureOwned,
+    }
 }
 
 impl FileError {
@@ -112,6 +120,7 @@ impl FileError {
         match self {
             FileError::IoError { msg, .. } => msg,
             FileError::RonError { msg, .. } => msg,
+            FileError::ParseError { msg, .. } => msg,
         }
     }
 }
@@ -126,6 +135,10 @@ impl std::fmt::Display for FileError {
             FileError::RonError { msg, .. } => {
                 if let Some(msg) = msg { writeln!(f, "{}", msg)?; }
             },
+
+            FileError::ParseError { msg, .. } => {
+                if let Some(msg) = msg { writeln!(f, "{}", msg)?; }
+            },
         }
         Ok(())
     }
@@ -137,6 +150,7 @@ impl std::error::Error for FileError {
         match self {
             FileError::IoError { source, .. } => Some(source),
             FileError::RonError { source, .. } => Some(source),
+            FileError::ParseError { source, .. } => Some(source),
         }
     }
 }
@@ -150,6 +164,25 @@ impl From<ron::error::Error> for FileError {
 impl From<std::io::Error> for FileError {
     fn from(err: std::io::Error) -> Self {
         FileError::IoError { msg: None, source: err }
+    }
+}
+
+
+impl From<ParseError> for FileError {
+    fn from(err: ParseError) -> Self {
+        FileError::ParseError { msg: err.msg, source: err.source }
+    }
+}
+
+impl From<crate::parse::FailureOwned> for FileError {
+    fn from(err: crate::parse::FailureOwned) -> Self {
+        FileError::ParseError { msg: None, source: err }
+    }
+}
+
+impl<'t> From<crate::parse::Failure<'t>> for FileError {
+    fn from(err: crate::parse::Failure<'t>) -> Self {
+        err.to_owned().into()
     }
 }
 

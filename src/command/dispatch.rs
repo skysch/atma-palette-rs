@@ -63,8 +63,15 @@ pub fn dispatch(
         // New
         ////////////////////////////////////////////////////////////////////////
         New { new_option } => match new_option {
-            NewOption::Palette { path, set_active, no_history, name } => {
+            NewOption::Script {
+                script_path,
+                path,
+                set_active,
+                no_history,
+                name,
+            } => {
                 new_palette(
+                        Some(script_path),
                         normalize_path(
                             cur_dir.clone(),
                             path.unwrap_or_else(|| cur_dir
@@ -72,6 +79,22 @@ pub fn dispatch(
                         set_active,
                         no_history,
                         name,
+                        &config,
+                        &mut settings)
+                    .context("Command 'new script' failed")
+            },
+
+            NewOption::Palette { path, set_active, no_history, name } => {
+                new_palette(
+                        None,
+                        normalize_path(
+                            cur_dir.clone(),
+                            path.unwrap_or_else(|| cur_dir
+                                .join(&config.default_palette_path))),
+                        set_active,
+                        no_history,
+                        name,
+                        &config,
                         &mut settings)
                     .context("Command 'new palette' failed")
             },
