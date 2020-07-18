@@ -38,8 +38,6 @@ use structopt::StructOpt as _;
 use std::borrow::Cow;
 
 
-
-
 /// Parses a script.
 pub fn script<'t>(text: &'t str) -> ParseResult<'t, Script> {
     statements
@@ -48,7 +46,6 @@ pub fn script<'t>(text: &'t str) -> ParseResult<'t, Script> {
             statements,
         })
 }
-
 
 /// Parses a series of statements.
 pub fn statements<'t>(text: &'t str) -> ParseResult<'t, Vec<CommandOption>> {
@@ -70,7 +67,6 @@ pub fn statement<'t>(text: &'t str) -> ParseResult<'t, CommandOption> {
             Ok(opt)
         })
 }
-
 
 /// Parses a CommandOption.
 pub fn command_option<'t>(text: &'t str) -> ParseResult<'t, CommandOption> {
@@ -115,8 +111,6 @@ pub fn chunk<'t>(text: &'t str) -> ParseResult<'t, Cow<'t, str>> {
         .tokenize_value()
         .map_value(Cow::from)
 }
-
-
 
 /// Parses a script string opening quote. For use with escaped_string.
 pub fn script_string_open<'t>(text: &'t str)

@@ -1,6 +1,6 @@
 [package]
 name = "atma"
-version = "0.0.188"
+version = "0.0.189"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -17,6 +17,7 @@ exclude = [
 	"*.sublime-workspace",
 	".atma-config",
 	".atma-settings",
+	".atma-script",
 	"*.atma"]
 
 [lib]
