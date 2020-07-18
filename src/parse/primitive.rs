@@ -190,25 +190,29 @@ pub fn literal_ignore_ascii_case<'t>(expect: &'t str)
 
 
 /// Returns a parser that parses a delimmited and escaped string.
-pub fn escaped_string<'t>(
-    brackets: Vec<(&'static str, &'static str)>,
+pub fn escaped_string<'t, G, H, U, T>(
+    mut open_parser: G,
+    mut close_parser: H,
     escapes: Vec<(&'static str, &'static str)>)
     -> impl FnMut(&'t str) -> ParseResult<'t, String>
+    where
+        G: FnMut(&'t str) -> ParseResult<'t, U>,
+        H: FnMut(&'t str, U) -> ParseResult<'t, T>,
+        U: Clone,
 {
     // TODO: This could probably be optimized by building a common prefix
     // matcher for escapes.
     move |text| {
         let mut suc = Success { token: "", rest: text, value: () };
-        let mut closing = None;
-        for (idx, open) in brackets.iter().map(|(o, _)| o).enumerate() {
-            if let Ok(open_suc) = literal(open)(suc.rest) {
-                let (_, v) = open_suc.take_value();
-                suc = v.join(suc, text);
-                closing = Some(brackets[idx].1);
-            }
+        let mut open_value = None;
+        
+        if let Ok(open_suc) = (open_parser)(suc.rest) {
+            let (c, v) = open_suc.take_value();
+            suc = v.join(suc, text);
+            open_value = Some(c);
         }
 
-        if closing.is_none() {
+        if open_value.is_none() {
             return Err(Failure {
                 token: "",
                 rest: text,
@@ -216,12 +220,11 @@ pub fn escaped_string<'t>(
                 source: None,
             });
         }
-        let closing = closing.unwrap();
+        let open_value = open_value.unwrap();
         let mut string_value = String::new();
 
         loop {
-            if let Ok(close_suc) = literal(closing)
-                (text)
+            if let Ok(close_suc) = (close_parser)(text, open_value.clone())
             {
                 return Ok(close_suc
                     .join(suc, text)
@@ -243,6 +246,7 @@ pub fn escaped_string<'t>(
         }
     }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Integer parsing.

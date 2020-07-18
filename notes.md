@@ -52,7 +52,11 @@
     atma import script [--parametric]
     atma import png
     
+# Scripting
 
+Scripting should only support editing commands: `insert`, `delete`, `move`, `set`. Settings modifications should only apply to the current script session, not to the save (unless otherwise specified.)
+
+Each script command is ended with `;`. Whitespace is ignored otherwise.
 
 # Cell selection & Cell selector
 
