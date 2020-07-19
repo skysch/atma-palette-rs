@@ -10,13 +10,17 @@
 #![allow(variant_size_differences)] // TODO: Remove this.
 
 // Local library imports.
-use crate::cell::CellSelection;
 use crate::cell::CellRef;
+use crate::cell::CellSelection;
 use crate::cell::Position;
 use crate::cell::PositionSelector;
-use crate::command::Positioning;
+use crate::command::ColorDisplay;
+use crate::command::ColorMode;
 use crate::command::CursorBehavior;
 use crate::command::HistorySetOption;
+use crate::command::ListMode;
+use crate::command::ListOrder;
+use crate::command::Positioning;
 use crate::palette::InsertExpr;
 
 // External library imports.
@@ -100,19 +104,32 @@ pub enum CommandOption {
 
     /// List palette contents.
     List {
-        // TODO: Consider generalizing this to a string so we can parse simpler
-        // selection terms?
         /// The selection of palette cells to list.
         selection: Option<CellSelection<'static>>,
 
-        // Print by index or by page?
-        // Display width?
-        // Use colors?
-        // Print names and groups?
-        // Indicate expr types?
-        // Indicate names, groups, positions?
-        // Sort?
-        // Compact?
+        /// The maximum display width to use for list output.
+        #[structopt(long = "max_width")]
+        max_width: Option<u16>,
+
+        /// The maximum display height to use for list output.
+        #[structopt(long = "max_height")]
+        max_height: Option<u16>,
+
+        /// The listing mode. Determines how information layed out.
+        #[structopt(long = "mode")]
+        mode: Option<ListMode>,
+
+        /// The iteration order for color data.
+        #[structopt(long = "order")]
+        order: Option<ListOrder>,
+
+        /// How to display colors.
+        #[structopt(long = "display")]
+        display: Option<ColorDisplay>,
+
+        /// Disables color output.
+        #[structopt(long = "color")]
+        color: Option<ColorMode>,
     },
 
     /// Insert colors and ramps into a palette.

@@ -10,14 +10,18 @@
 
 // Local imports.
 use crate::cell::CellSelector;
+use crate::command::ColorDisplay;
+use crate::command::ColorMode;
 use crate::command::CommandOption;
 use crate::command::CommonOptions;
 use crate::command::export_png::write_png;
 use crate::command::ExportOption;
+use crate::command::list::list;
+use crate::command::ListMode;
+use crate::command::ListOrder;
 use crate::command::new::new_config;
 use crate::command::new::new_palette;
 use crate::command::new::new_settings;
-use crate::command::list::list;
 use crate::command::NewOption;
 use crate::command::SetOption;
 use crate::palette::Palette;
@@ -132,8 +136,22 @@ pub fn dispatch(
 
         // List
         ////////////////////////////////////////////////////////////////////////
-        List { selection } => {
+        List {
+            selection,
+            max_width,
+            max_height,
+            mode,
+            order,
+            display,
+            color,
+        } => {
             let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
+            let w = max_width.unwrap_or(120);
+            let h = max_height.unwrap_or(40);
+            let mode = mode.unwrap_or(ListMode::Grid);
+            let color = color.unwrap_or(ColorMode::Enable);
+            let order = order.unwrap_or(ListOrder::Position);
+            let display = display.unwrap_or(ColorDisplay::Hex6);
 
             list(
                 &pal,

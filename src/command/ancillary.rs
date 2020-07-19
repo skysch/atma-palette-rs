@@ -9,6 +9,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal library imports.
+use crate::color::Color;
 use crate::cell::Position;
 use crate::parse::any_literal_map_once;
 use crate::parse::FailureOwned;
@@ -146,6 +147,182 @@ impl std::str::FromStr for HistorySetOption {
             (text)
             .end_of_text()
             .source_for("expected 'enable', 'disable', or 'clear'.")
+            .finish()
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// ListMode
+////////////////////////////////////////////////////////////////////////////////
+/// Option parse result for list mode.
+#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize)]
+pub enum ListMode {
+    /// Display colors in a grid.
+    Grid,
+    /// Display one color per line.
+    Lines,
+    /// Display colors in a line.
+    List,
+}
+
+impl std::str::FromStr for ListMode {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        any_literal_map_once(
+                literal_ignore_ascii_case,
+                "",
+                vec![
+                    ("grid",  ListMode::Grid),
+                    ("lines", ListMode::Lines),
+                    ("list",  ListMode::List),
+                ])
+            (text)
+            .end_of_text()
+            .source_for("expected 'grid', 'lines', or 'list'.")
+            .finish()
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// ListOrder
+////////////////////////////////////////////////////////////////////////////////
+/// Option parse result for list ordering.
+#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize)]
+pub enum ListOrder {
+    /// Order cells by position.
+    Position,
+    /// Order cells by index.
+    Index,
+    /// Order cells by name / group.
+    Name,
+}
+
+impl std::str::FromStr for ListOrder {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        any_literal_map_once(
+                literal_ignore_ascii_case,
+                "",
+                vec![
+                    ("position", ListOrder::Position),
+                    ("index",    ListOrder::Index),
+                    ("name",     ListOrder::Name),
+                ])
+            (text)
+            .end_of_text()
+            .source_for("expected 'position', 'index', or 'name'.")
+            .finish()
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// ColorDisplay
+////////////////////////////////////////////////////////////////////////////////
+/// Option parse result for color display.
+#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize)]
+pub enum ColorDisplay {
+    /// Display colors using a colored tile.
+    Tile,
+    /// Display colors using a 6-digit RGB hex code.
+    Hex6,
+    /// Display colors using a 3-digit RGB hex code.
+    Hex3,
+    /// Display colors using RGB function notation.
+    Rgb,
+}
+
+impl ColorDisplay {
+    /// Returns the total dedicated width of the color output, including
+    /// whitespace.
+    pub fn width(&self) -> usize {
+        match self {
+            ColorDisplay::Tile => 1,
+            ColorDisplay::Hex6 => 8,
+            ColorDisplay::Hex3 => 5,
+            ColorDisplay::Rgb  => 20,
+        }
+    }
+
+    /// Prints a color using the color display mode.
+    pub fn print(&self, color: Color) {
+        match self {
+            ColorDisplay::Tile => {
+                print!(" X");
+            }
+
+            ColorDisplay::Hex6 => {
+                print!(" {:X}", color);
+            },
+
+            ColorDisplay::Hex3 => {
+                let hex = color.rgb_hex();
+                let r = (0xFF0000 & hex) >> 20;
+                let g = (0x00FF00 & hex) >> 12;
+                let b = (0x0000FF & hex) >> 4;
+                print!(" #{:01X}{:01X}{:01X}", r, g, b);
+            }
+
+            ColorDisplay::Rgb  => {
+                let [r, g, b] = color.rgb_ratios();
+                print!(" rgb({:0.2},{:0.2},{:0.2})", r, g, b);
+            },
+        }
+    }
+}
+
+impl std::str::FromStr for ColorDisplay {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        any_literal_map_once(
+                literal_ignore_ascii_case,
+                "",
+                vec![
+                    ("tile",  ColorDisplay::Tile),
+                    ("hex_6", ColorDisplay::Hex6),
+                    ("hex_3", ColorDisplay::Hex3),
+                    ("rgb",   ColorDisplay::Rgb),
+                ])
+            (text)
+            .end_of_text()
+            .source_for("expected 'tile', 'hex_6', 'hex_3', or 'rgb'.")
+            .finish()
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// ColorMode
+////////////////////////////////////////////////////////////////////////////////
+/// Option parse result for color display.
+#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize)]
+pub enum ColorMode {
+    /// Enable colors.
+    Enable,
+    /// Disable colors.
+    Disable,
+}
+
+impl std::str::FromStr for ColorMode {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        any_literal_map_once(
+                literal_ignore_ascii_case,
+                "",
+                vec![
+                    ("enable",  ColorMode::Enable),
+                    ("disable", ColorMode::Disable),
+                ])
+            (text)
+            .end_of_text()
+            .source_for("expected 'enable' or 'disable'.")
             .finish()
     }
 }

@@ -11,6 +11,7 @@
 
 // Internal module imports.
 use crate::palette::Palette;
+use crate::command::ColorDisplay;
 use crate::setup::Config;
 use crate::setup::Settings;
 use crate::cell::CellSelection;
@@ -38,7 +39,9 @@ pub fn list<'a>(
         if let Ok(Some(c)) = palette.inner()
             .color(&CellRef::Index(idx))
         {
-            print!("{:4X} {:X}", idx, c);
+            print!("{:4X}", idx);
+            ColorDisplay::Tile.print(c);
+
             if let Some(pos) = palette.inner()
                 .assigned_position(&CellRef::Index(idx))
             {

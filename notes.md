@@ -14,18 +14,26 @@
         [--name NAME]
         [--no-history]
         [--set-active]
+    atma new script PATH [PATH]
     atma new config [PATH]
     atma new settings [PATH]
 
-    atma list [SELECTION]..
 
-    atma insert [INSERT_EXPR]..
+    atma list [SELECTION]
+        [--max-width WIDTH]
+        [--max-height HEIGHT]
+        [--color [enable|disable]]
+        [--mode [list|lines|grid]
+        [--order [index|position|name]]
+        [--display [tile|hex_6|hex_3|rgb]]
+
+    atma insert [INSERT_EXPR]
         [--name NAME]
         [--at POSITIONING]
 
-    atma delete [SELECTION]..
+    atma delete [SELECTION]
 
-    atma move [SELECTION]..
+    atma move [SELECTION]
         [--to POSITIONING]
 
     atma set name POSITION_SELECTOR [name]
@@ -47,7 +55,6 @@
 
 # Unimplemented Command Syntax
 
-    atma new script PATH [PATH]
     atma export script [--parametric]
     atma import script [--parametric]
     atma import png
@@ -57,6 +64,13 @@
 Scripting should only support editing commands: `insert`, `delete`, `move`, `set`. Settings modifications should only apply to the current script session, not to the save (unless otherwise specified.)
 
 Each script command is ended with `;`. Whitespace is ignored otherwise.
+
+# List options
+
+    // Print names and groups? (Verbosity)
+    // Indicate expr types?
+    // Tile indicators for names, groups, positions?
+
 
 # Cell selection & Cell selector
 
