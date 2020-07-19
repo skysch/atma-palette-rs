@@ -87,7 +87,10 @@ pub fn list_grid<'a>(
     let max_line = corner_position.line.saturating_add(size.1 - 2);
     trace!("{} {}", max_col, max_line);
 
+    let mut line_buf = Vec::with_capacity(columns.into());
+
     for line in corner_position.line..=max_line {
+        let mut print_line = false;
         for column in corner_position.column..=max_col {
             match palette.inner().color(&CellRef::Position(Position {
                     page: corner_position.page,
@@ -95,12 +98,25 @@ pub fn list_grid<'a>(
                     column,
                 }))
             {
-                Ok(Some(c)) => color_display.print(c),
-                Ok(None)    => color_display.print_invalid(),
-                Err(_)      => color_display.print_invalid(),
+                Ok(Some(c)) => {
+                    line_buf.push(Ok(Some(c)));
+                    print_line = true;
+                },
+                Ok(None)    => line_buf.push(Ok(None)),
+                Err(_)      => line_buf.push(Err(())),
             }
         }
-        println!();
+
+        if print_line {
+            for elem in line_buf.drain(..) {
+                match elem {
+                    Ok(Some(c)) => color_display.print(c),
+                    Ok(None)    => color_display.print_invalid(),
+                    Err(_)      => color_display.print_invalid(),
+                }
+            }
+            println!();
+        }
     }
     Ok(())
 }
