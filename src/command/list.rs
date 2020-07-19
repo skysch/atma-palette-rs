@@ -67,3 +67,16 @@ pub fn list<'a>(
     }
     Ok(())
 }
+
+
+
+pub fn list_grid<'a>(
+    palette: &Palette,
+    selection: Option<CellSelection<'a>>,
+    size: (u32, u32),
+    _config: &Config,
+    _settings: &mut Settings)
+    -> Result<(), anyhow::Error>
+{
+    unimplemented!()
+}

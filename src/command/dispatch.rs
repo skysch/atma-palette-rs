@@ -249,10 +249,10 @@ pub fn dispatch(
                     return Err(anyhow!("The `set` command does not support \
                         ramp expressions."));
                 }
-                
-                *pal.cell_mut(&at)?.expr_mut() = exprs.pop()
+                let expr = exprs.pop()
                     .ok_or(anyhow!("No expression to set."))?;
 
+                pal.set_expr(at, expr)?;
                 pal.set_modified(true);
                 Ok(())
             },

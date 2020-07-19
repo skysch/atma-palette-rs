@@ -176,6 +176,7 @@ pub fn main_facade() -> Result<(), Error> {
 
     if let Some(pal) = palette {
         if pal.modified() {
+            trace!("Palette modified, saving to load path.");
             pal.write_to_load_path()
                 .map(|_| ())
                 .context("Failed to write palette pile")?;
@@ -183,12 +184,14 @@ pub fn main_facade() -> Result<(), Error> {
     }
 
     if config.modified() {
+        trace!("Config modified, saving to load path.");
         config.write_to_load_path()
             .map(|_| ())
             .context("Failed to write config file")?;
     }
 
     if settings.modified() {
+        trace!("Settings modified, saving to load path.");
         settings.write_to_load_path()
             .map(|_| ())
             .context("Failed to write settings file")?;

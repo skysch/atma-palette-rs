@@ -10,6 +10,7 @@
 
 // Local imports.
 use crate::cell::Cell;
+use crate::palette::Expr;
 use crate::cell::CellRef;
 use crate::cell::CellSelection;
 use crate::cell::Position;
@@ -551,6 +552,21 @@ impl Palette {
         }
 
         self.apply_operations(&ops[..])
+    }
+
+
+    /// Sets the Expr for the given CellRef.
+    pub fn set_expr<'name>(
+        &mut self,
+        cell_ref: CellRef<'name>,
+        expr: Expr)
+        -> Result<(), PaletteError>
+    {
+        use Operation::*;
+        self.apply_operations(&[SetExpr {
+            cell_ref: cell_ref.into_static(),
+            expr,
+        }])
     }
 
     ////////////////////////////////////////////////////////////////////////////
