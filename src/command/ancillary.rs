@@ -241,7 +241,7 @@ pub enum ColorDisplay {
 impl ColorDisplay {
     /// Returns the total dedicated width of the color output, including
     /// whitespace.
-    pub fn width(&self) -> usize {
+    pub fn width(&self) -> u16 {
         match self {
             ColorDisplay::Tile => 2,
             ColorDisplay::Hex6 => 8,
@@ -274,6 +274,16 @@ impl ColorDisplay {
                 let [r, g, b] = color.rgb_ratios();
                 print!("rgb({:0.2},{:0.2},{:0.2}) ", r, g, b);
             },
+        }
+    }
+
+    /// Prints an empty space using the color display mode.
+    pub fn print_empty(&self) {
+        match self {
+            ColorDisplay::Tile => print!("  "),
+            ColorDisplay::Hex6 => print!("        "),
+            ColorDisplay::Hex3 => print!("     "),
+            ColorDisplay::Rgb  => print!("                    "),
         }
     }
 

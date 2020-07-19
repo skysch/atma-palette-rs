@@ -24,7 +24,7 @@ exclude = [
 name = "atma"
 
 [features]
-default = ["png"]
+default = ["png", "termsize"]
 
 # Required dependencies
 [dependencies]
@@ -40,6 +40,7 @@ rustc_version_runtime = "*"
 serde = { version = "*", features = ["derive"] }
 structopt = { version = "0.3", features = ["suggestions", "color"] }
 png = { version = "0.16", optional = true}
+termsize = { version = "0.1", optional = true}
 
 # Dependencies used for tests, examples, and benches.
 [dev-dependencies]

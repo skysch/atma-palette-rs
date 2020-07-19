@@ -17,6 +17,7 @@ use crate::setup::Settings;
 use crate::cell::CellSelection;
 use crate::cell::CellSelector;
 use crate::cell::CellRef;
+use crate::cell::Position;
 
 // External module imports.
 use log::*;
@@ -73,10 +74,33 @@ pub fn list<'a>(
 pub fn list_grid<'a>(
     palette: &Palette,
     selection: Option<CellSelection<'a>>,
-    size: (u32, u32),
+    size: (u16, u16),
+    corner_position: Position,
+    color_display: ColorDisplay,
     _config: &Config,
     _settings: &mut Settings)
     -> Result<(), anyhow::Error>
 {
-    unimplemented!()
+    let columns: u16 = (size.0 / color_display.width()) - 1;
+
+    let max_col = corner_position.column.saturating_add(columns);
+    let max_line = corner_position.line.saturating_add(size.1 - 2);
+    trace!("{} {}", max_col, max_line);
+
+    for line in corner_position.line..=max_line {
+        for column in corner_position.column..=max_col {
+            match palette.inner().color(&CellRef::Position(Position {
+                    page: corner_position.page,
+                    line,
+                    column,
+                }))
+            {
+                Ok(Some(c)) => color_display.print(c),
+                Ok(None)    => color_display.print_invalid(),
+                Err(_)      => color_display.print_invalid(),
+            }
+        }
+        println!();
+    }
+    Ok(())
 }

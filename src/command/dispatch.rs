@@ -16,7 +16,7 @@ use crate::command::CommandOption;
 use crate::command::CommonOptions;
 use crate::command::export_png::write_png;
 use crate::command::ExportOption;
-use crate::command::list::list;
+use crate::command::list::list_grid;
 use crate::command::ListMode;
 use crate::command::ListOrder;
 use crate::command::new::new_config;
@@ -146,16 +146,34 @@ pub fn dispatch(
             color,
         } => {
             let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
-            let w = max_width.unwrap_or(120);
-            let h = max_height.unwrap_or(40);
             let mode = mode.unwrap_or(ListMode::Grid);
             let color = color.unwrap_or(ColorMode::Enable);
             let order = order.unwrap_or(ListOrder::Position);
-            let display = display.unwrap_or(ColorDisplay::Hex6);
+            let color_display = display.unwrap_or(ColorDisplay::Hex6);
 
-            list(
+            #[cfg(feature = "termsize")]
+            let (w, h) = {
+                termsize::get()
+                    .map(|sz| (sz.cols, sz.rows))
+                    .unwrap_or_else(|| {
+                        let w = max_width.unwrap_or(120);
+                        let h = max_height.unwrap_or(40);
+                        (w, h)
+                    })
+            };
+            #[cfg(not(feature = "termsize"))]
+            let (w, h) = {
+                let w = max_width.unwrap_or(120);
+                let h = max_height.unwrap_or(40);
+                (w, h)
+            };
+
+            list_grid(
                 &pal,
                 selection,
+                dbg!((w, h)),
+                crate::cell::Position::ZERO,
+                color_display,
                 config,
                 settings)
         },
