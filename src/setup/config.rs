@@ -50,7 +50,7 @@ pub const DEFAULT_CONFIG_PATH: &'static str = ".atma-config";
 const DEFAULT_DEFAULT_SETTINGS_PATH: &'static str = ".atma-settings";
 
 /// The default value for default_palette_path.
-pub const DEFAULT_DEFAULT_PALETTE_PATH: &'static str = "palette.atma";
+pub const DEFAULT_DEFAULT_PALETTE_PATH: &'static str = "new.atma-palette";
 
 /// Default value for load_default_palette.
 const DEFAULT_LOAD_DEFAULT_PALETTE: bool = true;

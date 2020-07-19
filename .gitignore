@@ -1,7 +1,7 @@
 .atma-settings
 .atma-config
 *.atma-script
-*.atma
+*.atma-palette
 
 # Ignore this in libraries.
 Cargo.lock

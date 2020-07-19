@@ -9,8 +9,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use anyhow::Context;
-use anyhow::Error;
 use atma::command::AtmaOptions;
 use atma::Config;
 use atma::Palette;
@@ -20,6 +18,8 @@ use atma::setup::Logger;
 use atma::utility::normalize_path;
 
 // Standard library imports.
+use anyhow::Context;
+use anyhow::Error;
 use log::*;
 use log::LevelFilter;
 
@@ -64,7 +64,7 @@ pub fn main_facade() -> Result<(), Error> {
         .unwrap_or_else(|e| {
             // Store the error for output until after the logger is configured.
             config_load_status = Err(e);
-            Config::new().with_load_path(config_path)
+            Config::new().with_load_path(&config_path)
         });
     config.normalize_paths(&cur_dir);
 
@@ -94,10 +94,20 @@ pub fn main_facade() -> Result<(), Error> {
     trace!("{:#?}", config);
 
     // Log any config loading errors.
-    if let Err(e) = config_load_status { 
-        error!("{}", Error::from(e));
-        warn!("Using default config due to previous error.");
-    };
+    match config_load_status {
+        Err(e) if common.config.is_some() => {
+            // Path is user-specified, so it is an error to now load it.
+            return Err(Error::from(e)).with_context(|| format!(
+                "Unable to load config file: {:?}",
+                config_path));
+        },
+        Err(e) => {
+            // Path is default, so it is ok to use default.
+            debug!("Using default config.");
+        },
+
+        Ok(_) => (),
+    }
 
     // Find the path for the settings file.
     let cur_dir = std::env::current_dir()?;
@@ -107,17 +117,25 @@ pub fn main_facade() -> Result<(), Error> {
     };
 
     // Load the settings file.
-    let mut settings = Settings::read_from_path(&settings_path)
-        .with_context(|| format!("Unable to load settings file: {:?}", 
-            settings_path))
-        .unwrap_or_else(|e| {
-            // Log any settings loading errors.
-            error!("{}", Error::from(e));
-            warn!("Using default settings due to previous error.");
+    let mut settings = match Settings::read_from_path(&settings_path) {
+        Err(e) if common.settings.is_some() => {
+            // Path is user-specified, so it is an error to now load it.
+            return Err(Error::from(e)).with_context(|| format!(
+                "Unable to load settings file: {:?}", 
+                settings_path));
+        },
+        Err(e) => {
+            // Path is default, so it is ok to use default settings.
+            debug!("Using default settings.");
             Settings::new().with_load_path(settings_path)
-        });
-    settings.normalize_paths(&cur_dir);
-    trace!("{:#?}", settings); 
+        },
+
+        Ok(mut settings) => {
+            settings.normalize_paths(&cur_dir);
+            trace!("{:#?}", settings); 
+            settings
+        },
+    };
 
     // Load the palette.
     let mut palette = if command.requires_palette() {

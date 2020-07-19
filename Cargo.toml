@@ -1,6 +1,6 @@
 [package]
 name = "atma"
-version = "0.0.195"
+version = "0.0.196"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -18,7 +18,7 @@ exclude = [
 	".atma-config",
 	".atma-settings",
 	".atma-script",
-	"*.atma"]
+	"*.atma-palette"]
 
 [lib]
 name = "atma"
