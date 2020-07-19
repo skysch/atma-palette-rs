@@ -1,6 +1,6 @@
 [package]
 name = "atma"
-version = "0.0.194"
+version = "0.0.195"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -30,7 +30,7 @@ default = ["png"]
 [dependencies]
 anyhow = "1.0"
 color = { git = "https://github.com/skysch/color-rs", features = ["serde"] }
-colored = "2.0"
+colored = { version = "2.0" }
 fern = { version = "*", features = ["colored"] }
 few = { version = "0.1" }
 normalize_interval = { version = "0.14" }

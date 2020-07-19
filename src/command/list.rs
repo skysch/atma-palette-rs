@@ -29,7 +29,6 @@ pub fn list<'a>(
     _settings: &mut Settings)
     -> Result<(), anyhow::Error>
 {
-    // TODO: Move all of this to an inner function.
     debug!("Start listing for selection {:?}", selection);
     let selection = selection.unwrap_or(CellSelector::All.into());
     let index_selection = selection.resolve(palette.inner());
@@ -39,7 +38,7 @@ pub fn list<'a>(
         if let Ok(Some(c)) = palette.inner()
             .color(&CellRef::Index(idx))
         {
-            print!("{:4X}", idx);
+            print!("{:4X} ", idx);
             ColorDisplay::Tile.print(c);
 
             if let Some(pos) = palette.inner()
@@ -58,10 +57,13 @@ pub fn list<'a>(
             {
                 print!(" \"{}\"", group);
             }
-            println!();
+            
         } else {
-            println!("{:4X} invalid color", idx);
+            print!("{:4X} ", idx);
+            ColorDisplay::Tile.print_invalid();
+
         }
+        println!();
     }
     Ok(())
 }

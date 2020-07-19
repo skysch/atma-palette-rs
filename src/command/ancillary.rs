@@ -19,6 +19,7 @@ use crate::parse::position;
 
 
 // External library imports.
+use colored::Colorize as _;
 use serde::Serialize;
 use serde::Deserialize;
 
@@ -242,7 +243,7 @@ impl ColorDisplay {
     /// whitespace.
     pub fn width(&self) -> usize {
         match self {
-            ColorDisplay::Tile => 1,
+            ColorDisplay::Tile => 2,
             ColorDisplay::Hex6 => 8,
             ColorDisplay::Hex3 => 5,
             ColorDisplay::Rgb  => 20,
@@ -253,11 +254,12 @@ impl ColorDisplay {
     pub fn print(&self, color: Color) {
         match self {
             ColorDisplay::Tile => {
-                print!(" X");
-            }
+                let [r, g, b] = color.rgb_octets();
+                print!("{}", "  ".on_truecolor(r, g, b));
+            },
 
             ColorDisplay::Hex6 => {
-                print!(" {:X}", color);
+                print!("{:X} ", color);
             },
 
             ColorDisplay::Hex3 => {
@@ -265,12 +267,33 @@ impl ColorDisplay {
                 let r = (0xFF0000 & hex) >> 20;
                 let g = (0x00FF00 & hex) >> 12;
                 let b = (0x0000FF & hex) >> 4;
-                print!(" #{:01X}{:01X}{:01X}", r, g, b);
-            }
+                print!("#{:01X}{:01X}{:01X} ", r, g, b);
+            },
 
             ColorDisplay::Rgb  => {
                 let [r, g, b] = color.rgb_ratios();
-                print!(" rgb({:0.2},{:0.2},{:0.2})", r, g, b);
+                print!("rgb({:0.2},{:0.2},{:0.2}) ", r, g, b);
+            },
+        }
+    }
+
+    /// Prints an invalid color using the color display mode.
+    pub fn print_invalid(&self) {
+        match self {
+            ColorDisplay::Tile => {
+                print!("{}", "??".truecolor(0x88, 0x88, 0x88));
+            },
+
+            ColorDisplay::Hex6 => {
+                print!("{} ", "???????".truecolor(0x88, 0x88, 0x88));
+            },
+
+            ColorDisplay::Hex3 => {
+                print!("{} ", "????".truecolor(0x88, 0x88, 0x88));
+            },
+
+            ColorDisplay::Rgb  => {
+                print!("{} ", "???????????????????".truecolor(0x88, 0x88, 0x88));
             },
         }
     }
