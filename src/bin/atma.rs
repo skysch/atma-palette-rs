@@ -101,7 +101,7 @@ pub fn main_facade() -> Result<(), Error> {
                 "Unable to load config file: {:?}",
                 config_path));
         },
-        Err(e) => {
+        Err(_) => {
             // Path is default, so it is ok to use default.
             debug!("Using default config.");
         },
@@ -124,7 +124,7 @@ pub fn main_facade() -> Result<(), Error> {
                 "Unable to load settings file: {:?}", 
                 settings_path));
         },
-        Err(e) => {
+        Err(_) => {
             // Path is default, so it is ok to use default settings.
             debug!("Using default settings.");
             Settings::new().with_load_path(settings_path)
@@ -178,14 +178,20 @@ pub fn main_facade() -> Result<(), Error> {
         if pal.modified() {
             pal.write_to_load_path()
                 .map(|_| ())
-                .context("Failed to write palette")?;
+                .context("Failed to write palette pile")?;
         }
     }
 
     if config.modified() {
         config.write_to_load_path()
             .map(|_| ())
-            .context("Failed to write palette")?;
+            .context("Failed to write config file")?;
+    }
+
+    if settings.modified() {
+        settings.write_to_load_path()
+            .map(|_| ())
+            .context("Failed to write settings file")?;
     }
     
 
