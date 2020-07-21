@@ -82,7 +82,7 @@ pub fn new_palette(
     let res = palette.write_to_load_path_if_new();
     if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
         info!("Palette file already exists.");
-        debug!("Palette {:?}", palette.load_path());
+        debug!("Palette load path {:?}", palette.load_path());
     } else {
         let _ = res.with_context(|| 
             if let Some(path) = palette.load_path() {

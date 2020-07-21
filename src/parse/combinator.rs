@@ -155,6 +155,38 @@ pub fn repeat_collect<'t, F, V>(low: usize, high: Option<usize>, parser: F)
 /// Returns a parser which repeats a parse a givin number of times, stopping if
 /// a failure occurs or the upper limit is reached, returning the number of
 /// successes. Fails if the lower limit is not reached.
+pub fn repeat_until<'t, F, G, V, U>(
+    low: usize,
+    high: Option<usize>,
+    parser: F,
+    end_parser: G)
+    -> impl FnMut(&'t str) -> ParseResult<'t, usize>
+    where
+        F: FnMut(&'t str) -> ParseResult<'t, V>,
+        G: FnMut(&'t str) -> ParseResult<'t, U>,
+{
+    intersperse_until(low, high, parser, null, end_parser)
+}
+
+/// Returns a parser which repeats a parse a givin number of times, stopping if
+/// a failure occurs or the upper limit is reached, returning a `Vec` containing
+/// each successful result in order. Fails if the lower limit is not reached.
+pub fn repeat_collect_until<'t, F, G, V, U>(
+    low: usize,
+    high: Option<usize>,
+    parser: F,
+    end_parser: G)
+    -> impl FnMut(&'t str) -> ParseResult<'t, Vec<V>>
+    where
+        F: FnMut(&'t str) -> ParseResult<'t, V>,
+        G: FnMut(&'t str) -> ParseResult<'t, U>,
+{
+    intersperse_collect_until(low, high, parser, null, end_parser)
+}
+
+/// Returns a parser which repeats a parse a givin number of times, stopping if
+/// a failure occurs or the upper limit is reached, returning the number of
+/// successes. Fails if the lower limit is not reached.
 pub fn intersperse<'t, F, G, V, U>(
     low: usize,
     high: Option<usize>,
@@ -166,7 +198,7 @@ pub fn intersperse<'t, F, G, V, U>(
         G: FnMut(&'t str) -> ParseResult<'t, U>,
 {
     move |text| {
-        let mut sub_suc = match (parser)(text) {
+        let mut suc = match (parser)(text) {
             Ok(first) => first.discard_value(),
             Err(_) if low == 0 => return Ok(Success {
                 token: "",
@@ -179,20 +211,19 @@ pub fn intersperse<'t, F, G, V, U>(
 
         let mut count = 1;
         while count < low {
-            sub_suc = prefix(&mut parser, &mut inner_parser)(sub_suc.rest)
+            suc = prefix(&mut parser, &mut inner_parser)(suc.rest)
                 .discard_value()
-                .with_join_previous(sub_suc, text)?;
+                .with_join_previous(suc, text)?;
 
             count += 1;
         }
 
         while high.map_or(true, |h| count < h) {
-            let next_res = prefix(&mut parser, &mut inner_parser)(sub_suc.rest)
-                .discard_value();
-
-            match next_res {
+            match prefix(&mut parser, &mut inner_parser)(suc.rest)
+                .discard_value()
+            {
                 Ok(next_suc) => {
-                    sub_suc = sub_suc.join_with(next_suc, text, |_, v| v);
+                    suc = suc.join_with(next_suc, text, |_, v| v);
                     count += 1;
                 }
                 Err(_) => break,
@@ -203,7 +234,7 @@ pub fn intersperse<'t, F, G, V, U>(
             }
         }
 
-        Ok(sub_suc.map_value(|_| count))
+        Ok(suc.map_value(|_| count))
     }
 }
 
@@ -221,7 +252,7 @@ pub fn intersperse_collect<'t, F, G, V, U>(
         G: FnMut(&'t str) -> ParseResult<'t, U>,
 {
     move |text| {
-        let mut sub_suc = match (parser)(text) {
+        let mut suc = match (parser)(text) {
             Ok(first) => first.map_value(|val| vec![val]) ,
             Err(_) if low == 0 => return Ok(Success {
                 token: "",
@@ -235,19 +266,17 @@ pub fn intersperse_collect<'t, F, G, V, U>(
         let mut count = 1;
         while count < low {
             let next_suc = prefix(&mut parser, &mut inner_parser)
-                (sub_suc.rest)?;
-
-            sub_suc = sub_suc.join_with(next_suc, text,
+                (suc.rest)?;
+            suc = suc.join_with(next_suc, text,
                 |mut vals, val| { vals.push(val); vals });
+
             count += 1;
         }
 
         while high.map_or(true, |h| count < h) {
-            let next_res = prefix(&mut parser, &mut inner_parser)(sub_suc.rest);
-
-            match next_res {
+            match prefix(&mut parser, &mut inner_parser)(suc.rest) {
                 Ok(next_suc) => {
-                    sub_suc = sub_suc.join_with(next_suc, text,
+                    suc = suc.join_with(next_suc, text,
                         |mut vals, val| { vals.push(val); vals });
                     count += 1;
                 }
@@ -259,7 +288,175 @@ pub fn intersperse_collect<'t, F, G, V, U>(
             }
         }
 
-        Ok(sub_suc)
+        Ok(suc)
+    }
+}
+
+/// Returns a parser which repeats a parse a givin number of times, stopping if
+/// a failure occurs or the upper limit is reached, returning the number of
+/// successes. Fails if the lower limit is not reached.
+pub fn intersperse_until<'t, F, G, H, V, U, T>(
+    low: usize,
+    high: Option<usize>,
+    mut parser: F,
+    mut inner_parser: G,
+    mut end_parser: H)
+    -> impl FnMut(&'t str) -> ParseResult<'t, usize>
+    where 
+        F: FnMut(&'t str) -> ParseResult<'t, V>,
+        G: FnMut(&'t str) -> ParseResult<'t, U>,
+        H: FnMut(&'t str) -> ParseResult<'t, T>,
+{
+    move |text| {
+        let end = (end_parser)(text);
+        if end.is_ok() {
+            return end.map_value(|_| 0);
+        }
+
+        let mut suc = match (parser)(text) {
+            Ok(first) => first.discard_value(),
+            Err(_) if low == 0 => return Ok(Success {
+                token: "",
+                rest: text,
+                value: 0,
+            }),
+            Err(fail) => return Err(fail)
+                .map_value(|_: V| 0),
+        };
+
+        let mut count = 1;
+        while count < low {
+            let end = (end_parser)(text);
+            if end.is_ok() { return Ok(suc).map_value(|_| count); }
+
+            suc = (&mut inner_parser)(suc.rest)
+                .discard_value()
+                .with_join_previous(suc, text)?;
+
+            let end = (end_parser)(text);
+            if end.is_ok() { return Ok(suc).map_value(|_| count); }
+
+            suc = (&mut parser)(suc.rest)
+                .discard_value()
+                .with_join_previous(suc, text)?;
+            count += 1;
+        }
+
+        while high.map_or(true, |h| count < h) {
+            let end = (end_parser)(text);
+            if end.is_ok() { return Ok(suc).map_value(|_| count); }
+
+            match (&mut inner_parser)(suc.rest)
+                .discard_value()
+            {
+                Ok(next_inner_suc) => {
+                    suc = suc.join_with(next_inner_suc, text, |_, v| v);
+                }
+                Err(_) => break,
+            }
+
+            let end = (end_parser)(text);
+            if end.is_ok() { return Ok(suc).map_value(|_| count); }
+
+            let next_res = prefix(&mut parser, &mut inner_parser)(suc.rest)
+                .discard_value();
+
+            match next_res {
+                Ok(next_suc) => {
+                    suc = suc.join_with(next_suc, text, |_, v| v);
+                    count += 1;
+                }
+                Err(_) => break,
+            }
+
+            if high.map_or(false, |h| count >= h) {
+                break;
+            }
+        }
+
+        Ok(suc.map_value(|_| count))
+    }
+}
+
+/// Returns a parser which repeats a parse a givin number of times, stopping if
+/// a failure occurs or the upper limit is reached, returning a `Vec` containing
+/// each successful result in order. Fails if the lower limit is not reached.
+pub fn intersperse_collect_until<'t, F, G, H, V, U, T>(
+    low: usize,
+    high: Option<usize>,
+    mut parser: F,
+    mut inner_parser: G,
+    mut end_parser: H)
+    -> impl FnMut(&'t str) -> ParseResult<'t, Vec<V>>
+    where
+        F: FnMut(&'t str) -> ParseResult<'t, V>,
+        G: FnMut(&'t str) -> ParseResult<'t, U>,
+        H: FnMut(&'t str) -> ParseResult<'t, T>,
+{
+    move |text| {
+        let end = (end_parser)(text);
+        if end.is_ok() {
+            return end.map_value(|_| Vec::new());
+        }
+
+        let mut suc = match (parser)(text) {
+            Ok(first) => first.map_value(|val| vec![val]) ,
+            Err(_) if low == 0 => return Ok(Success {
+                token: "",
+                rest: text,
+                value: Vec::new(),
+            }),
+            Err(fail) => return Err(fail)
+                .map_value(|_: V| Vec::new()),
+        };
+
+        let mut count = 1;
+        while count < low {
+            let end = (end_parser)(text);
+            if end.is_ok() { return Ok(suc); }
+            
+            let next_inner_suc = (&mut inner_parser)(suc.rest)?;
+            suc = suc.join_with(next_inner_suc, text, |vals, _| vals);
+
+            let end = (end_parser)(text);
+            if end.is_ok() { return Ok(suc); }
+
+            let next_suc = (&mut parser)(suc.rest)?;
+            suc = suc.join_with(next_suc, text,
+                |mut vals, val| { vals.push(val); vals });
+
+            count += 1;
+        }
+
+        while high.map_or(true, |h| count < h) {
+            let end = (end_parser)(text);
+            if end.is_ok() { return Ok(suc); }
+
+            match (&mut inner_parser)(suc.rest) {
+                Ok(next_inner_suc) => {
+                    suc = suc.join_with(next_inner_suc, text, |vals, _| vals);
+                }
+                Err(_) => break,
+            }
+
+            let end = (end_parser)(text);
+            if end.is_ok() { return Ok(suc); }
+
+            match (&mut parser)(suc.rest) {
+                Ok(next_suc) => {
+                    suc = suc.join_with(next_suc, text,
+                        |mut vals, val| { vals.push(val); vals });
+                    count += 1;
+                }
+                Err(_) => break,
+            }
+
+            if high.map_or(false, |h| count >= h) {
+                break;
+            }
+        }
+
+        Ok(suc)
     }
 }
 

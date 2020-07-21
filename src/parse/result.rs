@@ -301,9 +301,9 @@ impl<'t> Failure<'t> {
 
 impl<'t> std::fmt::Display for Failure<'t> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "parse error: expected {}", self.expected)?;
+        write!(f, "expected {:?}", self.expected)?;
         if !self.token.is_empty() {
-            write!(f, ", found \"{}\"", self.token)?;
+            write!(f, ", found {:?}", self.token)?;
         }
         Ok(())
     }
@@ -353,9 +353,9 @@ pub struct FailureOwned {
 
 impl std::fmt::Display for FailureOwned {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "parse error: expected {}", self.expected)?;
+        write!(f, "expected {:?}", self.expected)?;
         if !self.token.is_empty() {
-            write!(f, ", found \"{}\"", self.token)?;
+            write!(f, ", found {:?}", self.token)?;
         }
         Ok(())
     }

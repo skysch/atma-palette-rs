@@ -85,11 +85,14 @@ pub fn list_grid<'a>(
 
     let max_col = corner_position.column.saturating_add(columns);
     let max_line = corner_position.line.saturating_add(size.1 - 2);
+    const MAX_SKIP: u16 = 20;
     trace!("{} {}", max_col, max_line);
 
     let mut line_buf = Vec::with_capacity(columns.into());
+    let mut skipped: u16 = 0;
+    let mut line = corner_position.line;
 
-    for line in corner_position.line..=max_line {
+    while line < max_line {
         let mut print_line = false;
         for column in corner_position.column..=max_col {
             match palette.inner().color(&CellRef::Position(Position {
@@ -108,6 +111,17 @@ pub fn list_grid<'a>(
         }
 
         if print_line {
+            if skipped > 0 {
+                println!("\t ... {} empty line{}.",
+                    skipped,
+                    if skipped == 1 { "" } else { "s" });
+            }
+            skipped = 0;
+            match line.checked_add(1) {
+                None => break,
+                Some(new_line) => { line = new_line; },
+            }
+
             for elem in line_buf.drain(..) {
                 match elem {
                     Ok(Some(c)) => color_display.print(c),
@@ -116,7 +130,18 @@ pub fn list_grid<'a>(
                 }
             }
             println!();
+        } else {
+            match skipped.checked_add(1) {
+                None => break,
+                Some(new_skipped) if new_skipped > MAX_SKIP => break,
+                Some(new_skipped) => { skipped = new_skipped; },
+            }
         }
+    }
+    if skipped > 0 {
+        println!("\t ... {}+ empty line{}.",
+            skipped,
+            if skipped == 1 { "" } else { "s" });
     }
     Ok(())
 }

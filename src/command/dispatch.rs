@@ -171,7 +171,7 @@ pub fn dispatch(
             list_grid(
                 &pal,
                 selection,
-                dbg!((w, h)),
+                (w, h),
                 crate::cell::Position::ZERO,
                 color_display,
                 config,

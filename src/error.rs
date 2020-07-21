@@ -29,7 +29,7 @@ pub struct ParseError {
 
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(msg) = &self.msg { writeln!(f, "{}", msg)?; }
+        if let Some(msg) = &self.msg { write!(f, "{}", msg)?; }
         Ok(())
     }
 }
@@ -42,7 +42,7 @@ impl std::error::Error for ParseError {
 
 impl From<crate::parse::FailureOwned> for ParseError {
     fn from(err: crate::parse::FailureOwned) -> Self {
-        ParseError { msg: None, source: err }
+        ParseError { msg: Some("parse error".to_owned()), source: err }
     }
 }
 
@@ -129,15 +129,15 @@ impl std::fmt::Display for FileError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             FileError::IoError { msg, .. } => {
-                if let Some(msg) = msg { writeln!(f, "{}", msg)?; }
+                if let Some(msg) = msg { write!(f, "{}", msg)?; }
             },
 
             FileError::RonError { msg, .. } => {
-                if let Some(msg) = msg { writeln!(f, "{}", msg)?; }
+                if let Some(msg) = msg { write!(f, "{}", msg)?; }
             },
 
             FileError::ParseError { msg, .. } => {
-                if let Some(msg) = msg { writeln!(f, "{}", msg)?; }
+                if let Some(msg) = msg { write!(f, "{}", msg)?; }
             },
         }
         Ok(())
@@ -176,7 +176,10 @@ impl From<ParseError> for FileError {
 
 impl From<crate::parse::FailureOwned> for FileError {
     fn from(err: crate::parse::FailureOwned) -> Self {
-        FileError::ParseError { msg: None, source: err }
+        FileError::ParseError {
+            msg: Some("file parse error".to_owned()),
+            source: err,
+        }
     }
 }
 
