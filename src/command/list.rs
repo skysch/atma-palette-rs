@@ -88,16 +88,18 @@ pub fn list_grid<'a>(
     let print_line_numbers = true;
     let print_column_rule = true;
     let print_line_names = true;
-    let max_columns = 6;
+    let max_columns = 400;
     let left_gutter_width = if !print_line_numbers { 0 } else { 8 };
-    let min_right_gutter_width = if !print_line_names { 0 } else { 16 };
+    let min_right_gutter_width = if !print_line_names { 0 } else { 25 };
     let max_center_width = size.0 - left_gutter_width - min_right_gutter_width;
     let columns: u16 = std::cmp::min(
         (max_center_width / color_display.width()) - 1,
-        max_columns) - 1;
+        max_columns);
     let right_gutter_width = if !print_line_names { 0 } else {
         std::cmp::max(
-            size.0 - (columns * color_display.width()) - left_gutter_width,
+            size.0
+                - ((columns + 1) * color_display.width())
+                - left_gutter_width,
             min_right_gutter_width)
     };
 
@@ -106,27 +108,28 @@ pub fn list_grid<'a>(
     trace!("columns: {}", columns);
     trace!("right_gutter_width: {}", right_gutter_width);
 
-    let max_col = corner_position.column.saturating_add(columns);
+    let max_col = corner_position.column.saturating_add(columns - 1);
     let mut max_line = corner_position.line.saturating_add(size.1 - 2);
     const MAX_SKIP: u16 = 20;
-    trace!("{} {}", max_col, max_line);
+    trace!("max_col: {}, max_line: {}", max_col, max_line);
 
     let mut line_buf = Vec::with_capacity(columns.into());
     let mut skipped: u16 = 0;
     let mut line = corner_position.line;
 
-    // if print_line_numbers { max_col -= left_gutter_width; }
-    // if print_line_names {
-    //     max_col -= (right_gutter_width / color_display.width());
-    // }
+    let page_color = colored::Color::TrueColor { r: 0x11, g: 0xDD, b: 0x22 };
+    let rule_color = colored::Color::TrueColor { r: 0x77, g: 0x77, b: 0x77 };
 
     if print_column_rule {
+        let page_selector = PositionSelector {
+            page: Some(corner_position.page),
+            line: None,
+            column: None,
+        };
         if print_line_numbers {
-            print!("{} ", PositionSelector {
-                page: Some(corner_position.page),
-                line: None,
-                column: None,
-            });
+            print!("{:width$} ",
+                format!("{}", page_selector).color(page_color),
+                width=left_gutter_width as usize);
         }
         max_line -= 1;
         let w = color_display.width() as usize;
@@ -136,7 +139,17 @@ pub fn list_grid<'a>(
             } else if column % 5 == 0 { 
                 print!("{:<width$}", column, width=w);
             } else {
-                print!("{:<width$}", "⭣".truecolor(0x77, 0x77, 0x77), width=w);
+                print!("{:<width$}", "⭣".color(rule_color), width=w);
+            }
+        }
+        if print_line_names {
+            if let Some(name) = palette.inner().get_name(&page_selector) {
+                let w = right_gutter_width as usize - 1;
+                print!(" {}", if name.len() > w {
+                        &name[..w]
+                    } else {
+                        name
+                    }.color(page_color));
             }
         }
         println!();
@@ -167,7 +180,9 @@ pub fn list_grid<'a>(
                 column: None,
             };
             if print_line_numbers {
-                print!("{} ", line_selector);
+                print!("{:width$} ", 
+                    format!("{}", line_selector),
+                    width=left_gutter_width as usize);
             }
             if skipped > 0 {
                 println!("\t ... {} empty line{}.",
