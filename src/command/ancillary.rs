@@ -422,7 +422,11 @@ impl ColorDisplay {
             _ => (),
         }
         match self.text_style {
-            TextStyle::Hex6 => {
+            TextStyle::Hex6 => if let ColorStyle::Text = self.color_style {
+                let [or, og, ob] = color.rgb_octets();
+                print!("{} ",
+                    format!("{:X}", color).truecolor(or, og, ob));
+            } else {
                 print!("{:X} ", color);
             },
 
@@ -431,10 +435,24 @@ impl ColorDisplay {
                 let r = (0xFF0000 & hex) >> 20;
                 let g = (0x00FF00 & hex) >> 12;
                 let b = (0x0000FF & hex) >> 4;
-                print!("#{:01X}{:01X}{:01X} ", r, g, b);
+                if let ColorStyle::Text = self.color_style {
+                    let [or, og, ob] = color.rgb_octets();
+                    print!("{} ",
+                        format!("#{:01X}{:01X}{:01X}", r, g, b)
+                            .truecolor(or, og, ob));
+                } else {
+                    print!("#{:01X}{:01X}{:01X} ", r, g, b);
+                }
             },
 
-            TextStyle::Rgb  => {
+            TextStyle::Rgb  => if let ColorStyle::Text = self.color_style {
+                let [or, og, ob] = color.rgb_octets();
+                let [r, g, b] = color.rgb_ratios();
+                print!("{} ", 
+                    format!("rgb({:0.2},{:0.2},{:0.2})", r, g, b)
+                        .truecolor(or, og, ob));
+
+            } else {
                 let [r, g, b] = color.rgb_ratios();
                 print!("rgb({:0.2},{:0.2},{:0.2}) ", r, g, b);
             },

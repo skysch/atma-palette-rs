@@ -114,36 +114,40 @@ pub enum CommandOption {
         mode: Option<ListMode>,
 
         /// The method to use for displaying colors.
-        #[structopt(long = "color_style")]
+        #[structopt(long = "color-style")]
         color_style: Option<ColorStyle>,
 
         /// The method to use for displaying text.
-        #[structopt(long = "text_style")]
+        #[structopt(long = "text-style")]
         text_style: Option<TextStyle>,
 
         /// The method to use for displaying the column rule.
-        #[structopt(long = "rule_style")]
+        #[structopt(long = "rule-style")]
         rule_style: Option<RuleStyle>,
 
         /// The method to use for displaying the line info.
-        #[structopt(long = "line_style")]
+        #[structopt(long = "line-style")]
         line_style: Option<LineStyle>,
 
         /// The method to use for displaying the gutter text info.
-        #[structopt(long = "gutter_style")]
+        #[structopt(long = "gutter-style")]
         gutter_style: Option<GutterStyle>,
 
 
         /// The maximum display width to use for list output.
-        #[structopt(long = "max_width")]
+        #[structopt(long = "max-width")]
         max_width: Option<u16>,
 
         /// The maximum display height to use for list output.
-        #[structopt(long = "max_height")]
+        #[structopt(long = "max-height")]
         max_height: Option<u16>,
 
+        /// The maximum display width to use for list output.
+        #[structopt(long = "max-columns", default_value = "65535")]
+        max_columns: u16,
+
         /// Disables color output.
-        #[structopt(long = "no_color")]
+        #[structopt(long = "no-color")]
         no_color: bool,
 
     },

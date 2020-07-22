@@ -29,6 +29,7 @@
         [--line-style [auto|none|[SIZE]]]
         [--gutter-style [auto|none|[SIZE]]]
         [--max-width WIDTH]
+        [--max-columns COLUMNS]
         [--max-height HEIGHT]
         [--no-color]
 

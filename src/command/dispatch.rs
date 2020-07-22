@@ -130,6 +130,7 @@ pub fn dispatch(
             gutter_style,
             max_width,
             max_height,
+            max_columns,
             no_color,
         } => {
             let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
@@ -184,6 +185,7 @@ pub fn dispatch(
                 line_style,
                 gutter_style,
                 no_color,
+                max_columns,
                 config,
                 settings)
         },

@@ -40,6 +40,7 @@ pub fn list(
     _line_style: LineStyle,
     _gutter_style: GutterStyle,
     _no_color: bool,
+    max_columns: u16,
     config: &Config,
     settings: &mut Settings)
     -> Result<(), anyhow::Error>
@@ -51,6 +52,7 @@ pub fn list(
             size,
             Position::ZERO,
             color_display,
+            max_columns,
             config,
             settings),
         ListMode::Lines => list_lines(
@@ -125,19 +127,20 @@ fn list_grid<'a>(
     size: (u16, u16),
     corner_position: Position,
     color_display: ColorDisplay,
+    max_columns: u16,
     _config: &Config,
     _settings: &mut Settings)
     -> Result<(), anyhow::Error>
 {
+    if max_columns == 0 { return Ok(()); }
     let print_line_numbers = true;
     let print_column_rule = true;
     let print_line_names = true;
-    let max_columns = 4;
     let left_gutter_width = if !print_line_numbers { 0 } else { 8 };
     let min_right_gutter_width = if !print_line_names { 0 } else { 25 };
     let max_center_width = size.0 - left_gutter_width - min_right_gutter_width;
     let columns: u16 = std::cmp::min(
-        (max_center_width / color_display.width()) - 1,
+        max_center_width / color_display.width(),
         max_columns);
     let right_gutter_width = if !print_line_names { 0 } else {
         std::cmp::max(
@@ -178,9 +181,7 @@ fn list_grid<'a>(
         max_line -= 1;
         let w = color_display.width() as usize;
         for column in 0..=max_col {
-            if column % 10 == 0 { 
-                print!("{:<width$}", column, width=w);
-            } else if column % 5 == 0 { 
+            if column % 5 == 0 || color_display.width() > 4 { 
                 print!("{:<width$}", column, width=w);
             } else {
                 print!("{:<width$}", "⭣".color(rule_color), width=w);
