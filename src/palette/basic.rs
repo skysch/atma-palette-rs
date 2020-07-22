@@ -359,6 +359,14 @@ impl BasicPalette {
             .get_right(&pos_sel)
     }
 
+    /// Returns the name assigned to the given position selector.
+    pub fn get_name<'name>(&self, pos_sel: &PositionSelector)
+        -> Option<&Cow<'static, str>>
+    {
+        self.names
+            .get_right(pos_sel)
+    }
+
     /// Returns true if the given name is assigned in the palette.
     pub fn is_assigned_name(&self, name: &str) -> bool {
         self.names

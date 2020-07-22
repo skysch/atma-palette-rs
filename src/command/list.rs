@@ -87,9 +87,26 @@ pub fn list_grid<'a>(
 {
     let print_line_numbers = true;
     let print_column_rule = true;
-    let columns: u16 = (size.0 / color_display.width()) - 1;
+    let print_line_names = true;
+    let max_columns = 6;
+    let left_gutter_width = if !print_line_numbers { 0 } else { 8 };
+    let min_right_gutter_width = if !print_line_names { 0 } else { 16 };
+    let max_center_width = size.0 - left_gutter_width - min_right_gutter_width;
+    let columns: u16 = std::cmp::min(
+        (max_center_width / color_display.width()) - 1,
+        max_columns) - 1;
+    let right_gutter_width = if !print_line_names { 0 } else {
+        std::cmp::max(
+            size.0 - (columns * color_display.width()) - left_gutter_width,
+            min_right_gutter_width)
+    };
 
-    let mut max_col = corner_position.column.saturating_add(columns);
+    trace!("left_gutter_width: {}", left_gutter_width);
+    trace!("max_center_width: {}", max_center_width);
+    trace!("columns: {}", columns);
+    trace!("right_gutter_width: {}", right_gutter_width);
+
+    let max_col = corner_position.column.saturating_add(columns);
     let mut max_line = corner_position.line.saturating_add(size.1 - 2);
     const MAX_SKIP: u16 = 20;
     trace!("{} {}", max_col, max_line);
@@ -98,9 +115,10 @@ pub fn list_grid<'a>(
     let mut skipped: u16 = 0;
     let mut line = corner_position.line;
 
-    if print_line_numbers {
-        max_col -= 4;
-    }
+    // if print_line_numbers { max_col -= left_gutter_width; }
+    // if print_line_names {
+    //     max_col -= (right_gutter_width / color_display.width());
+    // }
 
     if print_column_rule {
         if print_line_numbers {
@@ -143,12 +161,13 @@ pub fn list_grid<'a>(
         }
 
         if print_line {
+            let line_selector = PositionSelector {
+                page: Some(corner_position.page),
+                line: Some(line),
+                column: None,
+            };
             if print_line_numbers {
-                print!("{} ", PositionSelector {
-                    page: Some(corner_position.page),
-                    line: Some(line),
-                    column: None,
-                });
+                print!("{} ", line_selector);
             }
             if skipped > 0 {
                 println!("\t ... {} empty line{}.",
@@ -170,6 +189,17 @@ pub fn list_grid<'a>(
                     },
                     Ok(None)    => color_display.print_empty(),
                     Err(_)      => color_display.print_empty(),
+                }
+            }
+
+            if print_line_names {
+                if let Some(name) = palette.inner().get_name(&line_selector) {
+                    let w = right_gutter_width as usize - 1;
+                    print!(" {}", if name.len() > w {
+                            &name[..w]
+                        } else {
+                            name
+                        });
                 }
             }
             println!();
