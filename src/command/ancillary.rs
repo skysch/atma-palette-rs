@@ -280,7 +280,9 @@ impl ColorDisplay {
     /// Prints an empty space using the color display mode.
     pub fn print_empty(&self) {
         match self {
-            ColorDisplay::Tile => print!("  "),
+            ColorDisplay::Tile => print!("{}", "▄▀"
+                .truecolor(0x33, 0x33, 0x33)
+                .on_truecolor(0x77, 0x77, 0x77)),
             ColorDisplay::Hex6 => print!("        "),
             ColorDisplay::Hex3 => print!("     "),
             ColorDisplay::Rgb  => print!("                    "),

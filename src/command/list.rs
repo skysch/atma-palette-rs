@@ -19,9 +19,12 @@ use crate::cell::CellSelection;
 use crate::cell::CellSelector;
 use crate::cell::CellRef;
 use crate::cell::Position;
+use crate::cell::PositionSelector;
 
 // External module imports.
 use log::*;
+use colored::Colorize as _;
+
 
 /// Prints palette information.
 pub fn list<'a>(
@@ -82,16 +85,44 @@ pub fn list_grid<'a>(
     _settings: &mut Settings)
     -> Result<(), anyhow::Error>
 {
+    let print_line_numbers = true;
+    let print_column_rule = true;
     let columns: u16 = (size.0 / color_display.width()) - 1;
 
-    let max_col = corner_position.column.saturating_add(columns);
-    let max_line = corner_position.line.saturating_add(size.1 - 2);
+    let mut max_col = corner_position.column.saturating_add(columns);
+    let mut max_line = corner_position.line.saturating_add(size.1 - 2);
     const MAX_SKIP: u16 = 20;
     trace!("{} {}", max_col, max_line);
 
     let mut line_buf = Vec::with_capacity(columns.into());
     let mut skipped: u16 = 0;
     let mut line = corner_position.line;
+
+    if print_line_numbers {
+        max_col -= 4;
+    }
+
+    if print_column_rule {
+        if print_line_numbers {
+            print!("{} ", PositionSelector {
+                page: Some(corner_position.page),
+                line: None,
+                column: None,
+            });
+        }
+        max_line -= 1;
+        let w = color_display.width() as usize;
+        for column in 0..=max_col {
+            if column % 10 == 0 { 
+                print!("{:<width$}", column, width=w);
+            } else if column % 5 == 0 { 
+                print!("{:<width$}", column, width=w);
+            } else {
+                print!("{:<width$}", "⭣".truecolor(0x77, 0x77, 0x77), width=w);
+            }
+        }
+        println!();
+    }
 
     while line < max_line {
         let mut print_line = false;
@@ -112,6 +143,13 @@ pub fn list_grid<'a>(
         }
 
         if print_line {
+            if print_line_numbers {
+                print!("{} ", PositionSelector {
+                    page: Some(corner_position.page),
+                    line: Some(line),
+                    column: None,
+                });
+            }
             if skipped > 0 {
                 println!("\t ... {} empty line{}.",
                     skipped,
@@ -143,10 +181,6 @@ pub fn list_grid<'a>(
             }
         }
     }
-    if skipped > 0 {
-        println!("\t ... {}+ empty line{}.",
-            skipped,
-            if skipped == 1 { "" } else { "s" });
-    }
+    if skipped > 0 { println!("\t..."); }
     Ok(())
 }
