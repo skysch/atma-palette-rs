@@ -55,6 +55,9 @@ pub const DEFAULT_DEFAULT_PALETTE_PATH: &'static str = "new.atma-palette";
 /// Default value for load_default_palette.
 const DEFAULT_LOAD_DEFAULT_PALETTE: bool = true;
 
+/// Default value for new_from_script_history.
+const DEFAULT_NEW_FROM_SCRIPT_HISTORY: bool = false;
+
 /// Default value for default_positioning.
 const DEFAULT_DEFAULT_POSITIONING: Positioning = Positioning::Cursor;
 
@@ -109,6 +112,11 @@ pub struct Config {
     #[serde(default = "Config::default_load_default_palette")]
     pub load_default_palette: bool,
 
+    /// Whether to include script commands in the history when using `new
+    /// --from-script`.
+    #[serde(default = "Config::default_new_from_script_history")]
+    pub new_from_script_history: bool,
+
     /// Default value when positioning is not given.
     #[serde(default = "Config::default_default_positioning")]
     pub default_positioning: Positioning,
@@ -138,6 +146,7 @@ impl Config {
             default_settings_path: Config::default_default_settings_path(),
             default_palette_path: Config::default_default_palette_path(),
             load_default_palette: DEFAULT_LOAD_DEFAULT_PALETTE,
+            new_from_script_history: DEFAULT_NEW_FROM_SCRIPT_HISTORY,
             default_positioning: DEFAULT_DEFAULT_POSITIONING,
             default_delete_cursor_behavior: 
                 DEFAULT_DEFAULT_DELETE_CURSOR_BEHAVIOR,
@@ -349,6 +358,12 @@ impl Config {
         DEFAULT_LOAD_DEFAULT_PALETTE
     }
 
+    /// Returns the default value for new_from_script_history.
+    #[inline(always)]
+    fn default_new_from_script_history() -> bool {
+        DEFAULT_NEW_FROM_SCRIPT_HISTORY
+    }
+
     /// Returns the default value for default_positioning.
     #[inline(always)]
     fn default_default_positioning() -> Positioning {
@@ -389,7 +404,15 @@ impl std::fmt::Display for Config {
             self.logger_config.level_filter)?;
         writeln!(fmt, "\tload_default_palette: {:?}",
             self.load_default_palette)?;
+        writeln!(fmt, "\tnew_from_script_history: {:?}",
+            self.new_from_script_history)?;
         writeln!(fmt, "\tdefault_positioning: {:?}",
-            self.default_positioning)
+            self.default_positioning)?;
+        writeln!(fmt, "\tdefault_delete_cursor_behavior: {:?}",
+            self.default_delete_cursor_behavior)?;
+        writeln!(fmt, "\tdefault_insert_cursor_behavior: {:?}",
+            self.default_insert_cursor_behavior)?;
+        writeln!(fmt, "\tdefault_move_cursor_behavior: {:?}",
+            self.default_move_cursor_behavior)
     }
 }

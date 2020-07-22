@@ -72,7 +72,13 @@ pub fn new_palette(
 
     if let Some(script_path) = script_path {
         let script = Script::read_from_path(script_path)?;
-        let _ = script.execute(&mut palette, common, config, settings)?;
+        if config.new_from_script_history {
+            let _ = script.execute(&mut palette, common, config, settings)?;
+        } else {
+            let history = palette.take_history();
+            let _ = script.execute(&mut palette, common, config, settings)?;
+            let _ = palette.set_history(history);
+        }
     }
 
     if settings_changed {

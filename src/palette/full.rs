@@ -482,7 +482,7 @@ impl Palette {
     }
 
     /// Changes the palette's history setting.
-    pub fn set_history_option<'name>(&mut self, setting: HistorySetOption) {
+    pub fn set_history_option(&mut self, setting: HistorySetOption) {
         match setting {
             HistorySetOption::Clear => {
                 self.history = Some(History::new());
@@ -498,11 +498,18 @@ impl Palette {
         }
     }
 
-    
+    /// Sets the palette history state.
+    pub fn set_history(&mut self, history: Option<History>) -> Option<History> {
+        std::mem::replace(&mut self.history, history)
+    }
 
+    /// Removes and returns the palette history.
+    pub fn take_history(&mut self) -> Option<History> {
+        std::mem::replace(&mut self.history, None)
+    }
 
     /// Sets the palette's `Position` cursor, returning its previous value.
-    pub fn set_position_cursor<'name>(&mut self, position: Position)
+    pub fn set_position_cursor(&mut self, position: Position)
         -> Position
     {
         self.inner.set_position_cursor(position)
