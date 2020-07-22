@@ -53,6 +53,7 @@ pub fn new_palette(
     path: PathBuf,
     set_active: bool,
     no_history: bool,
+    overwrite: bool,
     name: Option<String>,
     common: &CommonOptions,
     config: &Config,
@@ -72,14 +73,18 @@ pub fn new_palette(
     if let Some(script_path) = script_path {
         let script = Script::read_from_path(script_path)?;
         let _ = script.execute(&mut palette, common, config, settings)?;
-
     }
 
     if settings_changed {
         let _ = settings.write_to_load_path()?;
     }
 
-    let res = palette.write_to_load_path_if_new();
+    let res = if overwrite {
+        palette.write_to_load_path()
+    } else {
+        palette.write_to_load_path_if_new()
+    };
+
     if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
         info!("Palette file already exists.");
         debug!("Palette load path {:?}", palette.load_path());
@@ -95,10 +100,16 @@ pub fn new_palette(
 }
 
 /// Initializes a new config file.
-pub fn new_config(path: PathBuf) -> Result<(), FileError> {
+pub fn new_config(path: PathBuf, overwrite: bool) -> Result<(), FileError> {
     let new = Config::new().with_load_path(path);
 
-    let res = new.write_to_load_path_if_new();
+    
+    let res = if overwrite {
+        new.write_to_load_path()
+    } else {
+        new.write_to_load_path_if_new()
+    };
+
     if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
         info!("Config file already exists.");
         debug!("Config {:?}", new.load_path());
@@ -114,10 +125,15 @@ pub fn new_config(path: PathBuf) -> Result<(), FileError> {
 }
 
 /// Initializes a new settings file.
-pub fn new_settings(path: PathBuf) -> Result<(), FileError> {
+pub fn new_settings(path: PathBuf, overwrite: bool) -> Result<(), FileError> {
     let new = Settings::new().with_load_path(path);
 
-    let res = new.write_to_load_path_if_new();
+    let res = if overwrite {
+        new.write_to_load_path()
+    } else {
+        new.write_to_load_path_if_new()
+    };
+
     if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
         info!("Settings file already exists.");
         debug!("Settings {:?}", new.load_path());

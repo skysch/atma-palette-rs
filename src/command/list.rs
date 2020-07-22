@@ -71,7 +71,7 @@ pub fn list<'a>(
 }
 
 
-
+/// List palette cells in a grid.
 pub fn list_grid<'a>(
     palette: &Palette,
     selection: Option<CellSelection<'a>>,

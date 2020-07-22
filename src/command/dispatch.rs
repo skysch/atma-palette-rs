@@ -68,15 +68,16 @@ pub fn dispatch(
         // New
         ////////////////////////////////////////////////////////////////////////
         New { new_option } => match new_option {
-            NewOption::Script {
-                script_path,
+            NewOption::Palette {
                 path,
+                script_path,
                 set_active,
                 no_history,
+                overwrite,
                 name,
             } => {
                 new_palette(
-                        Some(script_path),
+                        script_path,
                         normalize_path(
                             cur_dir
                                 .expect("Currend directory not determined")
@@ -86,25 +87,7 @@ pub fn dispatch(
                                 .join(&config.default_palette_path))),
                         set_active,
                         no_history,
-                        name,
-                        common,
-                        config,
-                        settings)
-                    .context("Command 'new script' failed")
-            },
-
-            NewOption::Palette { path, set_active, no_history, name } => {
-                new_palette(
-                        None,
-                        normalize_path(
-                            cur_dir
-                                .expect("Currend directory not determined")
-                                .clone(),
-                            path.unwrap_or_else(|| cur_dir
-                                .expect("Currend directory not determined")
-                                .join(&config.default_palette_path))),
-                        set_active,
-                        no_history,
+                        overwrite,
                         name,
                         common,
                         config,
@@ -112,7 +95,7 @@ pub fn dispatch(
                     .context("Command 'new palette' failed")
             },
 
-            NewOption::Config { path } => new_config(
+            NewOption::Config { path, overwrite } => new_config(
                     normalize_path(
                         cur_dir
                             .expect("Currend directory not determined")
@@ -120,17 +103,19 @@ pub fn dispatch(
                         path.unwrap_or_else(|| cur_dir
                                 .expect("Currend directory not determined")
                                 .join(dbg!(DEFAULT_CONFIG_PATH))),
-                        ))
+                        ),
+                    overwrite)
                 .context("Command 'new config' failed"),
 
-            NewOption::Settings { path } => new_settings(
+            NewOption::Settings { path, overwrite } => new_settings(
                     normalize_path(
                         cur_dir
                             .expect("Currend directory not determined")
                             .clone(),
                         path.unwrap_or_else(|| cur_dir
                             .expect("Currend directory not determined")
-                            .join(&config.default_settings_path))))
+                            .join(&config.default_settings_path))),
+                    overwrite)
                 .context("Command 'new settings' failed"),
         },
 
@@ -284,7 +269,7 @@ pub fn dispatch(
 
             SetOption::History { history_set_option } => {
                 let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
-                pal.set_history(history_set_option);
+                pal.set_history_option(history_set_option);
                 pal.set_modified(true);
                 Ok(())
             },

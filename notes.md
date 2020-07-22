@@ -11,12 +11,15 @@
         [--ztrace]
 
     atma new palette [PATH]
+        [--from-script PATH]
         [--name NAME]
         [--no-history]
         [--set-active]
-    atma new script PATH [PATH]
+        [--overwrite]
     atma new config [PATH]
+        [--overwrite]
     atma new settings [PATH]
+        [--overwrite]
 
 
     atma list [SELECTION]
