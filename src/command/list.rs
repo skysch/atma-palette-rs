@@ -12,6 +12,10 @@
 // Internal module imports.
 use crate::palette::Palette;
 use crate::command::ColorDisplay;
+use crate::command::RuleStyle;
+use crate::command::LineStyle;
+use crate::command::GutterStyle;
+use crate::command::ListMode;
 use crate::setup::Config;
 use crate::setup::Settings;
 use crate::error::PaletteError;
@@ -25,11 +29,45 @@ use crate::cell::PositionSelector;
 use log::*;
 use colored::Colorize as _;
 
+/// Executes the `atma list` command.
+pub fn list(
+    palette: &Palette,
+    selection: Option<CellSelection<'_>>,
+    mode: ListMode,
+    size: (u16, u16),
+    color_display: ColorDisplay,
+    _rule_style: RuleStyle,
+    _line_style: LineStyle,
+    _gutter_style: GutterStyle,
+    _no_color: bool,
+    config: &Config,
+    settings: &mut Settings)
+    -> Result<(), anyhow::Error>
+{
+    match mode {
+        ListMode::Grid => list_grid(
+            palette,
+            selection,
+            size,
+            Position::ZERO,
+            color_display,
+            config,
+            settings),
+        ListMode::Lines => list_lines(
+            palette,
+            selection,
+            color_display,
+            config,
+            settings),
+        ListMode::List => unimplemented!(),
+    }
+}
 
 /// Prints palette information.
-pub fn list<'a>(
+fn list_lines<'a>(
     palette: &Palette,
     selection: Option<CellSelection<'a>>,
+    color_display: ColorDisplay,
     _config: &Config,
     _settings: &mut Settings)
     -> Result<(), anyhow::Error>
@@ -44,7 +82,7 @@ pub fn list<'a>(
             .color(&CellRef::Index(idx))
         {
             print!("{:4X} ", idx);
-            ColorDisplay::Tile.print(c);
+            color_display.print(c);
 
             if let Some(pos) = palette.inner()
                 .assigned_position(&CellRef::Index(idx))
@@ -65,7 +103,7 @@ pub fn list<'a>(
             
         } else {
             print!("{:4X} ", idx);
-            ColorDisplay::Tile.print_invalid();
+            color_display.print_invalid();
 
         }
         println!();
@@ -75,9 +113,9 @@ pub fn list<'a>(
 
 
 /// List palette cells in a grid.
-pub fn list_grid<'a>(
+fn list_grid<'a>(
     palette: &Palette,
-    selection: Option<CellSelection<'a>>,
+    _selection: Option<CellSelection<'a>>,
     size: (u16, u16),
     corner_position: Position,
     color_display: ColorDisplay,
@@ -88,7 +126,7 @@ pub fn list_grid<'a>(
     let print_line_numbers = true;
     let print_column_rule = true;
     let print_line_names = true;
-    let max_columns = 400;
+    let max_columns = 4;
     let left_gutter_width = if !print_line_numbers { 0 } else { 8 };
     let min_right_gutter_width = if !print_line_names { 0 } else { 25 };
     let max_center_width = size.0 - left_gutter_width - min_right_gutter_width;

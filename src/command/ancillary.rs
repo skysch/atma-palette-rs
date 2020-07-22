@@ -14,6 +14,7 @@ use crate::cell::Position;
 use crate::parse::any_literal_map_once;
 use crate::parse::FailureOwned;
 use crate::parse::literal_ignore_ascii_case;
+use crate::parse::uint;
 use crate::parse::ParseResultExt as _;
 use crate::parse::position;
 
@@ -187,22 +188,23 @@ impl std::str::FromStr for ListMode {
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
-// ListOrder
+// ColorStyle
 ////////////////////////////////////////////////////////////////////////////////
-/// Option parse result for list ordering.
+/// Option parse result for color display style.
 #[derive(Debug, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
-pub enum ListOrder {
-    /// Order cells by position.
-    Position,
-    /// Order cells by index.
-    Index,
-    /// Order cells by name / group.
-    Name,
+pub enum ColorStyle {
+    /// Do not display cell colors.
+    None,
+    /// Display cell colors with a color tile.
+    Tile,
+    /// Display cell colors with colored text.
+    Text,
 }
 
-impl std::str::FromStr for ListOrder {
+impl std::str::FromStr for ColorStyle {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
@@ -210,59 +212,228 @@ impl std::str::FromStr for ListOrder {
                 literal_ignore_ascii_case,
                 "",
                 vec![
-                    ("position", ListOrder::Position),
-                    ("index",    ListOrder::Index),
-                    ("name",     ListOrder::Name),
+                    ("none", ColorStyle::None),
+                    ("tile", ColorStyle::Tile),
+                    ("text", ColorStyle::Text),
                 ])
             (text)
             .end_of_text()
-            .source_for("expected 'position', 'index', or 'name'.")
+            .source_for("expected one of 'none', 'tile', or 'text'.")
             .finish()
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
-// ColorDisplay
+// TextStyle
 ////////////////////////////////////////////////////////////////////////////////
-/// Option parse result for color display.
+/// Option parse result for text display style.
 #[derive(Debug, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
-pub enum ColorDisplay {
-    /// Display colors using a colored tile.
-    Tile,
-    /// Display colors using a 6-digit RGB hex code.
+pub enum TextStyle {
+    /// Do not display cell colors as text.
+    None,
+    /// Display cell colors using a 6-digit hex code.
     Hex6,
-    /// Display colors using a 3-digit RGB hex code.
+    /// Display cell colors using a 3-digit hex code.
     Hex3,
-    /// Display colors using RGB function notation.
+    /// Display cell colors using RGB notation.
     Rgb,
 }
 
+impl std::str::FromStr for TextStyle {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        any_literal_map_once(
+                literal_ignore_ascii_case,
+                "",
+                vec![
+                    ("none",  TextStyle::None),
+                    ("hex_6", TextStyle::Hex6),
+                    ("hex_3", TextStyle::Hex3),
+                    ("hex",   TextStyle::Hex6),
+                    ("rgb",   TextStyle::Rgb),
+                ])
+            (text)
+            .end_of_text()
+            .source_for("expected one of 'none', 'hex', 'hex_6', 'hex_3', or 'rgb'.")
+            .finish()
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// RuleStyle
+////////////////////////////////////////////////////////////////////////////////
+/// Option parse result for the column rule display.
+#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize)]
+pub enum RuleStyle {
+    /// Do not display column rule.
+    None,
+    /// Display column rule with colors.
+    Colored,
+    /// Display column rule without colors.
+    Plain,
+}
+
+impl std::str::FromStr for RuleStyle {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        any_literal_map_once(
+                literal_ignore_ascii_case,
+                "",
+                vec![
+                    ("none",  RuleStyle::None),
+                    ("colored", RuleStyle::Colored),
+                    ("plain", RuleStyle::Plain),
+                ])
+            (text)
+            .end_of_text()
+            .source_for("expected one of 'none', 'colored', or 'plain'.")
+            .finish()
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// LineStyle
+////////////////////////////////////////////////////////////////////////////////
+/// Option parse result for the line display.
+#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize)]
+pub enum LineStyle {
+    /// Do not display line info.
+    None,
+    /// Display line info automatically detected settings.
+    Auto,
+    /// Display line info using the given width.
+    Size(u16),
+}
+
+impl std::str::FromStr for LineStyle {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let size = uint::<u16>("u16")
+            (text)
+            .end_of_text();
+        if size.is_ok() {
+            return size.map_value(LineStyle::Size).finish();
+        }
+
+        any_literal_map_once(
+                literal_ignore_ascii_case,
+                "",
+                vec![
+                    ("none", LineStyle::None),
+                    ("auto", LineStyle::Auto),
+                ])
+            (text)
+            .end_of_text()
+            .source_for("expected one of 'none', 'auto', or integer value.")
+            .finish()
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// GutterStyle
+////////////////////////////////////////////////////////////////////////////////
+/// Option parse result for the gutter display.
+#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize)]
+pub enum GutterStyle {
+    /// Do not display gutter info.
+    None,
+    /// Display gutter info automatically detected settings.
+    Auto,
+    /// Display gutter info using the given width.
+    Size(u16),
+}
+
+impl std::str::FromStr for GutterStyle {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let size = uint::<u16>("u16")
+            (text)
+            .end_of_text();
+        if size.is_ok() {
+            return size.map_value(GutterStyle::Size).finish();
+        }
+
+        any_literal_map_once(
+                literal_ignore_ascii_case,
+                "",
+                vec![
+                    ("none", GutterStyle::None),
+                    ("auto", GutterStyle::Auto),
+                ])
+            (text)
+            .end_of_text()
+            .source_for("expected one of 'none', 'auto', or integer value.")
+            .finish()
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// ColorDisplay
+////////////////////////////////////////////////////////////////////////////////
+/// Combined color display settings.
+#[derive(Debug, Clone, Copy)]
+pub struct ColorDisplay {
+    /// The ColorStyle.
+    pub color_style: ColorStyle,
+    /// The TextStyle.
+    pub text_style: TextStyle,
+}
+
+
 impl ColorDisplay {
+    /// Constructs a new ColorDisplay.
+    pub fn new(color_style: ColorStyle, text_style: TextStyle) -> Self {
+        ColorDisplay {
+            color_style,
+            text_style,
+        }
+    }
+
     /// Returns the total dedicated width of the color output, including
     /// whitespace.
     pub fn width(&self) -> u16 {
-        match self {
-            ColorDisplay::Tile => 2,
-            ColorDisplay::Hex6 => 8,
-            ColorDisplay::Hex3 => 5,
-            ColorDisplay::Rgb  => 20,
-        }
+        let tile_width = match self.color_style {
+            ColorStyle::None => 0,
+            ColorStyle::Tile => 2,
+            ColorStyle::Text => 0,
+        };
+        let text_width = match self.text_style {
+            TextStyle::None => 0,
+            TextStyle::Hex6 => 8,
+            TextStyle::Hex3 => 5,
+            TextStyle::Rgb  => 20,
+        };
+        tile_width + text_width
     }
 
     /// Prints a color using the color display mode.
     pub fn print(&self, color: Color) {
-        match self {
-            ColorDisplay::Tile => {
+        match self.color_style {
+            ColorStyle::Tile => {
                 let [r, g, b] = color.rgb_octets();
                 print!("{}", "  ".on_truecolor(r, g, b));
             },
-
-            ColorDisplay::Hex6 => {
+            _ => (),
+        }
+        match self.text_style {
+            TextStyle::Hex6 => {
                 print!("{:X} ", color);
             },
 
-            ColorDisplay::Hex3 => {
+            TextStyle::Hex3 => {
                 let hex = color.rgb_hex();
                 let r = (0xFF0000 & hex) >> 20;
                 let g = (0x00FF00 & hex) >> 12;
@@ -270,94 +441,55 @@ impl ColorDisplay {
                 print!("#{:01X}{:01X}{:01X} ", r, g, b);
             },
 
-            ColorDisplay::Rgb  => {
+            TextStyle::Rgb  => {
                 let [r, g, b] = color.rgb_ratios();
                 print!("rgb({:0.2},{:0.2},{:0.2}) ", r, g, b);
             },
+
+            _ => (),
         }
     }
 
     /// Prints an empty space using the color display mode.
     pub fn print_empty(&self) {
-        match self {
-            ColorDisplay::Tile => print!("{}", "▄▀"
-                .truecolor(0x33, 0x33, 0x33)
-                .on_truecolor(0x77, 0x77, 0x77)),
-            ColorDisplay::Hex6 => print!("        "),
-            ColorDisplay::Hex3 => print!("     "),
-            ColorDisplay::Rgb  => print!("                    "),
+        match self.color_style {
+            ColorStyle::Tile => {
+                print!("{}", "▄▀"
+                    .truecolor(0x33, 0x33, 0x33)
+                    .on_truecolor(0x77, 0x77, 0x77));
+            },
+            _ => (),
+        }
+
+        match self.text_style {
+            TextStyle::Hex6 => print!("        "),
+            TextStyle::Hex3 => print!("     "),
+            TextStyle::Rgb  => print!("                    "),
+            _ => (),
         }
     }
 
     /// Prints an invalid color using the color display mode.
     pub fn print_invalid(&self) {
-        match self {
-            ColorDisplay::Tile => {
+        match self.color_style {
+            ColorStyle::Tile => {
                 print!("{}", "??".truecolor(0x88, 0x88, 0x88));
             },
-
-            ColorDisplay::Hex6 => {
-                print!("{} ", "???????".truecolor(0x88, 0x88, 0x88));
-            },
-
-            ColorDisplay::Hex3 => {
-                print!("{} ", "????".truecolor(0x88, 0x88, 0x88));
-            },
-
-            ColorDisplay::Rgb  => {
-                print!("{} ", "???????????????????".truecolor(0x88, 0x88, 0x88));
-            },
+            _ => (),
         }
-    }
-}
 
-impl std::str::FromStr for ColorDisplay {
-    type Err = FailureOwned;
+        match self.text_style {
+            TextStyle::Hex6 => print!("{} ",
+                    "???????".truecolor(0x88, 0x88, 0x88)),
+            
+            TextStyle::Hex3 => print!("{} ",
+                    "????".truecolor(0x88, 0x88, 0x88)),
+            
+            TextStyle::Rgb  => print!("{} ",
+                    "???????????????????".truecolor(0x88, 0x88, 0x88)),
 
-    fn from_str(text: &str) -> Result<Self, Self::Err> {
-        any_literal_map_once(
-                literal_ignore_ascii_case,
-                "",
-                vec![
-                    ("tile",  ColorDisplay::Tile),
-                    ("hex_6", ColorDisplay::Hex6),
-                    ("hex_3", ColorDisplay::Hex3),
-                    ("rgb",   ColorDisplay::Rgb),
-                ])
-            (text)
-            .end_of_text()
-            .source_for("expected 'tile', 'hex_6', 'hex_3', or 'rgb'.")
-            .finish()
-    }
-}
+            _ => (),
+        }
 
-////////////////////////////////////////////////////////////////////////////////
-// ColorMode
-////////////////////////////////////////////////////////////////////////////////
-/// Option parse result for color display.
-#[derive(Debug, Clone, Copy)]
-#[derive(Serialize, Deserialize)]
-pub enum ColorMode {
-    /// Enable colors.
-    Enable,
-    /// Disable colors.
-    Disable,
-}
-
-impl std::str::FromStr for ColorMode {
-    type Err = FailureOwned;
-
-    fn from_str(text: &str) -> Result<Self, Self::Err> {
-        any_literal_map_once(
-                literal_ignore_ascii_case,
-                "",
-                vec![
-                    ("enable",  ColorMode::Enable),
-                    ("disable", ColorMode::Disable),
-                ])
-            (text)
-            .end_of_text()
-            .source_for("expected 'enable' or 'disable'.")
-            .finish()
     }
 }

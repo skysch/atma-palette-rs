@@ -11,19 +11,22 @@
 // Local imports.
 use crate::cell::CellSelector;
 use crate::command::ColorDisplay;
-use crate::command::ColorMode;
+use crate::command::ColorStyle;
 use crate::command::CommandOption;
 use crate::command::CommonOptions;
 use crate::command::export_png::write_png;
 use crate::command::ExportOption;
-use crate::command::list::list_grid;
+use crate::command::GutterStyle;
+use crate::command::LineStyle;
+use crate::command::list::list;
 use crate::command::ListMode;
-use crate::command::ListOrder;
 use crate::command::new::new_config;
 use crate::command::new::new_palette;
 use crate::command::new::new_settings;
 use crate::command::NewOption;
+use crate::command::RuleStyle;
 use crate::command::SetOption;
+use crate::command::TextStyle;
 use crate::palette::Palette;
 use crate::setup::Config;
 use crate::setup::DEFAULT_CONFIG_PATH;
@@ -123,18 +126,37 @@ pub fn dispatch(
         ////////////////////////////////////////////////////////////////////////
         List {
             selection,
+            mode,
+            color_style,
+            text_style,
+            rule_style,
+            line_style,
+            gutter_style,
             max_width,
             max_height,
-            mode,
-            order,
-            display,
-            color,
+            no_color,
         } => {
             let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
             let mode = mode.unwrap_or(ListMode::Grid);
-            let color = color.unwrap_or(ColorMode::Enable);
-            let order = order.unwrap_or(ListOrder::Position);
-            let color_display = display.unwrap_or(ColorDisplay::Hex6);
+            let color_display = match (color_style, text_style) {
+                (Some(ColorStyle::None), Some(TextStyle::None)) => {
+                    warn!("Invalid combination of color-style and text-style.\
+                        Using --text-style hex.");
+                    ColorDisplay::new(ColorStyle::None, TextStyle::Hex6)
+                },
+
+                (Some(cs), Some(ts)) => ColorDisplay::new(cs, ts),
+
+                (None, None) => {
+                    ColorDisplay::new(ColorStyle::Tile, TextStyle::None)
+                },
+
+                (Some(cs), None) => ColorDisplay::new(cs, TextStyle::None),
+                (None, Some(ts)) => ColorDisplay::new(ColorStyle::None, ts),
+            };
+            let rule_style = rule_style.unwrap_or(RuleStyle::Colored);
+            let line_style = line_style.unwrap_or(LineStyle::Auto);
+            let gutter_style = gutter_style.unwrap_or(GutterStyle::Auto);
 
             #[cfg(feature = "termsize")]
             let (w, h) = {
@@ -153,12 +175,16 @@ pub fn dispatch(
                 (w, h)
             };
 
-            list_grid(
+            list(
                 &pal,
                 selection,
+                mode,
                 (w, h),
-                crate::cell::Position::ZERO,
                 color_display,
+                rule_style,
+                line_style,
+                gutter_style,
+                no_color,
                 config,
                 settings)
         },

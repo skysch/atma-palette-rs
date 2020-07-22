@@ -21,14 +21,16 @@
     atma new settings [PATH]
         [--overwrite]
 
-
     atma list [SELECTION]
+        [--mode [grid|lines|list]]
+        [--color-style [tile|none|text]]
+        [--text-style [none|hex6|hex3|rgb]]
+        [--rule-style [colored|none|plain]]
+        [--line-style [auto|none|[SIZE]]]
+        [--gutter-style [auto|none|[SIZE]]]
         [--max-width WIDTH]
         [--max-height HEIGHT]
-        [--color [enable|disable]]
-        [--mode [list|lines|grid]
-        [--order [index|position|name]]
-        [--display [tile|hex_6|hex_3|rgb]]
+        [--no-color]
 
     atma insert [INSERT_EXPR]
         [--name NAME]
@@ -70,9 +72,17 @@ Each script command is ended with `;`. Whitespace is ignored otherwise.
 
 # List options
 
-    // Print names and groups? (Verbosity)
-    // Indicate expr types?
-    // Tile indicators for names, groups, positions?
+    + Print names and groups? (Verbosity)
+    + Indicate expr types?
+    + Tile indicators for names, groups, positions?
+
+# Palette constraints
+
+    + Maximum column #
+    + Maximum line #
+    + Maximum page #
+    + Name validation
+    + Maximum number of positions
 
 
 # Cell selection & Cell selector
