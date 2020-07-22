@@ -14,6 +14,7 @@ use crate::palette::Palette;
 use crate::command::ColorDisplay;
 use crate::setup::Config;
 use crate::setup::Settings;
+use crate::error::PaletteError;
 use crate::cell::CellSelection;
 use crate::cell::CellSelector;
 use crate::cell::CellRef;
@@ -106,7 +107,7 @@ pub fn list_grid<'a>(
                     print_line = true;
                 },
                 Ok(None)    => line_buf.push(Ok(None)),
-                Err(_)      => line_buf.push(Err(())),
+                Err(e)      => line_buf.push(Err(e)),
             }
         }
 
@@ -125,8 +126,12 @@ pub fn list_grid<'a>(
             for elem in line_buf.drain(..) {
                 match elem {
                     Ok(Some(c)) => color_display.print(c),
-                    Ok(None)    => color_display.print_invalid(),
-                    Err(_)      => color_display.print_invalid(),
+                    Err(PaletteError::UndefinedColor { cell_ref, circular }) => {
+                        color_display.print_invalid();
+                        warn!("{:?} {:?}", cell_ref, circular);
+                    },
+                    Ok(None)    => color_display.print_empty(),
+                    Err(_)      => color_display.print_empty(),
                 }
             }
             println!();

@@ -43,6 +43,39 @@ pub const INT_RADIX_PREFIX_HEX: &'static str = "0x";
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// Null parsing.
+////////////////////////////////////////////////////////////////////////////////
+
+/// Parses the end of the text.
+#[inline]
+pub fn end_of_text<'t>(text: &'t str) -> ParseResult<'t, ()> {
+    if text == "" {
+        Ok(Success {
+            token: "",
+            rest: "",
+            value: (),
+        })
+    } else {
+        Err(Failure {
+            token: "",
+            rest: "",
+            expected: "end-of-text".into(),
+            source: None,
+        })
+    }
+}
+
+/// Returns a successful parse of nothing.
+#[inline]
+pub fn null<'t>(text: &'t str) -> ParseResult<'t, ()> {
+    Ok(Success {
+        token: "",
+        rest: text,
+        value: (),
+    })
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Char parsing.
 ////////////////////////////////////////////////////////////////////////////////
 

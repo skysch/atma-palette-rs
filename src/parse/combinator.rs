@@ -13,6 +13,7 @@ use crate::parse::ParseResult;
 use crate::parse::ParseResultExt as _;
 use crate::parse::Success;
 use crate::parse::Failure;
+use crate::parse::null;
 
 // Standard lirary imports.
 use std::borrow::Cow;
@@ -20,15 +21,6 @@ use std::borrow::Cow;
 ////////////////////////////////////////////////////////////////////////////////
 // Parser combinators.
 ////////////////////////////////////////////////////////////////////////////////
-/// Returns a successful parse of nothing.
-#[inline]
-pub fn null<'t>(text: &'t str) -> ParseResult<'t, ()> {
-    Ok(Success {
-        token: "",
-        rest: text,
-        value: (),
-    })
-}
 
 /// Tokenizes the parsed value.
 #[inline]

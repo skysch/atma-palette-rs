@@ -200,6 +200,7 @@ impl BlendFunction {
     {
         use BlendFunction::*;
 
+
         match self {
             Unary(un_fn)   => un_fn.apply(basic, index_list, int),
             Binary(bin_fn) => bin_fn.apply(basic, index_list, int),
@@ -367,9 +368,10 @@ impl BinaryBlendFunction {
         int: &Interpolate)
         -> Result<Option<Color>, PaletteError>
     {
+        let mut index_list_2 = index_list.clone();
         match (
             basic.cycle_detect_color(&self.arg_1, index_list)?,
-            basic.cycle_detect_color(&self.arg_2, index_list)?)
+            basic.cycle_detect_color(&self.arg_2, &mut index_list_2)?)
         {
             (Some(a), Some(b)) => {
                 let blend_fn = |a, b| self.blend_method.apply(a, b);

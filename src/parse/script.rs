@@ -19,13 +19,11 @@ use crate::parse::char_matching;
 use crate::parse::circumfix;
 use crate::parse::escaped_string;
 use crate::parse::Failure;
-use crate::parse::intersperse;
 use crate::parse::literal;
 use crate::parse::literal_once;
 use crate::parse::maybe;
 use crate::parse::ParseResult;
 use crate::parse::ParseResultExt as _;
-use crate::parse::postfix;
 use crate::parse::prefix;
 use crate::parse::QuoteType;
 use crate::parse::repeat;
@@ -47,9 +45,7 @@ use std::borrow::Cow;
 pub fn script<'t>(text: &'t str) -> ParseResult<'t, Script> {
     trace!("Parsing script from {:?}",
         if text.len() < 20 { text } else { &text[..20] });
-    circumfix(
-        statements,
-        maybe(whitespace_or_comments))
+    statements
         (text)
         .source_for("script")
         .map_value(|statements| Script { statements })
@@ -60,7 +56,9 @@ pub fn statements<'t>(text: &'t str) -> ParseResult<'t, Vec<CommandOption>> {
     trace!("  Parsing statements from {:?}",
         if text.len() < 20 { text } else { &text[..20] });
     repeat_collect(0, None,
-            statement)
+            circumfix(
+                statement,
+                maybe(whitespace_or_comments)))
         (text)
         .source_for("statements")
         .map_value(|v| {
@@ -74,10 +72,7 @@ pub fn statements<'t>(text: &'t str) -> ParseResult<'t, Vec<CommandOption>> {
 pub fn statement<'t>(text: &'t str) -> ParseResult<'t, Option<CommandOption>> {
     trace!("    Parsing statement from {:?}",
         if text.len() < 20 { text } else { &text[..20] });
-    let empty_stmt = circumfix(
-            char(';'),
-            maybe(whitespace_or_comments))
-        (text);
+    let empty_stmt = char(';')(text);
     if empty_stmt.is_ok() {
         trace!("      Found empty statement.");
         return empty_stmt.map_value(|_| None);
@@ -93,6 +88,10 @@ pub fn statement<'t>(text: &'t str) -> ParseResult<'t, Option<CommandOption>> {
             trace!("      Found non-empty statement {:?}.", opt);
             Ok(Some(opt))
         })
+        .map_err(|e| {
+            trace!("      Command option failed {:?}.", e);
+            e
+        })
         .source_for("statement")
 }
 
@@ -105,30 +104,26 @@ pub fn command_option<'t>(text: &'t str) -> ParseResult<'t, CommandOption> {
 
     loop {
         if char(';')(suc.rest).is_ok() {
-            trace!("      End of command options.");
             return Ok(suc).convert_value(|_| {
-                trace!("        Found command option {:?}.", chunks);
+                trace!("        Found command option (;) {:?}.", chunks);
                 CommandOption::from_iter_safe(chunks)
             });
         }
 
-        match prefix(
-                chunk,
-                maybe(whitespace_or_comments))
+        suc = maybe(whitespace_or_comments)
+            (suc.rest)
+            .with_join_previous(suc, text)
+            .discard_value()
+            .expect("infallible maybe parse");
+
+        match chunk
             (suc.rest)
             .with_join_previous(suc, text)
         {
-            Ok(chunk_suc) if chunk_suc.token.trim().is_empty() => {
-                trace!("      Invalid chunk (empty.)");
-                return Ok(suc).convert_value(|_| {
-                    trace!("        Found command option {:?}.", chunks);
-                    CommandOption::from_iter_safe(chunks)
-                });
-            },
             Err(_) => {
                 trace!("  Invalid chunk (failed.)");
                 return Ok(suc).convert_value(|_| {
-                    trace!("        Found command option {:?}.", chunks);
+                    trace!("        Found command option (ok) {:?}.", chunks);
                     CommandOption::from_iter_safe(chunks)
                 });
             }
@@ -171,6 +166,7 @@ pub fn chunk<'t>(text: &'t str) -> ParseResult<'t, Cow<'t, str>> {
 ////////////////////////////////////////////////////////////////////////////////
 // Comment parsing
 ////////////////////////////////////////////////////////////////////////////////
+
 /// Parses any number of comments or whitespace tokens.
 pub fn whitespace_or_comments<'t>(text: &'t str) -> ParseResult<'t, &'t str> {
     repeat(1, None,
