@@ -16,15 +16,11 @@ use crate::command::CommandOption;
 use crate::command::CommonOptions;
 use crate::command::export_png::write_png;
 use crate::command::ExportOption;
-use crate::command::GutterStyle;
-use crate::command::LineStyle;
 use crate::command::list::list;
-use crate::command::ListMode;
 use crate::command::new::new_config;
 use crate::command::new::new_palette;
 use crate::command::new::new_settings;
 use crate::command::NewOption;
-use crate::command::RuleStyle;
 use crate::command::SetOption;
 use crate::command::TextStyle;
 use crate::palette::Palette;
@@ -137,26 +133,29 @@ pub fn dispatch(
             no_color,
         } => {
             let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
-            let mode = mode.unwrap_or(ListMode::Grid);
-            let color_display = match (color_style, text_style) {
-                (Some(ColorStyle::None), Some(TextStyle::None)) => {
-                    warn!("Invalid combination of color-style and text-style.\
-                        Using --text-style hex.");
-                    ColorDisplay::new(ColorStyle::None, TextStyle::Hex6)
-                },
-
-                (Some(cs), Some(ts)) => ColorDisplay::new(cs, ts),
-
-                (None, None) => {
-                    ColorDisplay::new(ColorStyle::Tile, TextStyle::None)
-                },
-
-                (Some(cs), None) => ColorDisplay::new(cs, TextStyle::None),
-                (None, Some(ts)) => ColorDisplay::new(ColorStyle::None, ts),
+            let mode = mode.unwrap_or(config.default_list_mode);
+            let color_display = if let 
+                (Some(ColorStyle::None), Some(TextStyle::None))
+                    = (color_style, text_style) 
+            {
+                warn!("Invalid combination of color-style and text-style.\
+                    Using --text-style hex.");
+                config.invalid_color_display_fallback
+            } else {
+                ColorDisplay {
+                    color_style: color_style
+                        .unwrap_or(config.default_list_color_style),
+                    text_style: text_style
+                        .unwrap_or(config.default_list_text_style),
+                }
             };
-            let rule_style = rule_style.unwrap_or(RuleStyle::Colored);
-            let line_style = line_style.unwrap_or(LineStyle::Auto);
-            let gutter_style = gutter_style.unwrap_or(GutterStyle::Auto);
+
+            let rule_style = rule_style
+                .unwrap_or(config.default_list_rule_style);
+            let line_style = line_style
+                .unwrap_or(config.default_list_line_style);
+            let gutter_style = gutter_style
+                .unwrap_or(config.default_list_gutter_style);
 
             #[cfg(feature = "termsize")]
             let (w, h) = {

@@ -385,6 +385,7 @@ impl std::str::FromStr for GutterStyle {
 ////////////////////////////////////////////////////////////////////////////////
 /// Combined color display settings.
 #[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize)]
 pub struct ColorDisplay {
     /// The ColorStyle.
     pub color_style: ColorStyle,
@@ -394,14 +395,6 @@ pub struct ColorDisplay {
 
 
 impl ColorDisplay {
-    /// Constructs a new ColorDisplay.
-    pub fn new(color_style: ColorStyle, text_style: TextStyle) -> Self {
-        ColorDisplay {
-            color_style,
-            text_style,
-        }
-    }
-
     /// Returns the total dedicated width of the color output, including
     /// whitespace.
     pub fn width(&self) -> u16 {

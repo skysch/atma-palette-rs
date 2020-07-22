@@ -10,14 +10,21 @@
 #![warn(missing_docs)]
 
 // Local imports.
-use crate::setup::LevelFilter;
-use crate::setup::LoggerConfig;
+use crate::command::ColorDisplay;
+use crate::command::ColorStyle;
 use crate::command::CursorBehavior;
+use crate::command::GutterStyle;
+use crate::command::LineStyle;
+use crate::command::ListMode;
 use crate::command::Positioning;
+use crate::command::RuleStyle;
+use crate::command::TextStyle;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
-use crate::setup::StdoutLogOutput;
+use crate::setup::LevelFilter;
 use crate::setup::LoadStatus;
+use crate::setup::LoggerConfig;
+use crate::setup::StdoutLogOutput;
 use crate::utility::normalize_path;
 
 // External library imports.
@@ -72,6 +79,33 @@ pub const DEFAULT_DEFAULT_INSERT_CURSOR_BEHAVIOR: CursorBehavior
 /// Default value for default_default_move_cursor_behavior.
 pub const DEFAULT_DEFAULT_MOVE_CURSOR_BEHAVIOR: CursorBehavior
     = CursorBehavior::RemainInPlace;
+
+
+/// Default value for default_list_mode.
+pub const DEFAULT_DEFAULT_LIST_MODE: ListMode = ListMode::Lines;
+
+/// Default value for default_list_color_style.
+pub const DEFAULT_DEFAULT_LIST_COLOR_STYLE: ColorStyle = ColorStyle::Tile;
+
+/// Default value for default_list_text_style.
+pub const DEFAULT_DEFAULT_LIST_TEXT_STYLE: TextStyle = TextStyle::Hex6;
+
+/// Default value for default_list_rule_style.
+pub const DEFAULT_DEFAULT_LIST_RULE_STYLE: RuleStyle = RuleStyle::Colored;
+
+/// Default value for default_list_line_style.
+pub const DEFAULT_DEFAULT_LIST_LINE_STYLE: LineStyle = LineStyle::Auto;
+
+/// Default value for default_list_gutter_style.
+pub const DEFAULT_DEFAULT_LIST_GUTTER_STYLE: GutterStyle = GutterStyle::Auto;
+
+
+/// The default value for  invalid_color_display_fallback.
+pub const DEFAULT_INVALID_COLOR_DISPLAY_FALLBACK: ColorDisplay = ColorDisplay {
+    color_style: ColorStyle::None,
+    text_style: TextStyle::Hex6,
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Config
@@ -133,6 +167,34 @@ pub struct Config {
     /// The default behavior of the cursor after a move command is run.
     #[serde(default = "Config::default_default_move_cursor_behavior")]
     pub default_move_cursor_behavior: CursorBehavior,
+
+    /// The default ListMode for the list command.
+    #[serde(default = "Config::default_default_list_mode")]
+    pub default_list_mode: ListMode,
+
+    /// The default ColorStyle for the list command.
+    #[serde(default = "Config::default_default_list_color_style")]
+    pub default_list_color_style: ColorStyle,
+
+    /// The default TextStyle for the list command.
+    #[serde(default = "Config::default_default_list_text_style")]
+    pub default_list_text_style: TextStyle,
+
+    /// The default RuleStyle for the list command.
+    #[serde(default = "Config::default_default_list_rule_style")]
+    pub default_list_rule_style: RuleStyle,
+
+    /// The default LineStyle for the list command.
+    #[serde(default = "Config::default_default_list_line_style")]
+    pub default_list_line_style: LineStyle,
+
+    /// The default GutterStyle for the list command.
+    #[serde(default = "Config::default_default_list_gutter_style")]
+    pub default_list_gutter_style: GutterStyle,
+
+    /// The fallback ColorDisplay for when the provided combination is invalid.
+    #[serde(default = "Config::default_invalid_color_display_fallback")]
+    pub invalid_color_display_fallback: ColorDisplay,
 }
 
 
@@ -154,6 +216,14 @@ impl Config {
                 DEFAULT_DEFAULT_INSERT_CURSOR_BEHAVIOR,
             default_move_cursor_behavior: 
                 DEFAULT_DEFAULT_MOVE_CURSOR_BEHAVIOR,
+            default_list_mode: DEFAULT_DEFAULT_LIST_MODE,
+            default_list_color_style: DEFAULT_DEFAULT_LIST_COLOR_STYLE,
+            default_list_text_style: DEFAULT_DEFAULT_LIST_TEXT_STYLE,
+            default_list_rule_style: DEFAULT_DEFAULT_LIST_RULE_STYLE,
+            default_list_line_style: DEFAULT_DEFAULT_LIST_LINE_STYLE,
+            default_list_gutter_style: DEFAULT_DEFAULT_LIST_GUTTER_STYLE,
+            invalid_color_display_fallback:
+                DEFAULT_INVALID_COLOR_DISPLAY_FALLBACK,
         }
     }
 
@@ -372,13 +442,13 @@ impl Config {
 
     /// Returns the default value for default_delete_cursor_behavior.
     #[inline]
-    pub fn default_default_delete_cursor_behavior() -> CursorBehavior {
+    fn default_default_delete_cursor_behavior() -> CursorBehavior {
         DEFAULT_DEFAULT_DELETE_CURSOR_BEHAVIOR
     }
 
     /// Returns the default value for default_insert_cursor_behavior.
     #[inline]
-    pub fn default_default_insert_cursor_behavior() -> CursorBehavior {
+    fn default_default_insert_cursor_behavior() -> CursorBehavior {
         DEFAULT_DEFAULT_INSERT_CURSOR_BEHAVIOR
     }
 
@@ -388,6 +458,47 @@ impl Config {
         DEFAULT_DEFAULT_MOVE_CURSOR_BEHAVIOR
     }
 
+    /// Returns the default value for default_list_mode.
+    #[inline]
+    fn default_default_list_mode() -> ListMode {
+        DEFAULT_DEFAULT_LIST_MODE
+    }
+
+    /// Returns the default value for default_list_color_style.
+    #[inline]
+    fn default_default_list_color_style() -> ColorStyle {
+        DEFAULT_DEFAULT_LIST_COLOR_STYLE
+    }
+
+    /// Returns the default value for default_list_text_style.
+    #[inline]
+    fn default_default_list_text_style() -> TextStyle {
+        DEFAULT_DEFAULT_LIST_TEXT_STYLE
+    }
+
+    /// Returns the default value for default_list_rule_style.
+    #[inline]
+    fn default_default_list_rule_style() -> RuleStyle {
+        DEFAULT_DEFAULT_LIST_RULE_STYLE
+    }
+
+    /// Returns the default value for default_list_line_style.
+    #[inline]
+    fn default_default_list_line_style() -> LineStyle {
+        DEFAULT_DEFAULT_LIST_LINE_STYLE
+    }
+
+    /// Returns the default value for default_list_gutter_style.
+    #[inline]
+    fn default_default_list_gutter_style() -> GutterStyle {
+        DEFAULT_DEFAULT_LIST_GUTTER_STYLE
+    }
+
+    /// Returns the default value for invalid_color_display_fallback.
+    #[inline]
+    fn default_invalid_color_display_fallback() -> ColorDisplay {
+        DEFAULT_INVALID_COLOR_DISPLAY_FALLBACK
+    }
 }
 
 impl Default for Config {
