@@ -11,29 +11,53 @@
 // Local imports.
 use crate::parse::AtmaScanner;
 use crate::parse::AtmaToken;
-use crate::parse::FnArg;
-use crate::parse::FnCall;
 use crate::parse::uint;
 use crate::parse::float;
 
 // External library imports.
 use tephra::combinator::both;
+use tephra::combinator::bracket;
 use tephra::combinator::intersperse_collect;
 use tephra::combinator::one;
 use tephra::combinator::section;
 use tephra::combinator::spanned;
 use tephra::combinator::text;
-use tephra::combinator::bracket;
 use tephra::lexer::Lexer;
+use tephra::position::ColumnMetrics;
 use tephra::result::ParseResult;
 use tephra::result::ParseResultExt as _;
-use tephra::position::ColumnMetrics;
+use tephra::result::Spanned;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // FnCall
 ////////////////////////////////////////////////////////////////////////////////
+/// An AST matcher for parsing a function call.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FnCall<'text> {
+    /// The name of the function.
+    pub name: &'text str,
+    /// The function arguments.
+    pub args: Vec<Spanned<'text, FnArg>>,
+}
 
+////////////////////////////////////////////////////////////////////////////////
+// FnArg
+////////////////////////////////////////////////////////////////////////////////
+/// And AST matcher for parsing a function call argument.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum FnArg {
+    /// A u32 argument.
+    U32(u32),
+    /// An f32 argument.
+    F32(f32),
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Parsers
+////////////////////////////////////////////////////////////////////////////////
+/// Parses a simple function call.
 pub fn fn_call<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, FnCall<'text>>
     where Cm: ColumnMetrics,
@@ -50,6 +74,7 @@ pub fn fn_call<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
         .map_value(|(name, args)| FnCall { name, args })
 }
 
+/// Parses a simple function call arg.
 pub fn fn_arg<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, FnArg>
     where Cm: ColumnMetrics,

@@ -34,11 +34,15 @@ use std::str::FromStr as _;
 ////////////////////////////////////////////////////////////////////////////////
 // AstExprMatch
 ////////////////////////////////////////////////////////////////////////////////
+/// A trait implemented by types which can be pattern matched with an AST node.
 pub trait AstExprMatch: Sized {
+    /// Attempt to match an AstExpr.
     fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics;
 
+
+    /// Attempt to match a UnaryExpr.
     fn match_unary_expr<'text, Cm>(
         unary_expr: UnaryExpr<'text>,
         span: Span<'text>,
@@ -51,6 +55,7 @@ pub trait AstExprMatch: Sized {
             metrics)
     }
 
+    /// Attempt to match a CallExpr.
     fn match_call_expr<'text, Cm>(
         call_expr: CallExpr<'text>,
         span: Span<'text>,
@@ -64,6 +69,7 @@ pub trait AstExprMatch: Sized {
             metrics)
     }
 
+    /// Attempt to match an PrimaryExpr.
     fn match_primary_expr<'text, Cm>(
         primary_expr: PrimaryExpr<'text>,
         span: Span<'text>,
@@ -109,7 +115,6 @@ impl AstExprMatch for Ident {
 ////////////////////////////////////////////////////////////////////////////////
 // Float matchers
 ////////////////////////////////////////////////////////////////////////////////
-
 macro_rules! float_matcher {
     ($t:ty, $rep:expr) => {
         impl AstExprMatch for $t {
@@ -158,7 +163,6 @@ float_matcher!(f64, "f64");
 ////////////////////////////////////////////////////////////////////////////////
 // Integer matchers
 ////////////////////////////////////////////////////////////////////////////////
-
 macro_rules! negatable_integer_matcher {
     ($t:ty, $rep:expr) => {
         impl AstExprMatch for $t {
@@ -351,7 +355,6 @@ tuple_impls! {
 ////////////////////////////////////////////////////////////////////////////////
 // Array matcher
 ////////////////////////////////////////////////////////////////////////////////
-
 // TODO: Attempting to initialize an array [T; N] butts up against the rules
 // for safely initializing an array dynamically, which forbids a generic
 // transmute of [MaybeUninit<T>; N] to [T; N]. I don't know of a good
@@ -390,7 +393,6 @@ impl<T> AstExprMatch for Vec<T> where T: AstExprMatch {
 ////////////////////////////////////////////////////////////////////////////////
 // Color matcher
 ////////////////////////////////////////////////////////////////////////////////
-
 impl AstExprMatch for Color {
     fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
         -> Result<Self, ParseError<'text, Cm>>
@@ -490,14 +492,16 @@ impl AstExprMatch for CellRef<'static> {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Ident matcher
+// FunctionCall matcher
 ////////////////////////////////////////////////////////////////////////////////
+/// An AST matcher for a function call.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FunctionCall<T, A> where T: AstExprMatch, A: AstExprMatch {
+    /// The function being called.
     pub operand: T,
+    /// The arguments to the function.
     pub args: A,
 }
-
 
 impl<T, A> AstExprMatch for FunctionCall<T, A> 
     where T: AstExprMatch, A: AstExprMatch

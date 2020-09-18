@@ -213,8 +213,18 @@ impl BlendFunction {
 ////////////////////////////////////////////////////////////////////////////////
 // InvalidBlendMethod
 ////////////////////////////////////////////////////////////////////////////////
+/// An invalid blend method was provided.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InvalidBlendMethod;
+
+impl std::fmt::Display for InvalidBlendMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for InvalidBlendMethod {}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // UnaryBlendFunction

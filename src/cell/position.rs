@@ -142,6 +142,7 @@ impl std::str::FromStr for Position {
     }
 }
 
+/// A parse error occured where a Position was expected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PositionParseError;
 

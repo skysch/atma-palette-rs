@@ -26,9 +26,22 @@ use tephra::result::Spanned;
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// Identifier
+////////////////////////////////////////////////////////////////////////////////
+/// And AST matcher for parsing an identifier.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Ident(pub String);
+
+
+////////////////////////////////////////////////////////////////////////////////
 // Selection types
 ////////////////////////////////////////////////////////////////////////////////
-
+/// An AST matcher for parsing a Position or Index selector.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum PositionOrIndex {
+    Index(u32),
+    Position(Position),
+}
 
 impl<'name> From<PositionOrIndex> for CellRef<'name> {
     fn from(poi: PositionOrIndex) -> Self {
@@ -39,31 +52,3 @@ impl<'name> From<PositionOrIndex> for CellRef<'name> {
     }
 }
 
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum PositionOrIndex {
-    Index(u32),
-    Position(Position),
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Function calls
-////////////////////////////////////////////////////////////////////////////////
-#[derive(Debug, Clone, PartialEq)]
-pub struct FnCall<'text> {
-    pub name: &'text str,
-    pub args: Vec<Spanned<'text, FnArg>>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum FnArg {
-    U32(u32),
-    F32(f32),
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Identifier
-////////////////////////////////////////////////////////////////////////////////
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Ident(pub String);

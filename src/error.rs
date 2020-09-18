@@ -15,6 +15,7 @@ use crate::parse::AtmaScanner;
 // External library imports.
 use tephra::position::ColumnMetrics;
 use tephra::result::FailureOwned;
+use tephra::result::Failure;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -29,7 +30,7 @@ pub struct ParseError {
     /// The error message.
     msg: Option<String>,
     /// The error source.
-    source: tephra::result::FailureOwned,
+    source: FailureOwned,
 }
 
 impl std::fmt::Display for ParseError {
@@ -45,16 +46,16 @@ impl std::error::Error for ParseError {
     }
 }
 
-impl From<tephra::result::FailureOwned> for ParseError {
-    fn from(err: tephra::result::FailureOwned) -> Self {
+impl From<FailureOwned> for ParseError {
+    fn from(err: FailureOwned) -> Self {
         ParseError { msg: Some("parse error".to_owned()), source: err }
     }
 }
 
-impl<'t, Cm> From<tephra::result::Failure<'t, AtmaScanner, Cm>> for ParseError
+impl<'t, Cm> From<Failure<'t, AtmaScanner, Cm>> for ParseError
     where Cm: ColumnMetrics,
 {
-    fn from(err: tephra::result::Failure<'t, AtmaScanner, Cm>) -> Self {
+    fn from(err: Failure<'t, AtmaScanner, Cm>) -> Self {
         FailureOwned::from(err).into()
     }
 }
@@ -109,7 +110,7 @@ pub enum FileError {
         /// The error message.
         msg: Option<String>,
         /// The error source.
-        source: tephra::result::FailureOwned,
+        source: FailureOwned,
     }
 }
 
@@ -181,8 +182,8 @@ impl From<ParseError> for FileError {
     }
 }
 
-impl From<tephra::result::FailureOwned> for FileError {
-    fn from(err: tephra::result::FailureOwned) -> Self {
+impl From<FailureOwned> for FileError {
+    fn from(err: FailureOwned) -> Self {
         FileError::ParseError {
             msg: Some("file parse error".to_owned()),
             source: err,
@@ -190,10 +191,10 @@ impl From<tephra::result::FailureOwned> for FileError {
     }
 }
 
-impl<'t, Cm> From<tephra::result::Failure<'t, AtmaScanner, Cm>> for FileError 
+impl<'t, Cm> From<Failure<'t, AtmaScanner, Cm>> for FileError 
     where Cm: ColumnMetrics,
 {
-    fn from(err: tephra::result::Failure<'t, AtmaScanner, Cm>) -> Self {
+    fn from(err: Failure<'t, AtmaScanner, Cm>) -> Self {
         FailureOwned::from(err).into()
     }
 }
