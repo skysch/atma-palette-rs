@@ -15,16 +15,12 @@ use crate::color::Hsv;
 use crate::color::Rgb;
 use crate::error::PaletteError;
 use crate::palette::BasicPalette;
-use crate::parse::binary_blend_method;
-use crate::parse::color_space;
-use crate::parse::FailureOwned;
-use crate::parse::insert_expr;
-use crate::parse::ParseResultExt as _;
-use crate::parse::unary_blend_method;
 
 // External library imports.
 use serde::Deserialize;
 use serde::Serialize;
+use tephra::result::FailureOwned;
+use tephra::result::ParseResultExt as _;
 
 // Standard library imports.
 use std::collections::HashSet;
@@ -84,14 +80,7 @@ impl Default for Expr {
 #[derive(Serialize, Deserialize)]
 pub enum InsertExpr {
     /// Insert an interpolated range of color blend operations.
-    Ramp {
-        /// The number of colors in the ramp.
-        count: u8,
-        /// The ramp blend function.
-        blend_fn: BlendFunction,
-        /// The range of values to interpolate over.
-        interpolate: InterpolateRange,
-    },
+    Ramp(RampExpr),
     /// Insert a color blend operation.
     Blend(BlendExpr),
     /// Insert a color.
@@ -108,8 +97,8 @@ impl InsertExpr {
         -> Result<Vec<Expr>, PaletteError>
     {
         match self {
-            InsertExpr::Ramp { count, blend_fn, interpolate } => Ok(interpolate
-                .blend_exprs(*count, blend_fn)
+            InsertExpr::Ramp(ramp_expr) => Ok(ramp_expr.interpolate
+                .blend_exprs(ramp_expr.count, &ramp_expr.blend_fn)
                 .into_iter()
                 .map(Expr::Blend)
                 .collect()),
@@ -142,10 +131,23 @@ impl std::str::FromStr for InsertExpr {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        insert_expr(text)
-            .end_of_text()
-            .finish()
+        unimplemented!()
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// RampExpr
+////////////////////////////////////////////////////////////////////////////////
+/// A color ramp expression.
+#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize)]
+pub struct RampExpr {
+    /// The number of colors in the ramp.
+    pub count: u8,
+    /// The ramp blend function.
+    pub blend_fn: BlendFunction,
+    /// The range of values to interpolate over.
+    pub interpolate: InterpolateRange,
 }
 
 
@@ -207,6 +209,12 @@ impl BlendFunction {
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// InvalidBlendMethod
+////////////////////////////////////////////////////////////////////////////////
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InvalidBlendMethod;
 
 ////////////////////////////////////////////////////////////////////////////////
 // UnaryBlendFunction
@@ -315,12 +323,10 @@ impl UnaryBlendMethod {
 }
 
 impl std::str::FromStr for UnaryBlendMethod {
-    type Err = FailureOwned;
+    type Err = InvalidBlendMethod;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        unary_blend_method(text)
-            .end_of_text()
-            .finish()
+        unimplemented!()
     }
 }
 
@@ -353,9 +359,9 @@ pub struct BinaryBlendFunction {
     /// The blend method.
     pub blend_method: BinaryBlendMethod,
     /// The first argument of the blend.
-    pub arg_1: CellRef<'static>,
+    pub arg_0: CellRef<'static>,
     /// The second argument of the blend.
-    pub arg_2: CellRef<'static>,
+    pub arg_1: CellRef<'static>,
 }
 
 impl BinaryBlendFunction {
@@ -370,8 +376,8 @@ impl BinaryBlendFunction {
     {
         let mut index_list_2 = index_list.clone();
         match (
-            basic.cycle_detect_color(&self.arg_1, index_list)?,
-            basic.cycle_detect_color(&self.arg_2, &mut index_list_2)?)
+            basic.cycle_detect_color(&self.arg_0, index_list)?,
+            basic.cycle_detect_color(&self.arg_1, &mut index_list_2)?)
         {
             (Some(a), Some(b)) => {
                 let blend_fn = |a, b| self.blend_method.apply(a, b);
@@ -469,12 +475,10 @@ impl BinaryBlendMethod {
 }
 
 impl std::str::FromStr for BinaryBlendMethod {
-    type Err = FailureOwned;
+    type Err = InvalidBlendMethod;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        binary_blend_method(text)
-            .end_of_text()
-            .finish()
+        unimplemented!()
     }
 }
 
@@ -544,9 +548,7 @@ impl std::str::FromStr for ColorSpace {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        color_space(text)
-            .end_of_text()
-            .finish()
+        unimplemented!()
     }
 }
 

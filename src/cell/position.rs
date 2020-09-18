@@ -14,12 +14,15 @@ use crate::cell::REF_POS_SEP_TOKEN;
 use crate::cell::REF_ALL_TOKEN;
 use crate::parse::position;
 use crate::parse::position_selector;
-use crate::parse::FailureOwned;
-use crate::parse::ParseResultExt as _;
+use crate::parse::AtmaScanner;
+use crate::parse::AtmaToken;
 
 // External library imports.
 use serde::Deserialize;
 use serde::Serialize;
+use tephra::result::ParseResultExt as _;
+use tephra::lexer::Lexer;
+use tephra::position::Lf;
 
 // Standard library imports.
 use std::convert::TryFrom;
@@ -125,14 +128,30 @@ impl std::fmt::Display for Position {
 }
 
 impl std::str::FromStr for Position {
-    type Err = FailureOwned;
+    type Err = PositionParseError;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        position(text)
-            .end_of_text()
+        
+        let scanner = AtmaScanner::new();
+        let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        position(lexer)
             .finish()
+            .map_err(|_| PositionParseError)
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PositionParseError;
+
+impl std::fmt::Display for PositionParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for PositionParseError {}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,11 +268,9 @@ impl std::fmt::Display for PositionSelector {
 }
 
 impl std::str::FromStr for PositionSelector {
-    type Err = FailureOwned;
+    type Err = tephra::result::FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        position_selector(text)
-            .end_of_text()
-            .finish()
+        unimplemented!()
     }
 }

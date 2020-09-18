@@ -14,11 +14,12 @@ use crate::command::CommonOptions;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
 use crate::palette::Palette;
-use crate::parse::FailureOwned;
-use crate::parse::ParseResultExt as _;
-use crate::parse::script;
 use crate::setup::Config;
 use crate::setup::Settings;
+
+// External library imports.
+use tephra::result::FailureOwned;
+use tephra::result::ParseResultExt as _;
 
 // Standard library imports.
 use std::fmt::Debug;
@@ -90,8 +91,9 @@ impl std::str::FromStr for Script {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        script(text)
-            .end_of_text()
-            .finish()
+        // script(text)
+        //     .end_of_text()
+        //     .finish()
+        unimplemented!()
     }
 }

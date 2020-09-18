@@ -1,701 +1,700 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Atma structured color palette
+// Tephra parser library
 ////////////////////////////////////////////////////////////////////////////////
 // Copyright 2020 Skylor R. Schermer
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Expr parse functions.
+//! Parser combinators for the Atma color expressions.
 ////////////////////////////////////////////////////////////////////////////////
+// TODO: This module is currently under development.
+#![allow(unused)]
+#![allow(missing_docs)]
 
 // Local imports.
 use crate::cell::CellRef;
-use crate::palette::BinaryBlendFunction;
-use crate::palette::BinaryBlendMethod;
-use crate::palette::BlendExpr;
-use crate::palette::BlendFunction;
-use crate::palette::ColorSpace;
+use crate::cell::CellSelection;
+use crate::cell::CellSelector;
+use crate::cell::Position;
+use crate::cell::PositionSelector;
+use crate::color::Color;
+use crate::palette::RampExpr;
 use crate::palette::InsertExpr;
+use crate::palette::BlendFunction;
+use crate::palette::BlendExpr;
 use crate::palette::Interpolate;
-use crate::palette::InterpolateFunction;
-use crate::palette::InterpolateRange;
 use crate::palette::UnaryBlendFunction;
 use crate::palette::UnaryBlendMethod;
-use crate::parse::any_literal_map_once;
-use crate::parse::atomic_ignore_whitespace;
-use crate::parse::bracket;
+use crate::palette::BinaryBlendFunction;
+use crate::palette::BinaryBlendMethod;
+use crate::palette::ColorSpace;
+use crate::palette::InterpolateFunction;
+use crate::palette::InterpolateRange;
+use crate::parse::AstExpr;
+use crate::parse::AstExprMatch;
+use crate::parse::AtmaScanner;
+use crate::parse::AtmaToken;
 use crate::parse::cell_ref;
-use crate::parse::char;
-use crate::parse::circumfix;
-use crate::parse::color;
-use crate::parse::float;
-use crate::parse::intersperse_collect;
-use crate::parse::literal_ignore_ascii_case;
-use crate::parse::maybe;
-use crate::parse::ParseResult;
-use crate::parse::ParseResultExt as _;
-use crate::parse::postfix;
-use crate::parse::prefix;
-use crate::parse::require_if;
+use crate::parse::FunctionCall;
+use crate::parse::Ident;
+use crate::parse::PositionOrIndex;
+use crate::parse::string;
 use crate::parse::uint;
-use crate::parse::whitespace;
+use crate::parse::AstExprMatch as _;
 
+// External library imports.
+use tephra::combinator::atomic;
+use tephra::combinator::both;
+use tephra::combinator::right;
+use tephra::combinator::one;
+use tephra::combinator::text;
+use tephra::combinator::bracket;
+use tephra::combinator::fail;
+use tephra::combinator::section;
+use tephra::combinator::intersperse_collect;
+use tephra::lexer::Lexer;
+use tephra::result::ParseError;
+use tephra::result::ParseResult;
+use tephra::result::Spanned;
+use tephra::result::ParseResultExt as _;
+use tephra::position::ColumnMetrics;
 
-////////////////////////////////////////////////////////////////////////////////
-// insert_expr
-////////////////////////////////////////////////////////////////////////////////
+// Standard library imports.
+use std::str::FromStr as _;
 
-/// Parses an InsertExpr.
-pub fn insert_expr<'t>(text: &'t str) -> ParseResult<'t, InsertExpr> {
-    // Ramp
-    let ramp = insert_expr_ramp
-        (text);
-    if ramp.is_ok() { return ramp; }
-
-    // Blend
-    let blend = blend_expr
-        (text)
-        .map_value(InsertExpr::Blend);
-    if blend.is_ok() { return blend; }
-
-    // Color
-    let color = color
-        (text)
-        .map_value(InsertExpr::Color);
-    if color.is_ok() { return color; }
-
-    // Copy
-    let copy_ref = bracket(
-            circumfix(
-                cell_ref,
-                maybe(whitespace)),
-            prefix(
-                char('('),
-                maybe(literal_ignore_ascii_case("copy"))),
-            char(')'))
-        (text)
-        .map_value(CellRef::into_static)
-        .map_value(InsertExpr::Copy);
-    if copy_ref.is_ok() { return copy_ref; }
-
-    // Reference
-    cell_ref
-        (text)
-        .map_value(CellRef::into_static)
-        .map_value(InsertExpr::Reference)
-}
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// ramp_expr
+// InsertExpr
 ////////////////////////////////////////////////////////////////////////////////
+impl AstExprMatch for InsertExpr {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+        
+        // Ramp
+        match RampExpr::match_expr(ast_expr.clone(), metrics) {
+            Ok(expr) => return Ok(InsertExpr::Ramp(expr)),
+            Err(_) => (),
+        }
 
-/// Parses an `InsertExpr` if it is a `Ramp` variant.
-pub fn insert_expr_ramp<'t>(text: &'t str) -> ParseResult<'t, InsertExpr> {
-    let (count, suc) = prefix(
-            uint::<u8>("u8"),
-            postfix(
-                literal_ignore_ascii_case("ramp"),
-                postfix(char('('), maybe(whitespace))))
-        (text)?
-        .take_value();
+        // Blend
+        match BlendExpr::match_expr(ast_expr.clone(), metrics) {
+            Ok(expr) => return Ok(InsertExpr::Blend(expr)),
+            Err(_) => (),
+        }
 
-    let (blend_fn, suc) = prefix(
-            blend_function,
-            circumfix(
-                char(','),
-                maybe(whitespace)))
-        (suc.rest)
-        .with_join_previous(suc, text)?
-        .take_value();
+        // Color
+        match Color::match_expr(ast_expr.clone(), metrics) {
+            Ok(color) => return Ok(InsertExpr::Color(color)),
+            Err(_) => (),
+        }
 
-    postfix(
-            maybe(
-                prefix(
-                    interpolate_range,
-                    circumfix(
-                        char(','),
-                        maybe(whitespace)))),
-            prefix(
-                char(')'),
-                maybe(whitespace)))
-        (suc.rest)
-        .with_join_previous(suc, text)
-        .map_value(|interp| InsertExpr::Ramp {
-            count,
-            blend_fn,
-            interpolate: interp.unwrap_or_default(),
-        })
-}
+        // Copy
+        match <FunctionCall<Ident, (CellRef<'static>,)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand: Ident(i), args }) if i == "copy" => {
+                return Ok(InsertExpr::Copy(args.0));
+            },
+            _ => (),
+        }
 
+        // Reference
+        match <CellRef<'static>>::match_expr(ast_expr.clone(), metrics) {
+            Ok(cell_ref) => return Ok(InsertExpr::Reference(cell_ref)),
+            Err(_) => (),
+        }
 
-////////////////////////////////////////////////////////////////////////////////
-// blend_expr
-////////////////////////////////////////////////////////////////////////////////
-
-/// Parses an BinaryBlendFunction.
-pub fn blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
-    let unary = unary_blend_expr(text);
-    if unary.is_ok() {
-        return unary;
+        Err(ParseError::new("invalid insert expression")
+            .with_span("unrecognized insert expression",
+                ast_span,
+                metrics))
     }
-
-    binary_blend_expr
-        (text)
-}
-
-/// Parses an BlendExpr if it is a Unary variant.
-pub fn unary_blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
-    let (blend_method, suc) = postfix(
-            unary_blend_method,
-            postfix(char('('), maybe(whitespace)))
-        (text)?
-        .take_value();
-
-    let (cell_ref, suc) = postfix(
-            cell_ref,
-            circumfix(
-                char(','),
-                maybe(whitespace)))
-        (suc.rest)
-        .with_join_previous(suc, text)?
-        .take_value();
-
-    let (value, suc) = float::<f32>("f32")
-        (suc.rest)
-        .with_join_previous(suc, text)?
-        .take_value();
-
-    let (interpolate, suc) = atomic_ignore_whitespace(
-            prefix(
-                interpolate,
-                circumfix(
-                    char(','),
-                    maybe(whitespace))))
-        (suc.rest)
-        .with_join_previous(suc, text)?
-        .take_value();
-    let interpolate = interpolate.unwrap_or_default();
-
-    prefix(char(')'), maybe(whitespace))
-        (suc.rest)
-        .with_join_previous(suc, text)
-        .map_value(|_| BlendExpr { 
-            blend_fn: BlendFunction::Unary(UnaryBlendFunction { 
-                blend_method,
-                value,
-                arg: cell_ref.clone().into_static(),
-            }),
-            interpolate,
-        })
-}
-
-/// Parses an BlendExpr if it is a Binary variant.
-pub fn binary_blend_expr<'t>(text: &'t str) -> ParseResult<'t, BlendExpr> {
-    let (color_space, suc) = atomic_ignore_whitespace(
-            postfix(
-                color_space,
-                char('_')))
-        (text)?
-        .take_value();
-    let color_space = color_space.unwrap_or(ColorSpace::Rgb);
-
-    let (blend_method, suc) = postfix(
-            binary_blend_method,
-            postfix(char('('), maybe(whitespace)))
-        (suc.rest)
-        .with_join_previous(suc, text)?
-        .take_value();
-
-    let (refs, suc) = intersperse_collect(2, Some(2), 
-            cell_ref,
-            circumfix(
-                char(','),
-                maybe(whitespace)))
-        (suc.rest)
-        .with_join_previous(suc, text)?
-        .take_value();
-
-    let (interpolate, suc) = atomic_ignore_whitespace(
-            prefix(
-                interpolate,
-                circumfix(
-                    char(','),
-                    maybe(whitespace))))
-        (suc.rest)
-        .with_join_previous(suc, text)?
-        .take_value();
-    let interpolate = interpolate.unwrap_or_default();
-
-    prefix(char(')'), maybe(whitespace))
-        (suc.rest)
-        .with_join_previous(suc, text)
-        .map_value(|_| BlendExpr { 
-            blend_fn: BlendFunction::Binary(BinaryBlendFunction {
-                color_space,
-                blend_method,
-                arg_1: refs[0].clone().into_static(),
-                arg_2: refs[1].clone().into_static(),
-            }),
-            interpolate,
-        })
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// blend_function
+// RampExpr
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Parses an BlendFunction.
-pub fn blend_function<'t>(text: &'t str) -> ParseResult<'t, BlendFunction> {
-    let unary = unary_blend_function(text);
-    if unary.is_ok() {
-        return unary.map_value(BlendFunction::Unary);
+impl AstExprMatch for RampExpr {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+        
+        match <FunctionCall<Ident, (u8, BlendFunction)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand: Ident(i), args }) if i == "ramp" => {
+                return Ok(RampExpr {
+                    count: args.0,
+                    blend_fn: args.1,
+                    interpolate: InterpolateRange::default(),
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<Ident, (
+                u8,
+                BlendFunction,
+                InterpolateRange)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand: Ident(i), args }) if i == "ramp" => {
+                return Ok(RampExpr {
+                    count: args.0,
+                    blend_fn: args.1,
+                    interpolate: args.2,
+                });
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("invalid ramp function")
+            .with_span("unrecognized ramp function",
+                ast_span,
+                metrics))
     }
-
-    binary_blend_function
-        (text)
-        .map_value(BlendFunction::Binary)
 }
 
-/// Parses an UnaryBlendFunction.
-pub fn unary_blend_function<'t>(text: &'t str)
-    -> ParseResult<'t, UnaryBlendFunction>
+
+////////////////////////////////////////////////////////////////////////////////
+// BlendExpr
+////////////////////////////////////////////////////////////////////////////////
+
+impl AstExprMatch for BlendExpr {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+        
+        match <FunctionCall<UnaryBlendMethod, (
+                CellRef<'static>,
+                f32)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(BlendExpr {
+                    blend_fn: BlendFunction::Unary(UnaryBlendFunction {
+                        blend_method: operand,
+                        value: args.1,
+                        arg: args.0,
+                    }),
+                    interpolate: Interpolate::default(),
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<UnaryBlendMethod, (
+                CellRef<'static>,
+                f32,
+                Interpolate)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(BlendExpr {
+                    blend_fn: BlendFunction::Unary(UnaryBlendFunction {
+                        blend_method: operand,
+                        value: args.1,
+                        arg: args.0,
+                    }),
+                    interpolate: args.2,
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<BinaryBlendMethod, (
+                CellRef<'static>,
+                CellRef<'static>)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(BlendExpr {
+                    blend_fn: BlendFunction::Binary(BinaryBlendFunction {
+                        blend_method: operand,
+                        color_space: ColorSpace::Rgb,
+                        arg_0: args.0,
+                        arg_1: args.1,
+                    }),
+                    interpolate: Interpolate::default(),
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<BinaryBlendMethod, (
+                CellRef<'static>,
+                CellRef<'static>,
+                Interpolate)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(BlendExpr {
+                    blend_fn: BlendFunction::Binary(BinaryBlendFunction {
+                        blend_method: operand,
+                        color_space: ColorSpace::Rgb,
+                        arg_0: args.0,
+                        arg_1: args.1,
+                    }),
+                    interpolate: args.2,
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<BinaryBlendMethod, (
+                CellRef<'static>,
+                CellRef<'static>,
+                Interpolate,
+                ColorSpace)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(BlendExpr {
+                    blend_fn: BlendFunction::Binary(BinaryBlendFunction {
+                        blend_method: operand,
+                        color_space: args.3,
+                        arg_0: args.0,
+                        arg_1: args.1,
+                    }),
+                    interpolate: args.2,
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<BinaryBlendMethod, (
+                CellRef<'static>,
+                CellRef<'static>,
+                ColorSpace)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                
+                return Ok(BlendExpr {
+                    blend_fn: BlendFunction::Binary(BinaryBlendFunction {
+                        blend_method: operand,
+                        color_space: args.2,
+                        arg_0: args.0,
+                        arg_1: args.1,
+                    }),
+                    interpolate: Interpolate::default(),
+                });
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("invalid blend function")
+            .with_span("unrecognized blend function",
+                ast_span,
+                metrics))
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// BlendFunction
+////////////////////////////////////////////////////////////////////////////////
+impl AstExprMatch for BlendFunction {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+
+        // Unary
+        match <UnaryBlendFunction>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(unary) => return Ok(BlendFunction::Unary(unary)),
+            _ => (),
+        }
+
+        // Binary
+        match <BinaryBlendFunction>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(binary) => return Ok(BlendFunction::Binary(binary)),
+            _ => (),
+        }
+
+        Err(ParseError::new("invalid blend function")
+            .with_span("unrecognized blend function",
+                ast_span,
+                metrics))
+    }
+}
+
+impl AstExprMatch for UnaryBlendFunction {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+
+        match <FunctionCall<
+                UnaryBlendMethod,
+                (f32, CellRef<'static>)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(UnaryBlendFunction {
+                    blend_method: operand,
+                    value: args.0,
+                    arg: args.1,
+                });
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("invalid blend function")
+            .with_span("unrecognized blend function",
+                ast_span,
+                metrics))
+    }
+}
+
+
+impl AstExprMatch for BinaryBlendFunction {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+
+        let ast_span = ast_expr.span();
+
+        match <FunctionCall<
+                BinaryBlendMethod,
+                (ColorSpace, CellRef<'static>, CellRef<'static>)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(BinaryBlendFunction {
+                    blend_method: operand,
+                    color_space: args.0,
+                    arg_0: args.1,
+                    arg_1: args.2,
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<
+                BinaryBlendMethod,
+                (CellRef<'static>, CellRef<'static>)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(BinaryBlendFunction {
+                    blend_method: operand,
+                    color_space: ColorSpace::default(),
+                    arg_0: args.0,
+                    arg_1: args.1,
+                });
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("invalid blend function")
+            .with_span("unrecognized blend function",
+                ast_span,
+                metrics))
+    }
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BlendMethod
+////////////////////////////////////////////////////////////////////////////////
+
+impl AstExprMatch for UnaryBlendMethod {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+        
+        match Ident::match_expr(ast_expr, metrics) {
+            Ok(Ident(i)) => match UnaryBlendMethod::from_str(i.as_ref()) {
+                Ok(blend) => return Ok(blend),
+                Err(_)    => (),
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("invalid blend function")
+            .with_span("unrecognized blend function",
+                ast_span,
+                metrics))
+    }
+}
+
+impl AstExprMatch for BinaryBlendMethod {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+        
+        match Ident::match_expr(ast_expr, metrics) {
+            Ok(Ident(i)) => match BinaryBlendMethod::from_str(i.as_ref()) {
+                Ok(blend) => return Ok(blend),
+                Err(_)    => (),
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("invalid blend function")
+            .with_span("unrecognized blend function",
+                ast_span,
+                metrics))
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Interpolate
+////////////////////////////////////////////////////////////////////////////////
+
+impl AstExprMatch for Interpolate {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+
+        match f32::match_expr(ast_expr.clone(), metrics) {
+            Ok(amount) => {
+                if amount > 1.0 || amount < 0.0 {
+                    return Err(ParseError::new("invalid interpolate value")
+                        .with_span("value must lie in the range [0.0, 1.0]",
+                            ast_span,
+                            metrics));
+                }
+                return Ok(Interpolate {
+                    amount,
+                    .. Default::default()
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<InterpolateFunction, (f32,)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                if args.0 > 1.0 || args.0 < 0.0 {
+                    return Err(ParseError::new("invalid interpolate value")
+                        .with_span("value must lie in the range [0.0, 1.0]",
+                            ast_span,
+                            metrics));
+                }
+                return Ok(Interpolate {
+                    interpolate_fn: operand,
+                    amount: args.0,
+                    .. Default::default()
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<InterpolateFunction, (f32, ColorSpace)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                if args.0 > 1.0 || args.0 < 0.0 {
+                    return Err(ParseError::new("invalid interpolate value")
+                        .with_span("value must lie in the range [0.0, 1.0]",
+                            ast_span,
+                            metrics));
+                }
+                return Ok(Interpolate {
+                    interpolate_fn: operand,
+                    amount: args.0,
+                    color_space: args.1,
+                    .. Default::default()
+                });
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("expected interpolate value")
+            .with_span("unrecognized interpolate value", ast_span, metrics))
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// InterpolateRange
+////////////////////////////////////////////////////////////////////////////////
+
+impl AstExprMatch for InterpolateRange {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+        match InterpolateFunction::match_expr(ast_expr.clone(), metrics) {
+            Ok(interpolate_fn) => {
+                return Ok(InterpolateRange {
+                    interpolate_fn,
+                    .. Default::default()
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<InterpolateFunction, (Vec<f32>,)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) if args.0.len() != 2 => {
+                return Err(ParseError::new("expected [f32, f32] value")
+                    .with_span("wrong number of arguments", ast_span, metrics));
+            },
+            Ok(FunctionCall { operand, args }) => {
+                valid_unit_range(args.0[0], args.0[1])
+                    .map_err(|e| e.with_span("invalid range value",
+                        ast_span,
+                        metrics))?;
+                return Ok(InterpolateRange {
+                    interpolate_fn: operand,
+                    start: args.0[0],
+                    end: args.0[1],
+                    .. Default::default()
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<InterpolateFunction, (Vec<f32>, ColorSpace)>>::match_expr(
+            ast_expr.clone(),
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) if args.0.len() != 2 => {
+                return Err(ParseError::new("expected [f32, f32] value")
+                    .with_span("wrong number of arguments", ast_span, metrics));
+            },
+            Ok(FunctionCall { operand, args }) => {
+                valid_unit_range(args.0[0], args.0[1])
+                    .map_err(|e| e.with_span("invalid range value",
+                        ast_span,
+                        metrics))?;
+                return Ok(InterpolateRange {
+                    interpolate_fn: operand,
+                    start: args.0[0],
+                    end: args.0[1],
+                    color_space: args.1,
+                    .. Default::default()
+                });
+            },
+            _ => (),
+        }
+
+        match <FunctionCall<InterpolateFunction, (ColorSpace,)>>::match_expr(
+            ast_expr,
+            metrics)
+        {
+            Ok(FunctionCall { operand, args }) => {
+                return Ok(InterpolateRange {
+                    color_space: args.0,
+                    interpolate_fn: operand,
+                    .. Default::default()
+                });
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("expected interpolate range")
+            .with_span("unrecognized interpolate range", ast_span, metrics))
+    }
+}
+
+fn valid_unit_range<'text, Cm>(l: f32, r: f32)
+    -> Result<(), ParseError<'text, Cm>>
+    where Cm: ColumnMetrics,
 {
-    let (blend_method, suc) = postfix(
-            unary_blend_method,
-            postfix(char('('), maybe(whitespace)))
-        (text)?
-        .take_value();
-
-    let (cell_ref, suc) = postfix(
-            cell_ref,
-            circumfix(
-                char(','),
-                maybe(whitespace)))
-        (suc.rest)
-        .with_join_previous(suc, text)?
-        .take_value();
-
-    let (value, suc) = float::<f32>("f32")
-        (suc.rest)
-        .with_join_previous(suc, text)?
-        .take_value();
-
-    prefix(char(')'), maybe(whitespace))
-        (suc.rest)
-        .with_join_previous(suc, text)
-        .map_value(|_| UnaryBlendFunction { 
-            blend_method,
-            value,
-            arg: cell_ref.clone().into_static(),
-        })
-}
-
-/// Parses an BinaryBlendFunction.
-pub fn binary_blend_function<'t>(text: &'t str)
-    -> ParseResult<'t, BinaryBlendFunction>
-{
-    let (color_space, suc) = atomic_ignore_whitespace(
-            postfix(
-                color_space,
-                char('_')))
-        (text)?
-        .take_value();
-    let color_space = color_space.unwrap_or(ColorSpace::Rgb);
-
-    let (blend_method, suc) = postfix(
-            binary_blend_method,
-            postfix(char('('), maybe(whitespace)))
-        (suc.rest)
-        .with_join_previous(suc, text)?
-        .take_value();
-
-    let (refs, suc) = intersperse_collect(2, Some(2), 
-            cell_ref,
-            circumfix(
-                char(','),
-                maybe(whitespace)))
-        (suc.rest)
-        .with_join_previous(suc, text)?
-        .take_value();
-
-    prefix(char(')'), maybe(whitespace))
-        (suc.rest)
-        .with_join_previous(suc, text)
-        .map_value(|_| BinaryBlendFunction { 
-            color_space,
-            blend_method,
-            arg_1: refs[0].clone().into_static(),
-            arg_2: refs[1].clone().into_static(),
-        })
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// blend_method
-////////////////////////////////////////////////////////////////////////////////
-
-/// Parses a UnaryBlendMethod.
-pub fn unary_blend_method<'t>(text: &'t str)
-    -> ParseResult<'t, UnaryBlendMethod>
-{
-    any_literal_map_once(
-            literal_ignore_ascii_case,
-            "blend method",
-            vec![
-                ("set_red",      UnaryBlendMethod::SetRed),
-                ("set_green",    UnaryBlendMethod::SetGreen),
-                ("set_blue",     UnaryBlendMethod::SetBlue),
-                ("hue_shift",    UnaryBlendMethod::HueShift),
-                ("set_hue",      UnaryBlendMethod::SetHue),
-                ("saturate",     UnaryBlendMethod::Saturate),
-                ("desaturate",   UnaryBlendMethod::Desaturate),
-                ("lighten",      UnaryBlendMethod::Lighten),
-                ("darken",       UnaryBlendMethod::Darken),
-            ])
-        (text)
-}
-
-/// Parses a BinaryBlendMethod.
-pub fn binary_blend_method<'t>(text: &'t str)
-    -> ParseResult<'t, BinaryBlendMethod>
-{
-    any_literal_map_once(
-            literal_ignore_ascii_case,
-            "blend method",
-            vec![
-                ("blend",        BinaryBlendMethod::Blend),
-                ("multiply",     BinaryBlendMethod::Multiply),
-                ("divide",       BinaryBlendMethod::Divide),
-                ("subtract",     BinaryBlendMethod::Subtract),
-                ("difference",   BinaryBlendMethod::Difference),
-                ("screen",       BinaryBlendMethod::Screen),
-                ("overlay",      BinaryBlendMethod::Overlay),
-                ("hard_light",   BinaryBlendMethod::HardLight),
-                ("soft_light",   BinaryBlendMethod::SoftLight),
-                ("color_dodge",  BinaryBlendMethod::ColorDodge),
-                ("color_burn",   BinaryBlendMethod::ColorBurn),
-                ("vivid_light",  BinaryBlendMethod::VividLight),
-                ("linear_dodge", BinaryBlendMethod::LinearDodge),
-                ("linear_burn",  BinaryBlendMethod::LinearBurn),
-                ("linear_light", BinaryBlendMethod::LinearLight),
-            ])
-        (text)
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// color_space
-////////////////////////////////////////////////////////////////////////////////
-
-/// Parses a BinaryBlendMethod.
-pub fn color_space<'t>(text: &'t str) -> ParseResult<'t, ColorSpace> {
-    any_literal_map_once(
-            literal_ignore_ascii_case,
-            "color space",
-            vec![
-                ("rgb", ColorSpace::Rgb),
-            ])
-        (text)
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// interpolate
-////////////////////////////////////////////////////////////////////////////////
-
-/// Parses an Interpolate.
-pub fn interpolate<'t>(text: &'t str) -> ParseResult<'t, Interpolate> {
-    let linear = interpolate_linear(text);
-    if linear.is_ok() {
-        linear.convert_value(Interpolate::validate)
+    if l < 0.0 || l > 1.0 || r < 0.0 || r > 1.0 || r < l {
+        Err(ParseError::new("value must lie in the range [0.0, 1.0]"))
     } else {
-        interpolate_cubic(text)
-            .convert_value(Interpolate::validate)
+        Ok(())
     }
-}
-
-/// Parses an Interpolate if it is linear.
-pub fn interpolate_linear<'t>(text: &'t str) -> ParseResult<'t, Interpolate> {
-    let simple = float::<f32>("f32")(text);
-    if simple.is_ok() {
-        return simple.map_value(|amount| Interpolate {
-            color_space: ColorSpace::default(),
-            interpolate_fn: InterpolateFunction::Linear,
-            amount,
-        });
-    }
-
-    prefix(
-            bracket(
-                interpolate_linear_args,
-                postfix(
-                    char('('),
-                    maybe(whitespace)),
-                prefix(
-                    char(')'),
-                    maybe(whitespace))),
-            literal_ignore_ascii_case("linear"))
-        (text)
-}
-
-/// Parses an Interpolate from arguments for linear interpolation.
-pub fn interpolate_linear_args<'t>(text: &'t str)
-    -> ParseResult<'t, Interpolate>
-{
-    let (color_space, suc) = atomic_ignore_whitespace(color_space)
-        (text)?
-        .take_value();
-    let cs_sep = color_space.is_some();
-    let color_space = color_space.unwrap_or(ColorSpace::Rgb);
-
-    prefix(
-            float::<f32>("f32"),
-            require_if("separator after color space", 
-                move || cs_sep,
-                circumfix(
-                    char(','),
-                    maybe(whitespace))))
-        (suc.rest)
-        .with_join_previous(suc, text)
-        .map_value(|amount| Interpolate {
-            color_space,
-            interpolate_fn: InterpolateFunction::Linear,
-            amount,
-        })
-}
-
-/// Parses an Interpolate if it is cubic.
-pub fn interpolate_cubic<'t>(text: &'t str) -> ParseResult<'t, Interpolate> {
-    prefix(
-            bracket(
-                interpolate_cubic_args,
-                postfix(
-                    char('('),
-                    maybe(whitespace)),
-                prefix(
-                    char(')'),
-                    maybe(whitespace))),
-            literal_ignore_ascii_case("cubic"))
-        (text)
-}
-
-/// Parses an Interpolate from arguments for cubic interpolation.
-pub fn interpolate_cubic_args<'t>(text: &'t str)
-    -> ParseResult<'t, Interpolate>
-{
-    let (color_space, suc) = atomic_ignore_whitespace(color_space)
-        (text)?
-        .take_value();
-    let cs_sep = color_space.is_some();
-    let color_space = color_space.unwrap_or(ColorSpace::Rgb);
-
-    let (amount, suc) = prefix(
-            float::<f32>("f32"),
-            require_if("separator after color space", 
-                move || cs_sep,
-                circumfix(
-                    char(','),
-                    maybe(whitespace))))
-        (suc.rest)
-        .with_join_previous(suc, text)?
-        .take_value();
-
-    atomic_ignore_whitespace(
-        prefix(
-            intersperse_collect(2, Some(2),
-                float::<f32>("f32"),
-                circumfix(
-                    char(','),
-                    maybe(whitespace))),
-            circumfix(
-                char(','),
-                maybe(whitespace))))
-        (suc.rest)
-        .with_join_previous(suc, text)
-        .map_value(|val| match val {
-            None => Interpolate {
-                color_space,
-                interpolate_fn: InterpolateFunction::Cubic(0.0, 0.0),
-                amount,
-            },
-            Some(vals) => Interpolate {
-                color_space,
-                interpolate_fn: InterpolateFunction::Cubic(vals[0], vals[1]),
-                amount,
-            },
-        })
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// interpolate_range
+// InterpolateFunction
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Parses an InterpolateRange.
-pub fn interpolate_range<'t>(text: &'t str)
-    -> ParseResult<'t, InterpolateRange>
-{
-    let linear = interpolate_range_linear(text);
-    if linear.is_ok() {
-        linear.convert_value(InterpolateRange::validate)
-    } else {
-        interpolate_range_cubic(text)
-            .convert_value(InterpolateRange::validate)
+impl AstExprMatch for InterpolateFunction {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+        match Ident::match_expr(ast_expr.clone(), metrics) {
+            Ok(Ident(ident)) if ident == "linear" => return Ok(
+                InterpolateFunction::Linear
+            ),
+            Ok(Ident(ident)) if ident == "cubic" => return Ok(
+                InterpolateFunction::Cubic(0.0, 0.0)
+            ),
+            _ => (),
+        }
+
+        match <FunctionCall<Ident, (f32, f32)>>::match_expr(ast_expr, metrics) {
+            Ok(FunctionCall { operand: Ident(i), args }) if i == "cubic" => {
+                return Ok(InterpolateFunction::Cubic(args.0, args.1));
+            },
+            _ => (),
+        }
+
+        Err(ParseError::new("expected interpolate function")
+            .with_span("unrecognized interpolate function",
+                ast_span,
+                metrics))
     }
 }
 
-/// Parses an InterpolateRange if it is linear.
-pub fn interpolate_range_linear<'t>(text: &'t str)
-    -> ParseResult<'t, InterpolateRange>
-{
-    let suc = literal_ignore_ascii_case("linear")(text)?;
+////////////////////////////////////////////////////////////////////////////////
+// ColorSpace
+////////////////////////////////////////////////////////////////////////////////
 
-    atomic_ignore_whitespace(
-        bracket(
-            interpolate_range_linear_args,
-            postfix(
-                char('('),
-                maybe(whitespace)),
-            prefix(
-                char(')'),
-                maybe(whitespace))))
-        (suc.rest)
-        .with_join_previous(suc, text)
-        .map_value(|val| val.unwrap_or_else(|| InterpolateRange {
-            color_space: ColorSpace::default(),
-            interpolate_fn: InterpolateFunction::Linear,
-            start: 0.0,
-            end: 1.0,
-        }))
-}
+impl AstExprMatch for ColorSpace {
+    fn match_expr<'text, Cm>(ast_expr: AstExpr<'text>, metrics: Cm)
+        -> Result<Self, ParseError<'text, Cm>>
+        where Cm: ColumnMetrics
+    {
+        let ast_span = ast_expr.span();
+        match Ident::match_expr(ast_expr, metrics) {
+            Ok(Ident(ident)) if ident == "rgb" => Ok(ColorSpace::Rgb),
 
-
-/// Parses an InterpolateRange from arguments for linear interpolation.
-pub fn interpolate_range_linear_args<'t>(text: &'t str)
-    -> ParseResult<'t, InterpolateRange>
-{
-    let (color_space, suc) = atomic_ignore_whitespace(color_space)
-        (text)?
-        .take_value();
-    let cs_sep = color_space.is_some();
-    let color_space = color_space.unwrap_or(ColorSpace::Rgb);
-
-    atomic_ignore_whitespace(
-        prefix(
-            intersperse_collect(2, Some(2),
-                float::<f32>("f32"),
-                circumfix(
-                    char(','),
-                    maybe(whitespace))),
-            require_if("separator after color space", 
-                move || cs_sep,
-                circumfix(
-                    char(','),
-                    maybe(whitespace)))))
-        (suc.rest)
-        .with_join_previous(suc, text)
-        .map_value(|val| match val {
-            None => InterpolateRange {
-                color_space,
-                interpolate_fn: InterpolateFunction::Linear,
-                start: 0.0,
-                end: 1.0,
-            },
-            Some(vals) => InterpolateRange {
-                color_space,
-                interpolate_fn: InterpolateFunction::Linear,
-                start: vals[0],
-                end: vals[1],
-            },
-        })
-}
-
-/// Parses an InterpolateRange if it is cubic.
-pub fn interpolate_range_cubic<'t>(text: &'t str)
-    -> ParseResult<'t, InterpolateRange>
-{
-    let suc = literal_ignore_ascii_case("cubic")(text)?;
-
-    atomic_ignore_whitespace(
-        bracket(
-            interpolate_range_cubic_args,
-            postfix(
-                char('('),
-                maybe(whitespace)),
-            prefix(
-                char(')'),
-                maybe(whitespace))))
-        (suc.rest)
-        .with_join_previous(suc, text)
-        .map_value(|val| val.unwrap_or_else(|| InterpolateRange {
-            color_space: ColorSpace::default(),
-            interpolate_fn: InterpolateFunction::Cubic(0.0, 0.0),
-            start: 0.0,
-            end: 1.0,
-        }))
-}
-
-/// Parses an InterpolateRange from arguments for cubic interpolation.
-pub fn interpolate_range_cubic_args<'t>(text: &'t str)
-    -> ParseResult<'t, InterpolateRange>
-{
-    let (color_space, suc) = maybe(color_space)
-        (text)?
-        .take_value();
-    let cs_sep = color_space.is_some();
-    let color_space = color_space.unwrap_or(ColorSpace::Rgb);
-
-    let (range, suc) = atomic_ignore_whitespace(
-            prefix(
-                intersperse_collect(2, Some(2),
-                    float::<f32>("f32"),
-                    circumfix(
-                        char(','),
-                        maybe(whitespace))),
-                require_if("separator after color space", 
-                    move || cs_sep,
-                    circumfix(
-                        char(','),
-                        maybe(whitespace)))))
-        (suc.rest)
-        .with_join_previous(suc, text)?
-        .map_value(|val| match val {
-            None => None,
-            Some(vals) => Some((vals[0], vals[1])),
-        })
-        .take_value();
-
-    let r_sep = range.is_some();
-    let (start, end) = range.clone().unwrap_or((0.0, 1.0));
-    
-    atomic_ignore_whitespace(
-        prefix(
-            intersperse_collect(2, Some(2),
-                float::<f32>("f32"),
-                circumfix(
-                    char(','),
-                    maybe(whitespace))),
-            require_if("separator after color space", 
-                move || cs_sep && r_sep,
-                circumfix(
-                    char(','),
-                    maybe(whitespace)))))
-        (suc.rest)
-        .with_join_previous(suc, text)
-        .map_value(|val| match val {
-            None => InterpolateRange {
-                color_space,
-                interpolate_fn: InterpolateFunction::Cubic(0.0, 0.0),
-                start: start,
-                end: end,
-            },
-            Some(vals) => InterpolateRange {
-                color_space,
-                interpolate_fn: InterpolateFunction::Cubic(vals[0], vals[1]),
-                start,
-                end,
-            }
-        })
+            _ => Err(ParseError::new("expected color space")
+            .with_span("unrecognized color space", ast_span, metrics))
+        }        
+    }
 }

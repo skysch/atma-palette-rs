@@ -11,18 +11,13 @@
 // Internal library imports.
 use crate::color::Color;
 use crate::cell::Position;
-use crate::parse::any_literal_map_once;
-use crate::parse::FailureOwned;
-use crate::parse::literal_ignore_ascii_case;
-use crate::parse::uint;
-use crate::parse::ParseResultExt as _;
-use crate::parse::position;
-
 
 // External library imports.
 use colored::Colorize as _;
 use serde::Serialize;
 use serde::Deserialize;
+use tephra::result::FailureOwned;
+use tephra::result::ParseResultExt as _;
 
 
 
@@ -47,20 +42,21 @@ impl std::str::FromStr for CursorBehavior {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        any_literal_map_once(
-                literal_ignore_ascii_case,
-                "",
-                vec![
-                    ("move_to_start",   CursorBehavior::MoveToStart),
-                    ("move_after_end",  CursorBehavior::MoveAfterEnd),
-                    ("move_to_open",    CursorBehavior::MoveToOpen),
-                    ("remain_in_place", CursorBehavior::RemainInPlace),
-                ])
-            (text)
-            .end_of_text()
-            .source_for("expected one of 'move_to_start', 'move_after_end', \
-                'move_to_open', or 'remain_in_place'")
-            .finish()
+        // any_literal_map_once(
+        //         literal_ignore_ascii_case,
+        //         "",
+        //         vec![
+        //             ("move_to_start",   CursorBehavior::MoveToStart),
+        //             ("move_after_end",  CursorBehavior::MoveAfterEnd),
+        //             ("move_to_open",    CursorBehavior::MoveToOpen),
+        //             ("remain_in_place", CursorBehavior::RemainInPlace),
+        //         ])
+        //     (text)
+        //     .end_of_text()
+        //     .source_for("expected one of 'move_to_start', 'move_after_end', \
+        //         'move_to_open', or 'remain_in_place'")
+        //     .finish()
+        unimplemented!()
     }
 }
 
@@ -96,25 +92,26 @@ impl std::str::FromStr for Positioning {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        if let Ok(success) = any_literal_map_once(
-                literal_ignore_ascii_case,
-                "",
-                vec![
-                    ("cursor", Positioning::Cursor),
-                    ("open",   Positioning::Open),
-                    ("none",   Positioning::None),
-                ])
-            (text)
-            .end_of_text()
-        {
-            return Ok(success.value);
-        }
+        // if let Ok(success) = any_literal_map_once(
+        //         literal_ignore_ascii_case,
+        //         "",
+        //         vec![
+        //             ("cursor", Positioning::Cursor),
+        //             ("open",   Positioning::Open),
+        //             ("none",   Positioning::None),
+        //         ])
+        //     (text)
+        //     .end_of_text()
+        // {
+        //     return Ok(success.value);
+        // }
 
-        position(text)
-            .end_of_text()
-            .source_for("expected 'cursor', 'open', or a position")
-            .finish()
-            .map(Positioning::Position)
+        // position(text)
+        //     .end_of_text()
+        //     .source_for("expected 'cursor', 'open', or a position")
+        //     .finish()
+        //     .map(Positioning::Position)
+        unimplemented!()
     }
 }
 
@@ -138,18 +135,19 @@ impl std::str::FromStr for HistorySetOption {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        any_literal_map_once(
-                literal_ignore_ascii_case,
-                "",
-                vec![
-                    ("enable",  HistorySetOption::Enable),
-                    ("disable", HistorySetOption::Disable),
-                    ("clear",   HistorySetOption::Clear),
-                ])
-            (text)
-            .end_of_text()
-            .source_for("expected 'enable', 'disable', or 'clear'.")
-            .finish()
+        // any_literal_map_once(
+        //         literal_ignore_ascii_case,
+        //         "",
+        //         vec![
+        //             ("enable",  HistorySetOption::Enable),
+        //             ("disable", HistorySetOption::Disable),
+        //             ("clear",   HistorySetOption::Clear),
+        //         ])
+        //     (text)
+        //     .end_of_text()
+        //     .source_for("expected 'enable', 'disable', or 'clear'.")
+            // .finish()
+        unimplemented!()
     }
 }
 
@@ -173,18 +171,19 @@ impl std::str::FromStr for ListMode {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        any_literal_map_once(
-                literal_ignore_ascii_case,
-                "",
-                vec![
-                    ("grid",  ListMode::Grid),
-                    ("lines", ListMode::Lines),
-                    ("list",  ListMode::List),
-                ])
-            (text)
-            .end_of_text()
-            .source_for("expected 'grid', 'lines', or 'list'.")
-            .finish()
+        // any_literal_map_once(
+        //         literal_ignore_ascii_case,
+        //         "",
+        //         vec![
+        //             ("grid",  ListMode::Grid),
+        //             ("lines", ListMode::Lines),
+        //             ("list",  ListMode::List),
+        //         ])
+        //     (text)
+        //     .end_of_text()
+        //     .source_for("expected 'grid', 'lines', or 'list'.")
+        //     .finish()
+        unimplemented!()
     }
 }
 
@@ -208,18 +207,19 @@ impl std::str::FromStr for ColorStyle {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        any_literal_map_once(
-                literal_ignore_ascii_case,
-                "",
-                vec![
-                    ("none", ColorStyle::None),
-                    ("tile", ColorStyle::Tile),
-                    ("text", ColorStyle::Text),
-                ])
-            (text)
-            .end_of_text()
-            .source_for("expected one of 'none', 'tile', or 'text'.")
-            .finish()
+        // any_literal_map_once(
+        //         literal_ignore_ascii_case,
+        //         "",
+        //         vec![
+        //             ("none", ColorStyle::None),
+        //             ("tile", ColorStyle::Tile),
+        //             ("text", ColorStyle::Text),
+        //         ])
+        //     (text)
+        //     .end_of_text()
+        //     .source_for("expected one of 'none', 'tile', or 'text'.")
+        //     .finish()
+        unimplemented!()
     }
 }
 
@@ -245,20 +245,21 @@ impl std::str::FromStr for TextStyle {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        any_literal_map_once(
-                literal_ignore_ascii_case,
-                "",
-                vec![
-                    ("none",  TextStyle::None),
-                    ("hex_6", TextStyle::Hex6),
-                    ("hex_3", TextStyle::Hex3),
-                    ("hex",   TextStyle::Hex6),
-                    ("rgb",   TextStyle::Rgb),
-                ])
-            (text)
-            .end_of_text()
-            .source_for("expected one of 'none', 'hex', 'hex_6', 'hex_3', or 'rgb'.")
-            .finish()
+        // any_literal_map_once(
+        //         literal_ignore_ascii_case,
+        //         "",
+        //         vec![
+        //             ("none",  TextStyle::None),
+        //             ("hex_6", TextStyle::Hex6),
+        //             ("hex_3", TextStyle::Hex3),
+        //             ("hex",   TextStyle::Hex6),
+        //             ("rgb",   TextStyle::Rgb),
+        //         ])
+        //     (text)
+        //     .end_of_text()
+        //     .source_for("expected one of 'none', 'hex', 'hex_6', 'hex_3', or 'rgb'.")
+        //     .finish()
+        unimplemented!()
     }
 }
 
@@ -282,18 +283,19 @@ impl std::str::FromStr for RuleStyle {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        any_literal_map_once(
-                literal_ignore_ascii_case,
-                "",
-                vec![
-                    ("none",  RuleStyle::None),
-                    ("colored", RuleStyle::Colored),
-                    ("plain", RuleStyle::Plain),
-                ])
-            (text)
-            .end_of_text()
-            .source_for("expected one of 'none', 'colored', or 'plain'.")
-            .finish()
+        // any_literal_map_once(
+        //         literal_ignore_ascii_case,
+        //         "",
+        //         vec![
+        //             ("none",  RuleStyle::None),
+        //             ("colored", RuleStyle::Colored),
+        //             ("plain", RuleStyle::Plain),
+        //         ])
+        //     (text)
+        //     .end_of_text()
+        //     .source_for("expected one of 'none', 'colored', or 'plain'.")
+        //     .finish()
+        unimplemented!()
     }
 }
 
@@ -317,24 +319,25 @@ impl std::str::FromStr for LineStyle {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        let size = uint::<u16>("u16")
-            (text)
-            .end_of_text();
-        if size.is_ok() {
-            return size.map_value(LineStyle::Size).finish();
-        }
+        // let size = uint::<u16>("u16")
+        //     (text)
+        //     .end_of_text();
+        // if size.is_ok() {
+        //     return size.map_value(LineStyle::Size).finish();
+        // }
 
-        any_literal_map_once(
-                literal_ignore_ascii_case,
-                "",
-                vec![
-                    ("none", LineStyle::None),
-                    ("auto", LineStyle::Auto),
-                ])
-            (text)
-            .end_of_text()
-            .source_for("expected one of 'none', 'auto', or integer value.")
-            .finish()
+        // any_literal_map_once(
+        //         literal_ignore_ascii_case,
+        //         "",
+        //         vec![
+        //             ("none", LineStyle::None),
+        //             ("auto", LineStyle::Auto),
+        //         ])
+        //     (text)
+        //     .end_of_text()
+        //     .source_for("expected one of 'none', 'auto', or integer value.")
+        //     .finish()
+        unimplemented!()
     }
 }
 
@@ -358,24 +361,25 @@ impl std::str::FromStr for GutterStyle {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        let size = uint::<u16>("u16")
-            (text)
-            .end_of_text();
-        if size.is_ok() {
-            return size.map_value(GutterStyle::Size).finish();
-        }
+        // let size = uint::<u16>("u16")
+        //     (text)
+        //     .end_of_text();
+        // if size.is_ok() {
+        //     return size.map_value(GutterStyle::Size).finish();
+        // }
 
-        any_literal_map_once(
-                literal_ignore_ascii_case,
-                "",
-                vec![
-                    ("none", GutterStyle::None),
-                    ("auto", GutterStyle::Auto),
-                ])
-            (text)
-            .end_of_text()
-            .source_for("expected one of 'none', 'auto', or integer value.")
-            .finish()
+        // any_literal_map_once(
+        //         literal_ignore_ascii_case,
+        //         "",
+        //         vec![
+        //             ("none", GutterStyle::None),
+        //             ("auto", GutterStyle::Auto),
+        //         ])
+        //     (text)
+        //     .end_of_text()
+        //     .source_for("expected one of 'none', 'auto', or integer value.")
+        //     .finish()
+        unimplemented!()
     }
 }
 

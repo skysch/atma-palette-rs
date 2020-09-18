@@ -89,7 +89,7 @@ Each script command is ended with `;`. Whitespace is ignored otherwise.
 # Cell selection & Cell selector
 
 ## All
-*
+:*
 ## Index
 :0
 :0-:1
@@ -128,7 +128,7 @@ name
 ## Blend Expr
     + set_red(CELL_REF, VALUE, [Interpolate])
     + set_green(CELL_REF, VALUE, [Interpolate])
-    + set_blueCELL_REF, VALUE, [Interpolate])
+    + set_blue(CELL_REF, VALUE, [Interpolate])
     + lighten(CELL_REF, VALUE, [Interpolate])
     + darken(CELL_REF, VALUE, [Interpolate])
     + saturate(CELL_REF, VALUE, [Interpolate])
@@ -136,35 +136,45 @@ name
     + hue_shift(CELL_REF, VALUE, [Interpolate])
     + set_hue(CELL_REF, VALUE, [Interpolate])
 
-    + [rgb_]blend(CELL_REF, CELL_REF, [Interpolate])
-    + [rgb_]multiply(CELL_REF, CELL_REF, [Interpolate])
-    + [rgb_]divide(CELL_REF, CELL_REF, [Interpolate])
-    + [rgb_]subtract(CELL_REF, CELL_REF, [Interpolate])
-    + [rgb_]difference(CELL_REF, CELL_REF, [Interpolate])
-    + [rgb_]screen(CELL_REF, CELL_REF, [Interpolate])
-    + [rgb_]overlay(CELL_REF, CELL_REF, [Interpolate])
-    + [rgb_]hard_light(CELL_REF, CELL_REF, [Interpolate])
-    + [rgb_]soft_light(CELL_REF, CELL_REF, [Interpolate])
-    + [rgb_]color_dodge(CELL_REF, CELL_REF, [Interpolate])
-    + [rgb_]color_burn(CELL_REF, CELL_REF, [Interpolate])
-    + [rgb_]linear_dodge(CELL_REF, CELL_REF, [Interpolate])
-    + [rgb_]linear_burn(CELL_REF, CELL_REF, [Interpolate])
-    + [rgb_]vivid_light(CELL_REF, CELL_REF, [Interpolate])
-    + [rgb_]linear_light(CELL_REF, CELL_REF, [Interpolate])
+    + blend(CELL_REF, CELL_REF, [Interpolate], [RGB])
+    + multiply(CELL_REF, CELL_REF, [Interpolate], [RGB])
+    + divide(CELL_REF, CELL_REF, [Interpolate], [RGB])
+    + subtract(CELL_REF, CELL_REF, [Interpolate], [RGB])
+    + difference(CELL_REF, CELL_REF, [Interpolate], [RGB])
+    + screen(CELL_REF, CELL_REF, [Interpolate], [RGB])
+    + overlay(CELL_REF, CELL_REF, [Interpolate], [RGB])
+    + hard_light(CELL_REF, CELL_REF, [Interpolate], [RGB])
+    + soft_light(CELL_REF, CELL_REF, [Interpolate], [RGB])
+    + color_dodge(CELL_REF, CELL_REF, [Interpolate], [RGB])
+    + color_burn(CELL_REF, CELL_REF, [Interpolate], [RGB])
+    + linear_dodge(CELL_REF, CELL_REF, [Interpolate], [RGB])
+    + linear_burn(CELL_REF, CELL_REF, [Interpolate], [RGB])
+    + vivid_light(CELL_REF, CELL_REF, [Interpolate], [RGB])
+    + linear_light(CELL_REF, CELL_REF, [Interpolate], [RGB])
 
 ### [Interpolate]
     f32
-    linear([RGB], f32)
-    cubic([RGB], f32, [f32,f32])
+    linear(f32, [RGB])
+    cubic(f32, [RGB])
+    cubic(f32, f32)(f32, [RGB])
 
 ## Ramp Function
     ramp(count, blend_fn, [InterpolateRange])
 
 ### [InterpolateRange]
     linear
-    linear([RGB], [(f32, f32)])
     cubic
-    cubic([RGB], [(f32, f32)], [(f32, f32)])
+    linear([f32, f32])
+    cubic([f32, f32])
+    linear([f32, f32], rgb)
+    cubic([f32, f32], rgb)
+    linear(rgb)
+    cubic(rgb)
+
+    cubic(f32, f32)
+    cubic(f32, f32)([f32, f32])
+    cubic(f32, f32)([f32, f32], rgb)
+    cubic(f32, f32)(rgb)
 
 
 # Palette data
@@ -188,6 +198,9 @@ In the above notation, `[name]` consists of any sequence of characters excluding
 # Resolving cell references: Assigned vs Occupied.
 
 Names, positions, and groups are only meaningful if they've been assigned to an index. However, the index may or may not be associated with a cell in the palette. If they are, it is called an occupied index. Index references are always occupied if they are assigned, so there is no difference there. However, an index which is unassigned is still useful (to assign it), wheras names, positions, and groups are not useful if they are unassigned.
+
+# Atma Script
+
 
 
 # Parser design principles
@@ -246,3 +259,4 @@ Remove any existing cells and anything referencing them.
 ## Stop
 ## WrapLine
 ## WrapPage
+

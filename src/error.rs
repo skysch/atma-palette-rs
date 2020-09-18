@@ -10,6 +10,11 @@
 
 // Local imports.
 use crate::cell::CellRef;
+use crate::parse::AtmaScanner;
+
+// External library imports.
+use tephra::position::ColumnMetrics;
+use tephra::result::FailureOwned;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -24,7 +29,7 @@ pub struct ParseError {
     /// The error message.
     msg: Option<String>,
     /// The error source.
-    source: crate::parse::FailureOwned,
+    source: tephra::result::FailureOwned,
 }
 
 impl std::fmt::Display for ParseError {
@@ -40,15 +45,17 @@ impl std::error::Error for ParseError {
     }
 }
 
-impl From<crate::parse::FailureOwned> for ParseError {
-    fn from(err: crate::parse::FailureOwned) -> Self {
+impl From<tephra::result::FailureOwned> for ParseError {
+    fn from(err: tephra::result::FailureOwned) -> Self {
         ParseError { msg: Some("parse error".to_owned()), source: err }
     }
 }
 
-impl<'t> From<crate::parse::Failure<'t>> for ParseError {
-    fn from(err: crate::parse::Failure<'t>) -> Self {
-        err.to_owned().into()
+impl<'t, Cm> From<tephra::result::Failure<'t, AtmaScanner, Cm>> for ParseError
+    where Cm: ColumnMetrics,
+{
+    fn from(err: tephra::result::Failure<'t, AtmaScanner, Cm>) -> Self {
+        FailureOwned::from(err).into()
     }
 }
 
@@ -102,7 +109,7 @@ pub enum FileError {
         /// The error message.
         msg: Option<String>,
         /// The error source.
-        source: crate::parse::FailureOwned,
+        source: tephra::result::FailureOwned,
     }
 }
 
@@ -174,8 +181,8 @@ impl From<ParseError> for FileError {
     }
 }
 
-impl From<crate::parse::FailureOwned> for FileError {
-    fn from(err: crate::parse::FailureOwned) -> Self {
+impl From<tephra::result::FailureOwned> for FileError {
+    fn from(err: tephra::result::FailureOwned) -> Self {
         FileError::ParseError {
             msg: Some("file parse error".to_owned()),
             source: err,
@@ -183,9 +190,11 @@ impl From<crate::parse::FailureOwned> for FileError {
     }
 }
 
-impl<'t> From<crate::parse::Failure<'t>> for FileError {
-    fn from(err: crate::parse::Failure<'t>) -> Self {
-        err.to_owned().into()
+impl<'t, Cm> From<tephra::result::Failure<'t, AtmaScanner, Cm>> for FileError 
+    where Cm: ColumnMetrics,
+{
+    fn from(err: tephra::result::Failure<'t, AtmaScanner, Cm>) -> Self {
+        FailureOwned::from(err).into()
     }
 }
 

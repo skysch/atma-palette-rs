@@ -1,97 +1,69 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Atma structured color palette
+// Tephra parser library
 ////////////////////////////////////////////////////////////////////////////////
 // Copyright 2020 Skylor R. Schermer
 // This code is dual licenced using the MIT or Apache 2 license.
 // See licence-mit.md and licence-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
-//! Color parse function.
+//! Color parsing.
 ////////////////////////////////////////////////////////////////////////////////
+// TODO: This module is currently under development.
+#![allow(unused)]
+#![allow(missing_docs)]
+
 
 // Local imports.
-use crate::color::Cmyk;
+use crate::parse::AtmaScanner;
+use crate::parse::AtmaToken;
+use crate::parse::FnArg;
+use crate::parse::fn_call;
 use crate::color::Color;
-use crate::color::Hsl;
-use crate::color::Hsv;
 use crate::color::Rgb;
-use crate::color::Xyz;
-use crate::parse::bracket;
-use crate::parse::circumfix;
-use crate::parse::Failure;
-use crate::parse::float;
-use crate::parse::intersperse_collect;
-use crate::parse::literal_ignore_ascii_case;
-use crate::parse::maybe;
-use crate::parse::ParseResult;
-use crate::parse::postfix;
-use crate::parse::prefix;
-use crate::parse::uint_digits_value;
-use crate::parse::whitespace;
 
+// External library imports.
+use tephra::combinator::any;
+use tephra::combinator::bracket;
+use tephra::combinator::bracket_dynamic;
+use tephra::combinator::exact;
+use tephra::combinator::one;
+use tephra::combinator::right;
+use tephra::combinator::seq;
+use tephra::combinator::text;
+use tephra::lexer::Lexer;
+use tephra::lexer::Scanner;
+use tephra::result::Failure;
+use tephra::result::ParseError;
+use tephra::result::ParseResult;
+use tephra::result::ParseResultExt as _;
+use tephra::result::Success;
+use tephra::result::Spanned;
+use tephra::position::ColumnMetrics;
+use tephra::span::Span;
 
-/// RGB hex prefix token.
-pub const RGB_HEX_PREFIX: char = '#';
+// Standard library imports.
+use std::str::FromStr as _;
+use std::convert::TryFrom as _;
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Color
+// color
 ////////////////////////////////////////////////////////////////////////////////
-
-/// Parses a Color.
-pub fn color<'t>(text: &'t str) -> ParseResult<'t, Color> {
-    let mut fail = Failure {
-        token: "",
-        expected: "color value".into(),
-        source: None,
-        rest: text,
-    };
-
-    match rgb_hex(text).or_else(|_| rgb_functional(text)) {
-        Ok(rgb_suc)   => return Ok(rgb_suc.map_value(Color::from)),
-        Err(rgb_fail) => {
-            fail.token = rgb_fail.token;
-            fail.rest = rgb_fail.rest;
-            fail.source = Some(Box::new(rgb_fail.to_owned()));
-        }
+/// Returns a parser which parses a `Color`.
+pub fn color<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, Color>
+    where Cm: ColumnMetrics,
+{
+    match rgb_hex_code
+        (lexer.clone())
+        .filter_lexer_error()
+    {
+        Ok(succ)        => return Ok(succ).map_value(Color::from),
+        Err(Some(fail)) => return Err(fail),
+        Err(None)       => (),
     }
 
-    match cmyk_functional(text) {
-        Ok(cmyk_suc)   => return Ok(cmyk_suc.map_value(Color::from)),
-        Err(cmyk_fail) => if cmyk_fail.token.len() > fail.token.len() {
-            fail.token = cmyk_fail.token;
-            fail.rest = cmyk_fail.rest;
-            fail.source = Some(Box::new(cmyk_fail.to_owned()));
-        }
-    }
-
-    match hsv_functional(text) {
-        Ok(hsv_suc)   => return Ok(hsv_suc.map_value(Color::from)),
-        Err(hsv_fail) => if hsv_fail.token.len() > fail.token.len() {
-            fail.token = hsv_fail.token;
-            fail.rest = hsv_fail.rest;
-            fail.source = Some(Box::new(hsv_fail.to_owned()));
-        }
-    }
-    
-    match hsl_functional(text) {
-        Ok(hsl_suc)   => return Ok(hsl_suc.map_value(Color::from)),
-        Err(hsl_fail) => if hsl_fail.token.len() > fail.token.len() {
-            fail.token = hsl_fail.token;
-            fail.rest = hsl_fail.rest;
-            fail.source = Some(Box::new(hsl_fail.to_owned()));
-        }
-    }
-    
-    match xyz_functional(text) {
-        Ok(xyz_suc)   => return Ok(xyz_suc.map_value(Color::from)),
-        Err(xyz_fail) => if xyz_fail.token.len() > fail.token.len() {
-            fail.token = xyz_fail.token;
-            fail.rest = xyz_fail.rest;
-            fail.source = Some(Box::new(xyz_fail.to_owned()));
-        }
-    }
-
-    Err(fail)
+    color_function(lexer).map_value(Color::from)
 }
 
 
@@ -99,142 +71,194 @@ pub fn color<'t>(text: &'t str) -> ParseResult<'t, Color> {
 // rgb_hex
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Parses an RGB hex code.
-pub fn rgb_hex<'t>(text: &'t str) -> ParseResult<'t, Rgb> {
-    rgb_hex_6(text).or_else(|_| rgb_hex_3(text))
-}
-
-
-/// Parses a 6-digit RGB hex code.
-pub fn rgb_hex_6<'t>(text: &'t str) -> ParseResult<'t, Rgb> {
-    use crate::parse::char;
-
-    let suc = prefix(
-            uint_digits_value::<u32>("u32", 6, Some(6), 16),
-            char(RGB_HEX_PREFIX))
-        (text)?;
-
-    Ok(suc.map_value(Rgb::from))
-}
-
-/// Parses a 3-digit RGB hex code.
-pub fn rgb_hex_3<'t>(text: &'t str) -> ParseResult<'t, Rgb> {
-    use crate::parse::char;
-
-    let suc = prefix(
-            uint_digits_value::<u32>("u32", 3, Some(3), 16),
-            char(RGB_HEX_PREFIX))
-        (text)?;
-
-    Ok(suc.map_value(|v| {
-        let mut expanded = 0;
-        expanded |= v & 0x00F;
-        expanded |= (v & 0x00F) << 4;
-        expanded |= (v & 0x0F0) << 4;
-        expanded |= (v & 0x0F0) << 8;
-        expanded |= (v & 0xF00) << 8;
-        expanded |= (v & 0xF00) << 12;
-        Rgb::from(expanded)
-    }))
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// functional notation
-////////////////////////////////////////////////////////////////////////////////
-
-/// Parses an RGB value from it functional notation.
-pub fn rgb_functional<'t>(text: &'t str) -> ParseResult<'t, Rgb> {
-    let suc = prefix(
-            functional(3),
-            literal_ignore_ascii_case("rgb"))
-        (text)?;
-    let rgb = Rgb::from([
-        suc.value[0],
-        suc.value[1],
-        suc.value[2],
-    ]);
-
-    Ok(suc.map_value(|_| rgb))
-}
-
-/// Parses an HSV value from it functional notation.
-pub fn hsv_functional<'t>(text: &'t str) -> ParseResult<'t, Hsv> {
-    let suc = prefix(
-            functional(3),
-            literal_ignore_ascii_case("hsv"))
-        (text)?;
-    let hsv = Hsv::from([
-        suc.value[0],
-        suc.value[1],
-        suc.value[2],
-    ]);
-
-    Ok(suc.map_value(|_| hsv))
-}
-
-/// Parses an HSL value from it functional notation.
-pub fn hsl_functional<'t>(text: &'t str) -> ParseResult<'t, Hsl> {
-    let suc = prefix(
-            functional(3),
-            literal_ignore_ascii_case("hsl"))
-        (text)?;
-    let hsl = Hsl::from([
-        suc.value[0],
-        suc.value[1],
-        suc.value[2],
-    ]);
-
-    Ok(suc.map_value(|_| hsl))
-}
-
-/// Parses an CMYK value from it functional notation.
-pub fn cmyk_functional<'t>(text: &'t str) -> ParseResult<'t, Cmyk> {
-    let suc = prefix(
-            functional(4),
-            literal_ignore_ascii_case("cmyk"))
-        (text)?;
-    let cmyk = Cmyk::from([
-        suc.value[0],
-        suc.value[1],
-        suc.value[2],
-        suc.value[3],
-    ]);
-
-    Ok(suc.map_value(|_| cmyk))
-}
-
-/// Parses an XYZ value from it functional notation.
-pub fn xyz_functional<'t>(text: &'t str) -> ParseResult<'t, Xyz> {
-    let suc = prefix(
-            functional(3),
-            literal_ignore_ascii_case("xyz"))
-        (text)?;
-    let xyz = Xyz::from([
-        suc.value[0],
-        suc.value[1],
-        suc.value[2],
-    ]);
-
-    Ok(suc.map_value(|_| xyz))
-}
-
-/// Returns a parser which parses a functional suffix with n float parameters.
-pub(in crate) fn functional<'t>(n: usize)
-    -> impl FnMut(&'t str) -> ParseResult<'t, Vec<f32>>
+/// Returns a parser which parses a hex code with the given number of digits.
+pub fn rgb_hex_code<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, Rgb>
+    where Cm: ColumnMetrics,
 {
-    use crate::parse::char;
-    bracket(
-        intersperse_collect(n, Some(n),
-            float::<f32>("f32"),
-            circumfix(
-                char(','),
-                maybe(whitespace))),
-        postfix(
-            char('('),
-            maybe(whitespace)),
-        prefix(
-            char(')'),
-            maybe(whitespace)))
+    let (mut val, succ) = text(exact(
+            seq(&[AtmaToken::Hash, AtmaToken::HexDigits])))
+        (lexer)?
+        .take_value();
+
+    if val.len() == 4 || val.len() == 7 {
+        let rgb = Rgb::from_hex_code(val).unwrap();
+        Ok(Success {
+            lexer: succ.lexer,
+            value: rgb,
+        })
+    } else {
+        Err(Failure {
+            parse_error: ParseError::new("invalid color code")
+                .with_span(
+                    format!("3 or 6 digits required, {} provided",
+                        val.len() - 1),
+                    succ.lexer.last_span(),
+                    succ.lexer.column_metrics()),
+            lexer: succ.lexer,
+            source: None,
+        })
+    }
 }
 
+
+
+////////////////////////////////////////////////////////////////////////////////
+// color_function
+////////////////////////////////////////////////////////////////////////////////
+
+pub fn color_function<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, Color>
+    where Cm: ColumnMetrics,
+{
+    let (val, succ) = fn_call
+            (lexer.sublexer())?
+        .take_value();
+
+    if val.name.eq_ignore_ascii_case("rgb") {
+        return rgb_from_args(lexer.join(succ.lexer), val.args)
+            .map_value(Color::from);
+    }
+
+    Err(Failure {
+        parse_error: ParseError::new("invalid color")
+            .with_span(
+                "not a recognized color form",
+                succ.lexer.full_span(),
+                succ.lexer.column_metrics()),
+        lexer: lexer.join(succ.lexer),
+        source: None,
+    })
+}
+
+
+fn rgb_from_args<'text, Cm>(
+    lexer: Lexer<'text, AtmaScanner, Cm>,
+    mut args: Vec<Spanned<'text, FnArg>>)
+    -> ParseResult<'text, AtmaScanner, Cm, Rgb>
+    where Cm: ColumnMetrics,
+{
+    if args.len() != 3 {
+        return Err(Failure {
+            parse_error: ParseError::new("invalid RGB color")
+                .with_span(
+                    format!("RGB color requires 3 arguments, {} provided",
+                        args.len()),
+                    lexer.last_span(),
+                    lexer.column_metrics()),
+            lexer,
+            source: None,
+        });
+    }
+
+    use FnArg::*;
+    let arg = args.pop().expect("pop fn arg from capacity > 2");
+    let b_span = (arg.value, arg.span);
+    let arg = args.pop().expect("pop fn arg from capacity > 2");
+    let g_span = (arg.value, arg.span);
+    let arg = args.pop().expect("pop fn arg from capacity > 2");
+    let r_span = (arg.value, arg.span);
+
+    match (r_span, g_span, b_span) {
+        ((F32(r), rs), (F32(g), gs), (F32(b), bs)) => {
+            if r < 0.0 || r > 1.0 {
+                Err(Failure {
+                    parse_error: ParseError::new("invalid RGB color")
+                        .with_span(
+                            "red value out of allowed range [0.0, 1.0]",
+                            rs,
+                            lexer.column_metrics()),
+                    lexer,
+                    source: None,
+                })
+            } else if g < 0.0 || g > 1.0 {
+                Err(Failure {
+                    parse_error: ParseError::new("invalid RGB color")
+                        .with_span(
+                            "green value out of allowed range [0.0, 1.0]",
+                            gs,
+                            lexer.column_metrics()),
+                    lexer,
+                    source: None,
+                })
+            } else if b < 0.0 || b > 1.0 {
+                Err(Failure {
+                    parse_error: ParseError::new("invalid RGB color")
+                        .with_span(
+                            "blue value out of allowed range [0.0, 1.0]",
+                            bs,
+                            lexer.column_metrics()),
+                    lexer,
+                    source: None,
+                })
+
+            } else {
+                Ok(Success {
+                    value: Rgb::from([r, g, b]),
+                    lexer,
+                })
+            }
+        }
+        
+        ((U32(r), rs), (U32(g), gs), (U32(b), bs)) => match (
+            u8::try_from(r),
+            u8::try_from(g),
+            u8::try_from(b)) 
+        {
+            (Ok(r), Ok(g), Ok(b)) => Ok(Success {
+                value: Rgb::from([r, g, b]),
+                lexer,
+            }),
+
+            (Ok(r), Ok(g), Err(e)) => Err(Failure {
+                parse_error: ParseError::new("invalid RGB color")
+                    .with_span(
+                        "blue octet out of range [0-255]",
+                        bs,
+                        lexer.column_metrics()),
+                lexer,
+                source: Some(Box::new(e)),
+            }),
+            (Ok(r), Err(e),     _) => Err(Failure {
+                parse_error: ParseError::new("invalid RGB color")
+                    .with_span(
+                        "green octet out of range [0-255]",
+                        gs,
+                        lexer.column_metrics()),
+                lexer,
+                source: Some(Box::new(e)),
+            }),
+            (Err(e),     _,     _) => Err(Failure {
+                parse_error: ParseError::new("invalid RGB color")
+                    .with_span(
+                        "red octet out of range [0-255]",
+                        rs,
+                        lexer.column_metrics()),
+                lexer,
+                source: Some(Box::new(e)),
+            }),
+        }
+
+        ((U32(_), _), (U32(_), _), (F32(_), s)) |
+        ((U32(_), _), (F32(_), s), _          ) => Err(Failure {
+            parse_error: ParseError::new("invalid RGB color")
+                .with_span(
+                    "expected u8 value here",
+                    s,
+                    lexer.column_metrics()),
+            lexer,
+            source: None,
+        }),
+
+        ((F32(_), _), (F32(_), _), (U32(_), s)) |
+        ((F32(_), _), (U32(_), s), _          ) => Err(Failure {
+            parse_error: ParseError::new("invalid RGB color")
+                .with_span(
+                    "expected f32 value here",
+                    s,
+                    lexer.column_metrics()),
+            lexer,
+            source: None,
+        }),
+    }
+}

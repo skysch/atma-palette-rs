@@ -9,20 +9,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal modules.
+mod ast;
+mod ast_helper;
+mod ast_match;
 mod color;
-mod combinator;
+mod common;
 mod expr;
-mod primitive;
-mod result;
-mod script;
+mod function;
+mod scanner;
 mod selection;
 
 // Exports.
+pub use ast::*;
+pub use ast_helper::*;
+pub use ast_match::*;
+pub use common::*;
+pub use expr::*;
+pub use function::*;
+pub use scanner::*;
+pub use selection::*;
 pub use self::color::*;
-pub use self::combinator::*;
-pub use self::expr::*;
-pub use self::primitive::*;
-pub use self::result::*;
-pub use self::script::*;
-pub use self::selection::*;
 

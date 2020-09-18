@@ -12,8 +12,8 @@
 use crate::cell::Position;
 use crate::cell::REF_PREFIX_TOKEN;
 use crate::parse::cell_ref;
-use crate::parse::ParseResultExt as _;
-use crate::parse::FailureOwned;
+use tephra::result::ParseResultExt as _;
+use tephra::result::FailureOwned;
 
 // External library imports.
 use serde::Serialize;
@@ -91,9 +91,6 @@ impl std::str::FromStr for CellRef<'static> {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        cell_ref(text)
-            .end_of_text()
-            .finish()
-            .map(|v| v.clone().into_static())
+        unimplemented!()
     }
 }

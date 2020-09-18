@@ -12,13 +12,13 @@
 use crate::cell::CellSelector;
 use crate::palette::BasicPalette;
 use crate::parse::cell_selection;
-use crate::parse::FailureOwned;
-use crate::parse::ParseResultExt as _;
 
 // External library imports.
 use serde::Serialize;
 use serde::Deserialize;
 use normalize_interval::Selection;
+use tephra::result::ParseResultExt as _;
+use tephra::result::FailureOwned;
 
 // Standard library imports.
 use std::iter::FromIterator;
@@ -123,10 +123,7 @@ impl std::str::FromStr for CellSelection<'static> {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        cell_selection(text)
-            .end_of_text()
-            .finish()
-            .map(|v| v.clone().into_static())
+        unimplemented!()
     }
 }
 
