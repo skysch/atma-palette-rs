@@ -11,13 +11,17 @@
 // Local imports.
 use crate::cell::Position;
 use crate::cell::REF_PREFIX_TOKEN;
+use crate::parse::AtmaScanner;
+use crate::parse::AtmaToken;
 use crate::parse::cell_ref;
-use tephra::result::ParseResultExt as _;
-use tephra::result::FailureOwned;
 
 // External library imports.
 use serde::Serialize;
 use serde::Deserialize;
+use tephra::lexer::Lexer;
+use tephra::position::Lf;
+use tephra::result::FailureOwned;
+use tephra::result::ParseResultExt as _;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -91,6 +95,14 @@ impl std::str::FromStr for CellRef<'static> {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        unimplemented!()
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        cell_ref(lexer)
+            .finish()
+            .map(CellRef::into_static)
     }
 }

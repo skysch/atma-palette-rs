@@ -9,13 +9,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local library imports.
-use crate::cell::REF_PREFIX_TOKEN;
-use crate::cell::REF_POS_SEP_TOKEN;
 use crate::cell::REF_ALL_TOKEN;
-use crate::parse::position;
-use crate::parse::position_selector;
+use crate::cell::REF_POS_SEP_TOKEN;
+use crate::cell::REF_PREFIX_TOKEN;
 use crate::parse::AtmaScanner;
 use crate::parse::AtmaToken;
+use crate::parse::position;
+use crate::parse::position_selector;
 
 // External library imports.
 use serde::Deserialize;
@@ -131,11 +131,12 @@ impl std::str::FromStr for Position {
     type Err = PositionParseError;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        
+        // Setup parser.
         let scanner = AtmaScanner::new();
         let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
         lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
+        // Perform parse.
         position(lexer)
             .finish()
             .map_err(|_| PositionParseError)
@@ -272,6 +273,13 @@ impl std::str::FromStr for PositionSelector {
     type Err = tephra::result::FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        unimplemented!()
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        position_selector(lexer)
+            .finish()
     }
 }

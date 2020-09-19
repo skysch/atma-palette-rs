@@ -9,16 +9,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::palette::BasicPalette;
 use crate::cell::CellRef;
-use crate::cell::PositionSelector;
 use crate::cell::Position;
+use crate::cell::PositionSelector;
+use crate::palette::BasicPalette;
+use crate::parse::AtmaScanner;
+use crate::parse::AtmaToken;
+use crate::parse::cell_selector;
 use crate::utility::Few;
-
 
 // External library imports.
 use serde::Serialize;
 use serde::Deserialize;
+use tephra::lexer::Lexer;
+use tephra::position::Lf;
+use tephra::result::FailureOwned;
+use tephra::result::ParseResultExt as _;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -366,6 +372,22 @@ impl<'name> TryFrom<(CellRef<'name>, CellRef<'name>)> for CellSelector<'name> {
 
             (low, high) => Err(InvalidCellSelector::range_mismatch(low, high)),
         }
+    }
+}
+
+impl std::str::FromStr for CellSelector<'static> {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        cell_selector(lexer)
+            .finish()
+            .map(CellSelector::into_static)
     }
 }
 

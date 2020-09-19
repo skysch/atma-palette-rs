@@ -15,10 +15,16 @@ use crate::color::Hsv;
 use crate::color::Rgb;
 use crate::error::PaletteError;
 use crate::palette::BasicPalette;
+use crate::parse::AstExprMatch as _;
+use crate::parse::AtmaScanner;
+use crate::parse::AtmaToken;
+use crate::parse::ast_expr;
 
 // External library imports.
 use serde::Deserialize;
 use serde::Serialize;
+use tephra::lexer::Lexer;
+use tephra::position::Lf;
 use tephra::result::FailureOwned;
 use tephra::result::ParseResultExt as _;
 
@@ -131,7 +137,21 @@ impl std::str::FromStr for InsertExpr {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        unimplemented!()
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let column_metrics = Lf::with_tab_width(4);
+        let mut lexer = Lexer::new(scanner, text, column_metrics);
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        let ast = ast_expr(lexer)
+            .finish()?;
+
+        InsertExpr::match_expr(ast, column_metrics)
+            .map_err(|parse_error| FailureOwned {
+                parse_error: parse_error.into_owned(),
+                source: None,
+            })
     }
 }
 
@@ -150,6 +170,27 @@ pub struct RampExpr {
     pub interpolate: InterpolateRange,
 }
 
+impl std::str::FromStr for RampExpr {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let column_metrics = Lf::with_tab_width(4);
+        let mut lexer = Lexer::new(scanner, text, column_metrics);
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        let ast = ast_expr(lexer)
+            .finish()?;
+
+        RampExpr::match_expr(ast, column_metrics)
+            .map_err(|parse_error| FailureOwned {
+                parse_error: parse_error.into_owned(),
+                source: None,
+            })
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // BlendExpr
@@ -176,6 +217,29 @@ impl BlendExpr {
         self.blend_fn.apply(basic, index_list, &self.interpolate)
     }
 }
+
+impl std::str::FromStr for BlendExpr {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let column_metrics = Lf::with_tab_width(4);
+        let mut lexer = Lexer::new(scanner, text, column_metrics);
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        let ast = ast_expr(lexer)
+            .finish()?;
+
+        BlendExpr::match_expr(ast, column_metrics)
+            .map_err(|parse_error| FailureOwned {
+                parse_error: parse_error.into_owned(),
+                source: None,
+            })
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // BlendFunction
@@ -210,6 +274,30 @@ impl BlendFunction {
     }
 }
 
+impl std::str::FromStr for BlendFunction {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let column_metrics = Lf::with_tab_width(4);
+        let mut lexer = Lexer::new(scanner, text, column_metrics);
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        let ast = ast_expr(lexer)
+            .finish()?;
+
+        BlendFunction::match_expr(ast, column_metrics)
+            .map_err(|parse_error| FailureOwned {
+                parse_error: parse_error.into_owned(),
+                source: None,
+            })
+    }
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // InvalidBlendMethod
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,6 +329,48 @@ pub struct UnaryBlendFunction {
     pub arg: CellRef<'static>,
 }
 
+impl UnaryBlendFunction {
+    /// Resolves the arg_1 and arg_2 references and returns their blended
+    /// result.
+    pub fn apply(
+        &self,
+        basic: &BasicPalette,
+        index_list: &mut HashSet<u32>,
+        int: &Interpolate)
+        -> Result<Option<Color>, PaletteError>
+    {
+        match basic.cycle_detect_color(&self.arg, index_list)? {
+            Some(color) => {
+                let blended = self.blend_method.apply(&color, self.value);
+                Ok(Some(int.apply(color, blended)))
+            },
+            _ => Ok(None),
+        }
+    }
+}
+
+impl std::str::FromStr for UnaryBlendFunction {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let column_metrics = Lf::with_tab_width(4);
+        let mut lexer = Lexer::new(scanner, text, column_metrics);
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        let ast = ast_expr(lexer)
+            .finish()?;
+
+        UnaryBlendFunction::match_expr(ast, column_metrics)
+            .map_err(|parse_error| FailureOwned {
+                parse_error: parse_error.into_owned(),
+                source: None,
+            })
+    }
+}
+
 /// Color blending method for unary blend functions.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[derive(Serialize, Deserialize)]
@@ -264,26 +394,6 @@ pub enum UnaryBlendMethod {
     Lighten,
     /// Darken the source color.
     Darken,
-}
-
-impl UnaryBlendFunction {
-    /// Resolves the arg_1 and arg_2 references and returns their blended
-    /// result.
-    pub fn apply(
-        &self,
-        basic: &BasicPalette,
-        index_list: &mut HashSet<u32>,
-        int: &Interpolate)
-        -> Result<Option<Color>, PaletteError>
-    {
-        match basic.cycle_detect_color(&self.arg, index_list)? {
-            Some(color) => {
-                let blended = self.blend_method.apply(&color, self.value);
-                Ok(Some(int.apply(color, blended)))
-            },
-            _ => Ok(None),
-        }
-    }
 }
 
 impl UnaryBlendMethod {
@@ -333,10 +443,24 @@ impl UnaryBlendMethod {
 }
 
 impl std::str::FromStr for UnaryBlendMethod {
-    type Err = InvalidBlendMethod;
+    type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        unimplemented!()
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let column_metrics = Lf::with_tab_width(4);
+        let mut lexer = Lexer::new(scanner, text, column_metrics);
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        let ast = ast_expr(lexer)
+            .finish()?;
+
+        UnaryBlendMethod::match_expr(ast, column_metrics)
+            .map_err(|parse_error| FailureOwned {
+                parse_error: parse_error.into_owned(),
+                source: None,
+            })
     }
 }
 
@@ -400,6 +524,29 @@ impl BinaryBlendFunction {
         }
     }
 }
+
+impl std::str::FromStr for BinaryBlendFunction {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let column_metrics = Lf::with_tab_width(4);
+        let mut lexer = Lexer::new(scanner, text, column_metrics);
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        let ast = ast_expr(lexer)
+            .finish()?;
+
+        BinaryBlendFunction::match_expr(ast, column_metrics)
+            .map_err(|parse_error| FailureOwned {
+                parse_error: parse_error.into_owned(),
+                source: None,
+            })
+    }
+}
+
 
 /// Color blending method for binary bland functions.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -484,11 +631,26 @@ impl BinaryBlendMethod {
     }
 }
 
+
 impl std::str::FromStr for BinaryBlendMethod {
-    type Err = InvalidBlendMethod;
+    type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        unimplemented!()
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let column_metrics = Lf::with_tab_width(4);
+        let mut lexer = Lexer::new(scanner, text, column_metrics);
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        let ast = ast_expr(lexer)
+            .finish()?;
+
+        BinaryBlendMethod::match_expr(ast, column_metrics)
+            .map_err(|parse_error| FailureOwned {
+                parse_error: parse_error.into_owned(),
+                source: None,
+            })
     }
 }
 
@@ -554,13 +716,29 @@ impl Default for ColorSpace {
     }
 }
 
+
 impl std::str::FromStr for ColorSpace {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        unimplemented!()
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let column_metrics = Lf::with_tab_width(4);
+        let mut lexer = Lexer::new(scanner, text, column_metrics);
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        let ast = ast_expr(lexer)
+            .finish()?;
+
+        ColorSpace::match_expr(ast, column_metrics)
+            .map_err(|parse_error| FailureOwned {
+                parse_error: parse_error.into_owned(),
+                source: None,
+            })
     }
 }
+
 
 impl std::fmt::Display for ColorSpace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -618,6 +796,29 @@ impl Default for Interpolate {
         }
     }
 }
+
+impl std::str::FromStr for Interpolate {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let column_metrics = Lf::with_tab_width(4);
+        let mut lexer = Lexer::new(scanner, text, column_metrics);
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        let ast = ast_expr(lexer)
+            .finish()?;
+
+        Interpolate::match_expr(ast, column_metrics)
+            .map_err(|parse_error| FailureOwned {
+                parse_error: parse_error.into_owned(),
+                source: None,
+            })
+    }
+}
+
 
 /// Interpolation range for ramps.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -685,6 +886,29 @@ impl Default for InterpolateRange {
     }
 }
 
+impl std::str::FromStr for InterpolateRange {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let column_metrics = Lf::with_tab_width(4);
+        let mut lexer = Lexer::new(scanner, text, column_metrics);
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        let ast = ast_expr(lexer)
+            .finish()?;
+
+        InterpolateRange::match_expr(ast, column_metrics)
+            .map_err(|parse_error| FailureOwned {
+                parse_error: parse_error.into_owned(),
+                source: None,
+            })
+    }
+}
+
+
 /// Interpolation function.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[derive(Serialize, Deserialize)]
@@ -727,5 +951,27 @@ impl InterpolateFunction {
 impl Default for InterpolateFunction {
     fn default() -> Self {
         InterpolateFunction::Linear
+    }
+}
+
+impl std::str::FromStr for InterpolateFunction {
+    type Err = FailureOwned;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let column_metrics = Lf::with_tab_width(4);
+        let mut lexer = Lexer::new(scanner, text, column_metrics);
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        let ast = ast_expr(lexer)
+            .finish()?;
+
+        InterpolateFunction::match_expr(ast, column_metrics)
+            .map_err(|parse_error| FailureOwned {
+                parse_error: parse_error.into_owned(),
+                source: None,
+            })
     }
 }

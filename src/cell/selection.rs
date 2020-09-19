@@ -11,14 +11,18 @@
 // Local imports.
 use crate::cell::CellSelector;
 use crate::palette::BasicPalette;
+use crate::parse::AtmaScanner;
+use crate::parse::AtmaToken;
 use crate::parse::cell_selection;
 
 // External library imports.
-use serde::Serialize;
-use serde::Deserialize;
 use normalize_interval::Selection;
-use tephra::result::ParseResultExt as _;
+use serde::Deserialize;
+use serde::Serialize;
+use tephra::lexer::Lexer;
+use tephra::position::Lf;
 use tephra::result::FailureOwned;
+use tephra::result::ParseResultExt as _;
 
 // Standard library imports.
 use std::iter::FromIterator;
@@ -123,7 +127,15 @@ impl std::str::FromStr for CellSelection<'static> {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        unimplemented!()
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let mut lexer = Lexer::new(scanner, text, Lf::with_tab_width(4));
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+        // Perform parse.
+        cell_selection(lexer)
+            .finish()
+            .map(CellSelection::into_static)
     }
 }
 

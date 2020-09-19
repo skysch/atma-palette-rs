@@ -16,9 +16,6 @@ use crate::cell::Position;
 use colored::Colorize as _;
 use serde::Serialize;
 use serde::Deserialize;
-use tephra::result::FailureOwned;
-use tephra::result::ParseResultExt as _;
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -39,26 +36,31 @@ pub enum CursorBehavior {
 }
 
 impl std::str::FromStr for CursorBehavior {
-    type Err = FailureOwned;
+    type Err = InvalidCursorBehavior;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        // any_literal_map_once(
-        //         literal_ignore_ascii_case,
-        //         "",
-        //         vec![
-        //             ("move_to_start",   CursorBehavior::MoveToStart),
-        //             ("move_after_end",  CursorBehavior::MoveAfterEnd),
-        //             ("move_to_open",    CursorBehavior::MoveToOpen),
-        //             ("remain_in_place", CursorBehavior::RemainInPlace),
-        //         ])
-        //     (text)
-        //     .end_of_text()
-        //     .source_for("expected one of 'move_to_start', 'move_after_end', \
-        //         'move_to_open', or 'remain_in_place'")
-        //     .finish()
-        unimplemented!()
+        match text {
+            "move_to_start"   => Ok(CursorBehavior::MoveToStart),
+            "move_after_end"  => Ok(CursorBehavior::MoveAfterEnd),
+            "move_to_open"    => Ok(CursorBehavior::MoveToOpen),
+            "remain_in_place" => Ok(CursorBehavior::RemainInPlace),
+            _                 => Err(InvalidCursorBehavior),
+        }
     }
 }
+
+/// Error type for an invalid cursor behavior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct InvalidCursorBehavior;
+
+impl std::fmt::Display for InvalidCursorBehavior {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "invalid cursor behavior: expected one of 'move_to_start', \
+            'move_after_end', 'move_to_open', or 'remain_in_place'")
+    }
+}
+
+impl std::error::Error for InvalidCursorBehavior {}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,31 +91,33 @@ impl Positioning {
 }
 
 impl std::str::FromStr for Positioning {
-    type Err = FailureOwned;
+    type Err = InvalidPositioning;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        // if let Ok(success) = any_literal_map_once(
-        //         literal_ignore_ascii_case,
-        //         "",
-        //         vec![
-        //             ("cursor", Positioning::Cursor),
-        //             ("open",   Positioning::Open),
-        //             ("none",   Positioning::None),
-        //         ])
-        //     (text)
-        //     .end_of_text()
-        // {
-        //     return Ok(success.value);
-        // }
-
-        // position(text)
-        //     .end_of_text()
-        //     .source_for("expected 'cursor', 'open', or a position")
-        //     .finish()
-        //     .map(Positioning::Position)
-        unimplemented!()
+        match text {
+            "cursor" => Ok(Positioning::Cursor),
+            "open"   => Ok(Positioning::Open),
+            "none"   => Ok(Positioning::None),
+            _        => match Position::from_str(text) {
+                Ok(pos) => Ok(Positioning::Position(pos)),
+                Err(_)  => Err(InvalidPositioning),
+            }
+        }
     }
 }
+
+/// Error type for an invalid cursor behavior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct InvalidPositioning;
+
+impl std::fmt::Display for InvalidPositioning {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "invalid cursor positioning: expected one of 'cursor', \
+            'open', 'none', or a position")
+    }
+}
+
+impl std::error::Error for InvalidPositioning {}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,24 +136,31 @@ pub enum HistorySetOption {
 }
 
 impl std::str::FromStr for HistorySetOption {
-    type Err = FailureOwned;
+    type Err = InvalidHistorySetOption;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        // any_literal_map_once(
-        //         literal_ignore_ascii_case,
-        //         "",
-        //         vec![
-        //             ("enable",  HistorySetOption::Enable),
-        //             ("disable", HistorySetOption::Disable),
-        //             ("clear",   HistorySetOption::Clear),
-        //         ])
-        //     (text)
-        //     .end_of_text()
-        //     .source_for("expected 'enable', 'disable', or 'clear'.")
-            // .finish()
-        unimplemented!()
+        match text {
+            "enable"  => Ok(HistorySetOption::Enable),
+            "disable" => Ok(HistorySetOption::Disable),
+            "clear"   => Ok(HistorySetOption::Clear),
+            _         => Err(InvalidHistorySetOption),
+        }
     }
 }
+
+/// Error type for an invalid cursor behavior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct InvalidHistorySetOption;
+
+impl std::fmt::Display for InvalidHistorySetOption {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "invalid history set option: expected one of 'enable', \
+            'disable', or 'clear'")
+    }
+}
+
+impl std::error::Error for InvalidHistorySetOption {}
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,24 +179,30 @@ pub enum ListMode {
 }
 
 impl std::str::FromStr for ListMode {
-    type Err = FailureOwned;
+    type Err = InvalidListMode;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        // any_literal_map_once(
-        //         literal_ignore_ascii_case,
-        //         "",
-        //         vec![
-        //             ("grid",  ListMode::Grid),
-        //             ("lines", ListMode::Lines),
-        //             ("list",  ListMode::List),
-        //         ])
-        //     (text)
-        //     .end_of_text()
-        //     .source_for("expected 'grid', 'lines', or 'list'.")
-        //     .finish()
-        unimplemented!()
+        match text {
+            "grid"  => Ok(ListMode::Grid),
+            "lines" => Ok(ListMode::Lines),
+            "list"  => Ok(ListMode::List),
+            _       => Err(InvalidListMode),
+        }
     }
 }
+
+/// Error type for an invalid cursor behavior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct InvalidListMode;
+
+impl std::fmt::Display for InvalidListMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "invalid list mode: expected one of 'grid', \
+            'lines', or 'list'")
+    }
+}
+
+impl std::error::Error for InvalidListMode {}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -204,24 +221,30 @@ pub enum ColorStyle {
 }
 
 impl std::str::FromStr for ColorStyle {
-    type Err = FailureOwned;
+    type Err = InvalidColorStyle;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        // any_literal_map_once(
-        //         literal_ignore_ascii_case,
-        //         "",
-        //         vec![
-        //             ("none", ColorStyle::None),
-        //             ("tile", ColorStyle::Tile),
-        //             ("text", ColorStyle::Text),
-        //         ])
-        //     (text)
-        //     .end_of_text()
-        //     .source_for("expected one of 'none', 'tile', or 'text'.")
-        //     .finish()
-        unimplemented!()
+        match text {
+            "none" => Ok(ColorStyle::None),
+            "tile" => Ok(ColorStyle::Tile),
+            "text" => Ok(ColorStyle::Text),
+            _      => Err(InvalidColorStyle),
+        }
     }
 }
+
+/// Error type for an invalid cursor behavior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct InvalidColorStyle;
+
+impl std::fmt::Display for InvalidColorStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "invalid color style: expected one of 'none', \
+            'tile', or 'text'")
+    }
+}
+
+impl std::error::Error for InvalidColorStyle {}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,26 +265,32 @@ pub enum TextStyle {
 }
 
 impl std::str::FromStr for TextStyle {
-    type Err = FailureOwned;
+    type Err = InvalidTextStyle;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        // any_literal_map_once(
-        //         literal_ignore_ascii_case,
-        //         "",
-        //         vec![
-        //             ("none",  TextStyle::None),
-        //             ("hex_6", TextStyle::Hex6),
-        //             ("hex_3", TextStyle::Hex3),
-        //             ("hex",   TextStyle::Hex6),
-        //             ("rgb",   TextStyle::Rgb),
-        //         ])
-        //     (text)
-        //     .end_of_text()
-        //     .source_for("expected one of 'none', 'hex', 'hex_6', 'hex_3', or 'rgb'.")
-        //     .finish()
-        unimplemented!()
+        match text {
+            "none"  => Ok(TextStyle::None),
+            "hex_6" => Ok(TextStyle::Hex6),
+            "hex_3" => Ok(TextStyle::Hex3),
+            "hex"   => Ok(TextStyle::Hex6),
+            "rgb"   => Ok(TextStyle::Rgb),
+            _       => Err(InvalidTextStyle),
+        }
     }
 }
+
+/// Error type for an invalid cursor behavior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct InvalidTextStyle;
+
+impl std::fmt::Display for InvalidTextStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "invalid text style: expected one of 'none', \
+            'hex_6', 'hex_3', 'hex', or 'rgb'")
+    }
+}
+
+impl std::error::Error for InvalidTextStyle {}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -280,24 +309,30 @@ pub enum RuleStyle {
 }
 
 impl std::str::FromStr for RuleStyle {
-    type Err = FailureOwned;
+    type Err = InvalidRuleStyle;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        // any_literal_map_once(
-        //         literal_ignore_ascii_case,
-        //         "",
-        //         vec![
-        //             ("none",  RuleStyle::None),
-        //             ("colored", RuleStyle::Colored),
-        //             ("plain", RuleStyle::Plain),
-        //         ])
-        //     (text)
-        //     .end_of_text()
-        //     .source_for("expected one of 'none', 'colored', or 'plain'.")
-        //     .finish()
-        unimplemented!()
+        match text {
+            "none"    => Ok(RuleStyle::None),
+            "colored" => Ok(RuleStyle::Colored),
+            "plain"   => Ok(RuleStyle::Plain),
+            _         => Err(InvalidRuleStyle),
+        }
     }
 }
+
+/// Error type for an invalid cursor behavior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct InvalidRuleStyle;
+
+impl std::fmt::Display for InvalidRuleStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "invalid text style: expected one of 'none', \
+            'colored', or 'plain'")
+    }
+}
+
+impl std::error::Error for InvalidRuleStyle {}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -316,30 +351,32 @@ pub enum LineStyle {
 }
 
 impl std::str::FromStr for LineStyle {
-    type Err = FailureOwned;
+    type Err = InvalidLineStyle;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        // let size = uint::<u16>("u16")
-        //     (text)
-        //     .end_of_text();
-        // if size.is_ok() {
-        //     return size.map_value(LineStyle::Size).finish();
-        // }
-
-        // any_literal_map_once(
-        //         literal_ignore_ascii_case,
-        //         "",
-        //         vec![
-        //             ("none", LineStyle::None),
-        //             ("auto", LineStyle::Auto),
-        //         ])
-        //     (text)
-        //     .end_of_text()
-        //     .source_for("expected one of 'none', 'auto', or integer value.")
-        //     .finish()
-        unimplemented!()
+        match text {
+            "none" => Ok(LineStyle::None),
+            "auto" => Ok(LineStyle::Auto),
+            _      => match u16::from_str(text) {
+                Ok(val) => Ok(LineStyle::Size(val)),
+                Err(_)  => Err(InvalidLineStyle),
+            }
+        }
     }
 }
+
+/// Error type for an invalid cursor behavior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct InvalidLineStyle;
+
+impl std::fmt::Display for InvalidLineStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "invalid line style: expected one of 'none', \
+            'auto', or an integer value")
+    }
+}
+
+impl std::error::Error for InvalidLineStyle {}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -358,30 +395,32 @@ pub enum GutterStyle {
 }
 
 impl std::str::FromStr for GutterStyle {
-    type Err = FailureOwned;
+    type Err = InvalidGutterStyle;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        // let size = uint::<u16>("u16")
-        //     (text)
-        //     .end_of_text();
-        // if size.is_ok() {
-        //     return size.map_value(GutterStyle::Size).finish();
-        // }
-
-        // any_literal_map_once(
-        //         literal_ignore_ascii_case,
-        //         "",
-        //         vec![
-        //             ("none", GutterStyle::None),
-        //             ("auto", GutterStyle::Auto),
-        //         ])
-        //     (text)
-        //     .end_of_text()
-        //     .source_for("expected one of 'none', 'auto', or integer value.")
-        //     .finish()
-        unimplemented!()
+        match text {
+            "none" => Ok(GutterStyle::None),
+            "auto" => Ok(GutterStyle::Auto),
+            _      => match u16::from_str(text) {
+                Ok(val) => Ok(GutterStyle::Size(val)),
+                Err(_)  => Err(InvalidGutterStyle),
+            }
+        }
     }
 }
+
+/// Error type for an invalid cursor behavior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct InvalidGutterStyle;
+
+impl std::fmt::Display for InvalidGutterStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "invalid gutter style: expected one of 'none', \
+            'auto', or an integer value")
+    }
+}
+
+impl std::error::Error for InvalidGutterStyle {}
 
 
 ////////////////////////////////////////////////////////////////////////////////
