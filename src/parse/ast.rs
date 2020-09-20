@@ -45,6 +45,78 @@ use std::borrow::Cow;
 // External library imports.
 use ::color::Color;
 
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// AstScript
+////////////////////////////////////////////////////////////////////////////////
+/// The top-level AST for a script.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AstScript<'text> {
+    stmts: Vec<AstStmt<'text>>,
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// AstStmt
+////////////////////////////////////////////////////////////////////////////////
+/// The top-level AST statement.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AstStmt<'text> {
+    Insert(Spanned<'text, InsertStmt<'text>>),
+    Next(Spanned<'text, NextStmt>),
+}
+
+
+impl<'text> AstStmt<'text> {
+    pub fn description(&self) -> Cow<'static, str> {
+        "statement".into()
+    }
+
+    pub fn span(&self) -> Span<'text> {
+        match self {
+            AstStmt::Insert(Spanned { span, .. }) => *span,
+            AstStmt::Next(Spanned { span, .. }) => *span,
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// InsertStmt
+////////////////////////////////////////////////////////////////////////////////
+/// An insert statment AST node.
+#[derive(Debug, Clone, PartialEq)]
+pub struct InsertStmt<'text> {
+    introducer: Span<'text>,
+    expr: AstExpr<'text>,
+    as_clause: Spanned<'text, AsClause<'text>>,
+    at_clause: Spanned<'text, AtClause<'text>>,
+}
+
+/// An at-clause for an insert statement.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AtClause<'text> {
+    introducer: Span<'text>,
+}
+
+/// An as-clause for an insert statement.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AsClause<'text> {
+    introducer: Span<'text>,
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// NextStmt
+////////////////////////////////////////////////////////////////////////////////
+/// A next statement AST node.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum NextStmt {
+    Page,
+    Line,
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // AstExpr
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +226,49 @@ impl<'text> PrimaryExpr<'text> {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Parsers
+// Stmt Parsers
+////////////////////////////////////////////////////////////////////////////////
+
+pub fn script<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, AstScript<'text>>
+    where Cm: ColumnMetrics,
+{
+    unimplemented!()
+}
+
+
+pub fn stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, AstStmt<'text>>
+    where Cm: ColumnMetrics,
+{
+    unimplemented!()
+}
+
+
+pub fn insert_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, InsertStmt<'text>>
+    where Cm: ColumnMetrics,
+{
+    unimplemented!()
+}
+
+pub fn next_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, NextStmt>
+    where Cm: ColumnMetrics,
+{
+    unimplemented!()
+    // use AtmaToken::*;
+
+    // both(
+    //     spanned(one(Ident)),
+    //     spanned(one(Ident)))
+    //     (lexer)
+        
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Expr Parsers
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn ast_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)

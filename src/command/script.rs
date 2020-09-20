@@ -19,7 +19,6 @@ use crate::setup::Settings;
 
 // External library imports.
 use tephra::result::FailureOwned;
-use tephra::result::ParseResultExt as _;
 
 // Standard library imports.
 use std::fmt::Debug;
@@ -97,3 +96,4 @@ impl std::str::FromStr for Script {
         unimplemented!()
     }
 }
+
