@@ -24,6 +24,7 @@ use tephra::combinator::both;
 use tephra::combinator::bracket;
 use tephra::combinator::fail;
 use tephra::combinator::intersperse_collect;
+use tephra::combinator::repeat;
 use tephra::combinator::repeat_collect;
 use tephra::combinator::one;
 use tephra::combinator::section;
@@ -82,9 +83,6 @@ impl<'text> AstStmt<'text> {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// InsertStmt
-////////////////////////////////////////////////////////////////////////////////
 /// An insert statment AST node.
 #[derive(Debug, Clone, PartialEq)]
 pub struct InsertStmt<'text> {
@@ -106,9 +104,6 @@ pub struct AsClause<'text> {
     introducer: Span<'text>,
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// NextStmt
-////////////////////////////////////////////////////////////////////////////////
 /// A next statement AST node.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NextStmt {
@@ -233,15 +228,50 @@ pub fn script<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, AstScript<'text>>
     where Cm: ColumnMetrics,
 {
-    unimplemented!()
+    intersperse_collect(0, None,
+        stmt,
+        repeat(1, None, one(AtmaToken::Semicolon)))
+        (lexer)
+        .map_value(|stmts| AstScript { stmts })
 }
 
 
-pub fn stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, AstStmt<'text>>
     where Cm: ColumnMetrics,
 {
-    unimplemented!()
+
+    // insert statement
+    match spanned(insert_stmt)(lexer.sublexer()) {
+        Ok(stmt) => return Ok(stmt.map_value(AstStmt::Insert)),
+        Err(_) => (),
+    }
+
+    // next statement
+    match spanned(next_stmt)(lexer.sublexer()) {
+        Ok(stmt) => return Ok(stmt.map_value(AstStmt::Next)),
+        Err(_) => (),
+    }
+
+    match lexer.peek() {
+        Some(_) => Err(Failure {
+            parse_error: ParseError::new("unrecognized statement")
+                .with_span(
+                    "expected 'next' or 'insert'",
+                    lexer.span(),
+                    lexer.column_metrics()),
+            lexer,
+            source: None,
+        }),
+
+        None => Err(Failure {
+            parse_error: ParseError::unexpected_end_of_text(
+                lexer.end_span(),
+                lexer.column_metrics()),
+            lexer,
+            source: None,
+        }),
+    }
 }
 
 
@@ -256,14 +286,37 @@ pub fn next_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, NextStmt>
     where Cm: ColumnMetrics,
 {
-    unimplemented!()
-    // use AtmaToken::*;
+    use AtmaToken::*;
 
-    // both(
-    //     spanned(one(Ident)),
-    //     spanned(one(Ident)))
-    //     (lexer)
-        
+    match both(
+        text(one(Ident)),
+        text(one(Ident)))
+        (lexer.sublexer())
+    {
+        Ok(Success { lexer, value }) => match value {
+            ("next", "page") => Ok(Success { lexer, value: NextStmt::Page }),
+            ("next", "line") => Ok(Success { lexer, value: NextStmt::Line }),
+            ("next", _)      => Err(Failure {
+                parse_error: ParseError::new("unrecognized 'next' parameter")
+                    .with_span(
+                        "expected 'line' or 'page'",
+                        lexer.span(),
+                        lexer.column_metrics()),
+                lexer,
+                source: None,
+            }),
+            _                => Err(Failure {
+                parse_error: ParseError::new("invalid 'next' statement")
+                    .with_span(
+                        "expected 'next'",
+                        lexer.span(),
+                        lexer.column_metrics()),
+                lexer,
+                source: None,
+            }),
+        },
+        Err(e) => Err(e),
+    }
 }
 
 

@@ -88,6 +88,8 @@ pub enum AtmaToken {
     /// A string with potential escape characters.
     StringText,
 
+    /// A semicolon character ';'.
+    Semicolon,
     /// A colon character ':'.
     Colon,
     /// A comma character ','.
@@ -137,6 +139,7 @@ impl std::fmt::Display for AtmaToken {
             StringOpenDouble  => write!(f, "open quote '\"'"),
             StringCloseDouble => write!(f, "close quote '\"'"),
             StringText        => write!(f, "string text"),
+            Semicolon         => write!(f, "';'"),
             Colon             => write!(f, "':'"),
             Comma             => write!(f, "','"),
             Hash              => write!(f, "'#'"),
@@ -549,6 +552,15 @@ impl Scanner for AtmaScanner {
                     return Some(parse);
                 }
 
+                if let Some(parse) = self.parse_str(
+                    text,
+                    metrics,
+                    ";",
+                    Semicolon)
+                {
+                    self.open = Some(Semicolon);
+                    return Some(parse);
+                }
                 if let Some(parse) = self.parse_str(text, metrics, ":", Colon) {
                     self.open = Some(Colon);
                     return Some(parse);

@@ -9,16 +9,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::command::CommandOption;
 use crate::command::CommonOptions;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
 use crate::palette::Palette;
+use crate::parse::AtmaScanner;
+use crate::parse::AtmaToken;
+use crate::parse::script;
 use crate::setup::Config;
 use crate::setup::Settings;
 
 // External library imports.
+use tephra::lexer::Lexer;
+use tephra::position::Lf;
 use tephra::result::FailureOwned;
+use tephra::result::ParseResultExt as _;
 
 // Standard library imports.
 use std::fmt::Debug;
@@ -34,8 +39,8 @@ use std::path::Path;
 /// An atma script.
 #[derive(Debug)]
 pub struct Script {
-    /// The script's executable statements.
-    pub statements: Vec<CommandOption>,
+    /// The script's abstract syntax tree.
+    ast: (),
 }
 
 impl Script {
@@ -48,18 +53,7 @@ impl Script {
         settings: &mut Settings)
         -> Result<(), anyhow::Error>
     {
-        for command in self.statements.into_iter() {
-
-            crate::command::dispatch(
-                Some(palette),
-                command,
-                common,
-                config,
-                settings,
-                None,
-            )?;
-        }
-        Ok(())
+        unimplemented!()
     }
 
     /// Constructs a new `Script` by parsing data from the file at the given
@@ -90,9 +84,15 @@ impl std::str::FromStr for Script {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        // script(text)
-        //     .end_of_text()
-        //     .finish()
+        // Setup parser.
+        let scanner = AtmaScanner::new();
+        let column_metrics = Lf::with_tab_width(4);
+        let mut lexer = Lexer::new(scanner, text, column_metrics);
+        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+
+
+        script(lexer)
+            .finish()?;
         unimplemented!()
     }
 }

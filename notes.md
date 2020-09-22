@@ -201,6 +201,10 @@ Names, positions, and groups are only meaningful if they've been assigned to an 
 
 # Atma Script
 
+insert <EXPR>
+    at <position>
+    as <name>;
+next <line/page>;
 
 
 # Parser design principles
