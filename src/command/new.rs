@@ -18,9 +18,6 @@ use crate::palette::Palette;
 use crate::setup::Config;
 use crate::setup::Settings;
 
-// External library imports.
-use log::*;
-
 // Standard library imports.
 use std::path::PathBuf;
 
@@ -92,8 +89,8 @@ pub fn new_palette(
     };
 
     if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
-        info!("Palette file already exists.");
-        debug!("Palette load path {:?}", palette.load_path());
+        log::info!("Palette file already exists.");
+        log::debug!("Palette load path {:?}", palette.load_path());
     } else {
         let _ = res.with_context(|| 
             if let Some(path) = palette.load_path() {
@@ -117,8 +114,8 @@ pub fn new_config(path: PathBuf, overwrite: bool) -> Result<(), FileError> {
     };
 
     if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
-        info!("Config file already exists.");
-        debug!("Config {:?}", new.load_path());
+        log::info!("Config file already exists.");
+        log::debug!("Config {:?}", new.load_path());
     } else {
         let _ = res.with_context(|| 
             if let Some(path) = new.load_path() {
@@ -141,8 +138,8 @@ pub fn new_settings(path: PathBuf, overwrite: bool) -> Result<(), FileError> {
     };
 
     if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
-        info!("Settings file already exists.");
-        debug!("Settings {:?}", new.load_path());
+        log::info!("Settings file already exists.");
+        log::debug!("Settings {:?}", new.load_path());
     } else {
         let _ = res.with_context(|| 
             if let Some(path) = new.load_path() {

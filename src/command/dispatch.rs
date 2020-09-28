@@ -30,7 +30,6 @@ use crate::setup::Settings;
 use crate::utility::normalize_path;
 
 // External library imports.
-use log::*;
 use anyhow::anyhow;
 
 // Standard library imports.
@@ -58,7 +57,7 @@ pub fn dispatch(
     cur_dir: Option<&Path>)
     -> Result<(), anyhow::Error>
 {
-    trace!("Begin command dispatch.");
+    log::trace!("Begin command dispatch.");
     use CommandOption::*;
     use anyhow::Context as _;
 
@@ -79,10 +78,10 @@ pub fn dispatch(
                         script_path,
                         normalize_path(
                             cur_dir
-                                .expect("Currend directory not determined")
+                                .expect("Current directory not determined")
                                 .clone(),
                             path.unwrap_or_else(|| cur_dir
-                                .expect("Currend directory not determined")
+                                .expect("Current directory not determined")
                                 .join(&config.default_palette_path))),
                         set_active,
                         no_history,
@@ -97,10 +96,10 @@ pub fn dispatch(
             NewOption::Config { path, overwrite } => new_config(
                     normalize_path(
                         cur_dir
-                            .expect("Currend directory not determined")
+                            .expect("Current directory not determined")
                             .clone(),
                         path.unwrap_or_else(|| cur_dir
-                                .expect("Currend directory not determined")
+                                .expect("Current directory not determined")
                                 .join(dbg!(DEFAULT_CONFIG_PATH))),
                         ),
                     overwrite)
@@ -109,10 +108,10 @@ pub fn dispatch(
             NewOption::Settings { path, overwrite } => new_settings(
                     normalize_path(
                         cur_dir
-                            .expect("Currend directory not determined")
+                            .expect("Current directory not determined")
                             .clone(),
                         path.unwrap_or_else(|| cur_dir
-                            .expect("Currend directory not determined")
+                            .expect("Current directory not determined")
                             .join(&config.default_settings_path))),
                     overwrite)
                 .context("Command 'new settings' failed"),
@@ -139,7 +138,7 @@ pub fn dispatch(
                 (Some(ColorStyle::None), Some(TextStyle::None))
                     = (color_style, text_style) 
             {
-                warn!("Invalid combination of color-style and text-style.\
+                log::warn!("Invalid combination of color-style and text-style.\
                     Using --text-style hex.");
                 config.invalid_color_display_fallback
             } else {
@@ -304,7 +303,7 @@ pub fn dispatch(
             SetOption::ActivePalette { path } => {
                 if let Some(path) = path {
                     settings.active_palette = Some(normalize_path(
-                        cur_dir.expect("Currend directory not determined"),
+                        cur_dir.expect("Current directory not determined"),
                         path));
                 } else {
                     settings.active_palette = None;
@@ -392,7 +391,7 @@ pub fn dispatch(
                     write_png(
                         &pal,
                         selection.unwrap_or(CellSelector::All.into()),
-                        &cur_dir.expect("Currend directory not determined")
+                        &cur_dir.expect("Current directory not determined")
                             .clone()
                             .join(output))
                 },

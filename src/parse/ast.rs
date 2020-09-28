@@ -17,6 +17,9 @@ use crate::parse::cell_ref;
 use crate::parse::color;
 use crate::parse::AtmaToken;
 use crate::parse::AtmaScanner;
+use crate::command::Stmt;
+use crate::command::AtClause;
+use crate::command::AsClause;
 
 // External library imports.
 use tephra::combinator::atomic;
@@ -46,70 +49,6 @@ use std::borrow::Cow;
 // External library imports.
 use ::color::Color;
 
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-// AstScript
-////////////////////////////////////////////////////////////////////////////////
-/// The top-level AST for a script.
-#[derive(Debug, Clone, PartialEq)]
-pub struct AstScript<'text> {
-    stmts: Vec<AstStmt<'text>>,
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// AstStmt
-////////////////////////////////////////////////////////////////////////////////
-/// The top-level AST statement.
-#[derive(Debug, Clone, PartialEq)]
-pub enum AstStmt<'text> {
-    Insert(Spanned<'text, InsertStmt<'text>>),
-    Next(Spanned<'text, NextStmt>),
-}
-
-
-impl<'text> AstStmt<'text> {
-    pub fn description(&self) -> Cow<'static, str> {
-        "statement".into()
-    }
-
-    pub fn span(&self) -> Span<'text> {
-        match self {
-            AstStmt::Insert(Spanned { span, .. }) => *span,
-            AstStmt::Next(Spanned { span, .. }) => *span,
-        }
-    }
-}
-
-/// An insert statment AST node.
-#[derive(Debug, Clone, PartialEq)]
-pub struct InsertStmt<'text> {
-    introducer: Span<'text>,
-    expr: AstExpr<'text>,
-    as_clause: Spanned<'text, AsClause<'text>>,
-    at_clause: Spanned<'text, AtClause<'text>>,
-}
-
-/// An at-clause for an insert statement.
-#[derive(Debug, Clone, PartialEq)]
-pub struct AtClause<'text> {
-    introducer: Span<'text>,
-}
-
-/// An as-clause for an insert statement.
-#[derive(Debug, Clone, PartialEq)]
-pub struct AsClause<'text> {
-    introducer: Span<'text>,
-}
-
-/// A next statement AST node.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum NextStmt {
-    Page,
-    Line,
-}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,35 +163,39 @@ impl<'text> PrimaryExpr<'text> {
 // Stmt Parsers
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn script<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
-    -> ParseResult<'text, AtmaScanner, Cm, AstScript<'text>>
+pub fn stmts<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, Vec<Stmt>>
     where Cm: ColumnMetrics,
 {
+    log::trace!("BEGIN: stmts");
     intersperse_collect(0, None,
         stmt,
         repeat(1, None, one(AtmaToken::Semicolon)))
         (lexer)
-        .map_value(|stmts| AstScript { stmts })
 }
 
 
 pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
-    -> ParseResult<'text, AtmaScanner, Cm, AstStmt<'text>>
+    -> ParseResult<'text, AtmaScanner, Cm, Stmt>
     where Cm: ColumnMetrics,
 {
+    log::trace!("BEGIN: stmt");
 
     // insert statement
-    match spanned(insert_stmt)(lexer.sublexer()) {
-        Ok(stmt) => return Ok(stmt.map_value(AstStmt::Insert)),
+    match insert_stmt(lexer.sublexer()) {
+        Ok(stmt) => return Ok(stmt),
         Err(_) => (),
     }
+    log::trace!("  stmt: insert_stmt failed");
 
     // next statement
-    match spanned(next_stmt)(lexer.sublexer()) {
-        Ok(stmt) => return Ok(stmt.map_value(AstStmt::Next)),
+    match next_stmt(lexer.sublexer()) {
+        Ok(stmt) => return Ok(stmt),
         Err(_) => (),
     }
+    log::trace!("  stmt: next_stmt failed");
 
+    
     match lexer.peek() {
         Some(_) => Err(Failure {
             parse_error: ParseError::new("unrecognized statement")
@@ -264,28 +207,27 @@ pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
             source: None,
         }),
 
-        None => Err(Failure {
-            parse_error: ParseError::unexpected_end_of_text(
-                lexer.end_span(),
-                lexer.column_metrics()),
-            lexer,
-            source: None,
-        }),
+        None => {
+            log::trace!("  stmt: end of text");
+            Err(Failure {
+                parse_error: ParseError::new("empty statement")
+                    .with_span(
+                    "expected 'next' or 'insert'",
+                    lexer.end_span(),
+                    lexer.column_metrics()),
+                lexer,
+                source: None,
+            })
+        },
     }
 }
 
 
 pub fn insert_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
-    -> ParseResult<'text, AtmaScanner, Cm, InsertStmt<'text>>
+    -> ParseResult<'text, AtmaScanner, Cm, Stmt>
     where Cm: ColumnMetrics,
 {
-    unimplemented!()
-}
-
-pub fn next_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
-    -> ParseResult<'text, AtmaScanner, Cm, NextStmt>
-    where Cm: ColumnMetrics,
-{
+    log::trace!("BEGIN: insert_stmt");
     use AtmaToken::*;
 
     match both(
@@ -294,8 +236,36 @@ pub fn next_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
         (lexer.sublexer())
     {
         Ok(Success { lexer, value }) => match value {
-            ("next", "page") => Ok(Success { lexer, value: NextStmt::Page }),
-            ("next", "line") => Ok(Success { lexer, value: NextStmt::Line }),
+            ("insert", _) => unimplemented!(),
+            _                => Err(Failure {
+                parse_error: ParseError::new("invalid 'insert' statement")
+                    .with_span(
+                        "expected 'insert'",
+                        lexer.span(),
+                        lexer.column_metrics()),
+                lexer,
+                source: None,
+            }),
+        },
+        Err(e) => Err(e),
+    }
+}
+
+pub fn next_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, Stmt>
+    where Cm: ColumnMetrics,
+{
+    log::trace!("BEGIN: next_stmt");
+    use AtmaToken::*;
+
+    match both(
+        text(one(Ident)),
+        text(one(Ident)))
+        (lexer.sublexer())
+    {
+        Ok(Success { lexer, value }) => match value {
+            ("next", "page") => Ok(Success { lexer, value: Stmt::NextPage }),
+            ("next", "line") => Ok(Success { lexer, value: Stmt::NextLine }),
             ("next", _)      => Err(Failure {
                 parse_error: ParseError::new("unrecognized 'next' parameter")
                     .with_span(
@@ -328,6 +298,7 @@ pub fn ast_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, AstExpr<'text>>
     where Cm: ColumnMetrics,
 {
+    log::trace!("BEGIN: ast_expr");
     spanned(unary_expr)
         (lexer)
         .map_value(AstExpr::Unary)

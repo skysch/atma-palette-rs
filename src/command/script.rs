@@ -13,9 +13,10 @@ use crate::command::CommonOptions;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
 use crate::palette::Palette;
+use crate::palette::Expr;
 use crate::parse::AtmaScanner;
 use crate::parse::AtmaToken;
-use crate::parse::script;
+use crate::parse::stmts;
 use crate::setup::Config;
 use crate::setup::Settings;
 
@@ -40,7 +41,7 @@ use std::path::Path;
 #[derive(Debug)]
 pub struct Script {
     /// The script's abstract syntax tree.
-    ast: (),
+    stmts: Vec<Stmt>
 }
 
 impl Script {
@@ -53,7 +54,13 @@ impl Script {
         settings: &mut Settings)
         -> Result<(), anyhow::Error>
     {
-        unimplemented!()
+        if self.stmts.is_empty() {
+            log::warn!("Executing empty script.");
+        }
+        for stmt in self.stmts {
+            log::debug!("Executing statement {:?}", stmt);
+        }
+        Ok(())
     }
 
     /// Constructs a new `Script` by parsing data from the file at the given
@@ -90,10 +97,32 @@ impl std::str::FromStr for Script {
         let mut lexer = Lexer::new(scanner, text, column_metrics);
         lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
-
-        script(lexer)
-            .finish()?;
-        unimplemented!()
+        stmts(lexer)
+            .map_value(|stmts| Script { stmts })
+            .finish()
     }
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// Statements
+////////////////////////////////////////////////////////////////////////////////
+/// A script statement.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Stmt {
+    Insert {
+        expr: Expr,
+        as_clause: AsClause,
+        at_clause: AtClause,
+    },
+    NextPage,
+    NextLine,
+}
+
+/// An at-clause for an insert statement.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AtClause;
+
+/// An as-clause for an insert statement.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AsClause;

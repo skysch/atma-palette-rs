@@ -26,8 +26,9 @@ use crate::cell::Position;
 use crate::cell::PositionSelector;
 
 // External module imports.
-use log::*;
 use colored::Colorize as _;
+
+
 
 /// Executes the `atma list` command.
 pub fn list(
@@ -77,10 +78,10 @@ fn list_lines<'a>(
     _settings: &mut Settings)
     -> Result<(), anyhow::Error>
 {
-    debug!("Start listing for selection {:?}", selection);
+    log::debug!("Start listing for selection {:?}", selection);
     let selection = selection.unwrap_or(CellSelector::All.into());
     let index_selection = selection.resolve(palette.inner());
-    debug!("Start listing for {:?}", index_selection);
+    log::debug!("Start listing for {:?}", index_selection);
 
     for idx in index_selection {
         if let Ok(Some(c)) = palette.inner()
@@ -150,15 +151,15 @@ fn list_grid<'a>(
             min_right_gutter_width)
     };
 
-    trace!("left_gutter_width: {}", left_gutter_width);
-    trace!("max_center_width: {}", max_center_width);
-    trace!("columns: {}", columns);
-    trace!("right_gutter_width: {}", right_gutter_width);
+    log::trace!("left_gutter_width: {}", left_gutter_width);
+    log::trace!("max_center_width: {}", max_center_width);
+    log::trace!("columns: {}", columns);
+    log::trace!("right_gutter_width: {}", right_gutter_width);
 
     let max_col = corner_position.column.saturating_add(columns - 1);
     let mut max_line = corner_position.line.saturating_add(size.1 - 2);
     const MAX_SKIP: u16 = 20;
-    trace!("max_col: {}, max_line: {}", max_col, max_line);
+    log::trace!("max_col: {}, max_line: {}", max_col, max_line);
 
     let mut line_buf = Vec::with_capacity(columns.into());
     let mut skipped: u16 = 0;
@@ -245,7 +246,7 @@ fn list_grid<'a>(
                     Ok(Some(c)) => color_display.print(c),
                     Err(PaletteError::UndefinedColor { cell_ref, circular }) => {
                         color_display.print_invalid();
-                        warn!("{:?} {:?}", cell_ref, circular);
+                        log::warn!("{:?} {:?}", cell_ref, circular);
                     },
                     Ok(None)    => color_display.print_empty(),
                     Err(_)      => color_display.print_empty(),

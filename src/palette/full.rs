@@ -32,7 +32,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use ron::ser::PrettyConfig;
 use ron::ser::to_string_pretty;
-use log::*;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -206,7 +205,7 @@ impl Palette {
 
     /// Generates a RON formatted `Palette` by serializing into the given file.
     fn generate_ron_into_file(&self, file: &mut File) -> Result<(), FileError> {
-        debug!("Serializing & writing Palette file.");
+        log::debug!("Serializing & writing Palette file.");
         let pretty = PrettyConfig::new()
             .with_depth_limit(3)
             .with_extensions(ron::extensions::Extensions::IMPLICIT_SOME);

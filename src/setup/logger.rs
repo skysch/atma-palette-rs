@@ -11,9 +11,7 @@
 
 // External library imports.
 use fern::colors::Color;
-
 use log::*;
-
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -154,10 +152,7 @@ impl Logger {
     /// + `formatter`: The formatter function.
     fn new_with_formatter<F>(formatter: F) -> Self
         where
-            F: Fn(
-                fern::FormatCallback<'_>,
-                &fmt::Arguments<'_>,
-                &Record<'_>)
+            F: Fn(fern::FormatCallback<'_>, &fmt::Arguments<'_>, &Record<'_>)
             + Sync + Send + 'static,
     {
         let dispatch = fern::Dispatch::new().format(formatter);
@@ -173,10 +168,7 @@ impl Logger {
     /// [`LoggerConfig`]: struct.LoggerConfig.html
     pub fn from_config_formatter<F>(config: LoggerConfig, formatter: F) -> Self
         where
-            F: Fn(
-                fern::FormatCallback<'_>,
-                &fmt::Arguments<'_>,
-                &Record<'_>)
+            F: Fn(fern::FormatCallback<'_>, &fmt::Arguments<'_>, &Record<'_>)
             + Sync + Send + 'static,
     {
         Logger::new_with_formatter(formatter).configure(config)
@@ -249,7 +241,7 @@ impl Logger {
     /// [`log macros`]: https://docs.rs/log/0.4.10/log/#macros
     pub fn start(self) {
         self.dispatch.apply().unwrap_or_else(|_|
-            warn!("Logger already set, SUNFLOWER logger will not be used")
+            log::warn!("Logger already set, SUNFLOWER logger will not be used")
         );
     }
 }
