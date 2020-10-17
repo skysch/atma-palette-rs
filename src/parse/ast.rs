@@ -261,7 +261,7 @@ pub fn next_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     match both(
         text(one(Ident)),
         text(one(Ident)))
-        (lexer.sublexer())
+        (lexer)
     {
         Ok(Success { lexer, value }) => match value {
             ("next", "page") => Ok(Success { lexer, value: Stmt::NextPage }),

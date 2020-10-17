@@ -150,7 +150,7 @@ impl std::fmt::Display for AtmaToken {
             Decimal           => write!(f, "'.'"),
             Uint              => write!(f, "integer"),
             HexDigits         => write!(f, "hex digits"),
-            Ident             => write!(f, "idetifier"),
+            Ident             => write!(f, "identifier"),
             Underscore        => write!(f, "'_'"),
         }
     }
@@ -184,7 +184,9 @@ impl AtmaScanner {
         where Cm: ColumnMetrics,
     {
         if text.starts_with(pattern) {
-            Some((token, metrics.width(pattern)))
+            let pos = metrics.width(pattern);
+            log::trace!("Scanned {:?} token: \"{}\".", token, &text[..pos.byte]);
+            Some((token, pos))
         } else {
             None
         }
@@ -215,6 +217,10 @@ impl AtmaScanner {
             }
         }
 
+        log::trace!(
+            "Scanned {:?} token: \"{}\".",
+            AtmaToken::Ident,
+            &text[..pos.byte]);
         Some((AtmaToken::Ident, pos))
     }
 
@@ -243,7 +249,12 @@ impl AtmaScanner {
         let substr = &text[..text.len() - rest.len()];
         
         if !substr.is_empty() {
-            return Some((AtmaToken::Uint, adv + metrics.width(substr)));
+            let pos = adv + metrics.width(substr);
+            log::trace!(
+                "Scanned {:?} token: \"{}\".",
+                AtmaToken::Uint,
+                &text[..pos.byte]);
+            return Some((AtmaToken::Uint, pos));
         } else {
             None
         }
@@ -259,7 +270,12 @@ impl AtmaScanner {
         let substr = &text[..text.len() - rest.len()];
         
         if !substr.is_empty() {
-            return Some((AtmaToken::HexDigits, metrics.width(substr)));
+            let pos = metrics.width(substr);
+            log::trace!(
+                "Scanned {:?} token: \"{}\".",
+                AtmaToken::HexDigits,
+                &text[..pos.byte]);
+            return Some((AtmaToken::HexDigits, pos));
         } else {
             None
         }
@@ -271,10 +287,20 @@ impl AtmaScanner {
         where Cm: ColumnMetrics,
     {
         if text.starts_with("inf") {
-            return Some((AtmaToken::Float, Pos::new(3, 0, 3)));
+            let pos = Pos::new(3, 0, 3);
+            log::trace!(
+                "Scanned {:?} token: \"{}\".",
+                AtmaToken::Float,
+                &text[..pos.byte]);
+            return Some((AtmaToken::Float, pos));
         }
         if text.starts_with("nan") {
-            return Some((AtmaToken::Float, Pos::new(3, 0, 3)));
+            let pos = Pos::new(3, 0, 3);
+            log::trace!(
+                "Scanned {:?} token: \"{}\".",
+                AtmaToken::Float,
+                &text[..pos.byte]);
+            return Some((AtmaToken::Float, pos));
         }
 
         let mut rest = text.trim_start_matches(|c: char| c.is_digit(10));
@@ -298,7 +324,12 @@ impl AtmaScanner {
                     !rest.starts_with(|c: char| c == 'e' || c == 'E')
                 { 
                     let cols = text.len() - rest.len();
-                    return Some((AtmaToken::Float, Pos::new(cols, 0, cols)));
+                    let pos = Pos::new(cols, 0, cols);
+                    log::trace!(
+                        "Scanned {:?} token: \"{}\".",
+                        AtmaToken::Float,
+                        &text[..pos.byte]);
+                    return Some((AtmaToken::Float, pos));
                 }
                 rest = &rest[1..];
 
@@ -311,7 +342,12 @@ impl AtmaScanner {
                 if next.len() != rest.len() {
                     rest = next;
                     let cols = text.len() - rest.len();
-                    return Some((AtmaToken::Float, Pos::new(cols, 0, cols)));
+                    let pos = Pos::new(cols, 0, cols);
+                    log::trace!(
+                        "Scanned {:?} token: \"{}\".",
+                        AtmaToken::Float,
+                        &text[..pos.byte]);
+                    return Some((AtmaToken::Float, pos));
                 }
             }
         }
@@ -338,6 +374,10 @@ impl AtmaScanner {
                 },
                 '"' => {
                     pos += Pos::new(1, 0, 1);
+                    log::trace!(
+                        "Scanned {:?} token: \"{}\".",
+                        AtmaToken::RawStringOpen,
+                        &text[..pos.byte]);
                     return Some((AtmaToken::RawStringOpen, pos));
                 },
                 _ => return None,
@@ -373,6 +413,10 @@ impl AtmaScanner {
         }
 
         if self.depth == raw_count {
+            log::trace!(
+                "Scanned {:?} token: \"{}\".",
+                AtmaToken::RawStringClose,
+                &text[..pos.byte]);
             Some((AtmaToken::RawStringClose, pos))
         } else {
             None
@@ -393,12 +437,20 @@ impl AtmaScanner {
                 .is_some()
             {
                 self.open = Some(AtmaToken::RawStringText);
+                log::trace!(
+                    "Scanned {:?} token: \"{}\".",
+                    AtmaToken::RawStringText,
+                    &text[..pos.byte]);
                 return Some((AtmaToken::RawStringText, pos));
             } else {
                 pos += adv;
             }
         }
 
+        log::trace!(
+            "Scanned {:?} token: \"{}\".",
+            AtmaToken::RawStringText,
+            &text[..pos.byte]);
         Some((AtmaToken::RawStringText, pos))
     }
 
@@ -429,6 +481,10 @@ impl AtmaScanner {
                 
                 ("'",  AtmaToken::StringOpenSingle) |
                 ("\"", AtmaToken::StringOpenDouble) => {
+                    log::trace!(
+                        "Scanned {:?} token: \"{}\".",
+                        AtmaToken::StringText,
+                        &text[..pos.byte]);
                     return Some((AtmaToken::StringText, pos));
                 },
 
@@ -436,6 +492,10 @@ impl AtmaScanner {
             }
         }
 
+        log::trace!(
+            "Scanned {:?} token: \"{}\".",
+            AtmaToken::StringText,
+            &text[..pos.byte]);
         Some((AtmaToken::StringText, pos))
     }
 
@@ -447,7 +507,12 @@ impl AtmaScanner {
         let rest = text.trim_start_matches(char::is_whitespace);
         if rest.len() < text.len() {
             let substr = &text[..text.len() - rest.len()];
-            Some((AtmaToken::Whitespace, metrics.width(substr)))
+            let pos = metrics.width(substr);
+            log::trace!(
+                "Scanned {:?} token: \"{}\".",
+                AtmaToken::Whitespace,
+                &text[..pos.byte]);
+            Some((AtmaToken::Whitespace, pos))
         } else {
             None
         }
@@ -552,15 +617,7 @@ impl Scanner for AtmaScanner {
                     return Some(parse);
                 }
 
-                if let Some(parse) = self.parse_str(
-                    text,
-                    metrics,
-                    ";",
-                    Semicolon)
-                {
-                    self.open = Some(Semicolon);
-                    return Some(parse);
-                }
+                return_if_some!(self.parse_str(text, metrics, ";", Semicolon));
                 if let Some(parse) = self.parse_str(text, metrics, ":", Colon) {
                     self.open = Some(Colon);
                     return Some(parse);
@@ -587,7 +644,8 @@ impl Scanner for AtmaScanner {
                 None
             },
 
-            Some(_) => panic!("invalid lexer state"),
+            Some(s) => panic!(
+                "invalid lexer state Some({:?}) continuing at {:?}", s, text),
         }
     }
 }
