@@ -21,6 +21,8 @@ use crate::setup::Config;
 use crate::setup::Settings;
 
 // External library imports.
+use tephra::combinator::left;
+use tephra::combinator::end_of_text;
 use tephra::lexer::Lexer;
 use tephra::position::Lf;
 use tephra::result::FailureOwned;
@@ -97,7 +99,7 @@ impl std::str::FromStr for Script {
         let mut lexer = Lexer::new(scanner, text, column_metrics);
         lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
-        stmts(lexer)
+        left(stmts, end_of_text)(lexer)
             .map_value(|stmts| Script { stmts })
             .finish()
     }

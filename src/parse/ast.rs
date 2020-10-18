@@ -26,6 +26,7 @@ use tephra::combinator::atomic;
 use tephra::combinator::both;
 use tephra::combinator::bracket;
 use tephra::combinator::fail;
+use tephra::combinator::left;
 use tephra::combinator::intersperse_collect;
 use tephra::combinator::repeat;
 use tephra::combinator::repeat_collect;
@@ -168,9 +169,11 @@ pub fn stmts<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     where Cm: ColumnMetrics,
 {
     log::trace!("BEGIN: stmts");
-    intersperse_collect(0, None,
-        stmt,
-        repeat(1, None, one(AtmaToken::Semicolon)))
+    left(
+        intersperse_collect(0, None,
+            stmt,
+            repeat(1, None, one(AtmaToken::Semicolon))),
+        repeat(0, None, one(AtmaToken::Semicolon)))
         (lexer)
 }
 
