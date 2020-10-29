@@ -17,9 +17,11 @@ use crate::parse::cell_ref;
 use crate::parse::color;
 use crate::parse::AtmaToken;
 use crate::parse::AtmaScanner;
+use crate::parse::AstExprMatch as _;
 use crate::command::Stmt;
 use crate::command::AtClause;
 use crate::command::AsClause;
+use crate::palette::InsertExpr;
 
 // External library imports.
 use tephra::combinator::atomic;
@@ -27,7 +29,9 @@ use tephra::combinator::both;
 use tephra::combinator::bracket;
 use tephra::combinator::fail;
 use tephra::combinator::left;
+use tephra::combinator::right;
 use tephra::combinator::intersperse_collect;
+use tephra::combinator::intersperse_collect_until;
 use tephra::combinator::repeat;
 use tephra::combinator::repeat_collect;
 use tephra::combinator::one;
@@ -182,14 +186,7 @@ pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Stmt>
     where Cm: ColumnMetrics,
 {
-    log::trace!("BEGIN: stmt");
-
-    // insert statement
-    match insert_stmt(lexer.sublexer()) {
-        Ok(stmt) => return Ok(stmt),
-        Err(_) => (),
-    }
-    log::trace!("  stmt: insert_stmt failed");
+    log::trace!("BEGIN: stmt\n");
 
     // next statement
     match next_stmt(lexer.sublexer()) {
@@ -197,6 +194,13 @@ pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
         Err(_) => (),
     }
     log::trace!("  stmt: next_stmt failed");
+
+    // insert statement
+    match insert_stmt(lexer.sublexer()) {
+        Ok(stmt) => return Ok(stmt),
+        Err(_) => (),
+    }
+    log::trace!("  stmt: insert_stmt failed");
 
     
     match lexer.peek() {
@@ -235,12 +239,30 @@ pub fn insert_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
 
     match both(
         text(one(Ident)),
-        text(one(Ident)))
+        ast_expr)
         (lexer.sublexer())
     {
         Ok(Success { lexer, value }) => match value {
-            ("insert", _) => unimplemented!(),
-            _                => Err(Failure {
+            ("insert", ast_expr) => {
+                match InsertExpr::match_expr(ast_expr, lexer.column_metrics()) {
+                    Ok(expr) => Ok(Success { 
+                        lexer,
+                        value: Stmt::Insert {
+                            expr,
+                            as_clause: AsClause,
+                            at_clause: AtClause,
+                        }
+                    }),
+
+                    Err(parse_error) => Err(Failure {
+                        parse_error,
+                        lexer,
+                        source: None,
+                    }),
+                }
+            },
+
+            _ => Err(Failure {
                 parse_error: ParseError::new("invalid 'insert' statement")
                     .with_span(
                         "expected 'insert'",
@@ -311,6 +333,7 @@ pub fn unary_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, UnaryExpr<'text>>
     where Cm: ColumnMetrics,
 {
+    log::trace!("BEGIN: unary_expr");
     use AtmaToken::*;
     match lexer.peek() {
         Some(Minus) => both(
@@ -340,26 +363,31 @@ pub fn call_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, CallExpr<'text>>
     where Cm: ColumnMetrics,
 {
+    log::trace!("BEGIN: call_expr");
     use AtmaToken::*;
 
+    // log::trace!("    call_expr: lexer before {}", lexer);
     let (Spanned { value, mut span }, mut succ) = spanned(primary_expr)
         (lexer)?
         .take_value();
 
+    log::trace!("    call_expr: prefix is '{:?}'", value);
+    log::trace!("    call_expr: suffix {}", succ.lexer);
     let mut res = CallExpr::Primary(value);
 
-    loop {
-        match atomic(
-                spanned(bracket(
-                    one(OpenParen),
-                    intersperse_collect(0, None,
-                        ast_expr,
-                        one(Comma)),
-                    one(CloseParen))))
-            (succ.lexer.clone())
-            .filter_lexer_error()
-        {
-            Ok(args_succ) => match args_succ.value {
+    match atomic(
+        spanned(
+            bracket(
+                one(OpenParen),
+                intersperse_collect(0, None,
+                    ast_expr,
+                    one(Comma)),
+                one(CloseParen))))
+        (succ.lexer.clone())
+        .filter_lexer_error()
+    {
+        Ok(Success { value, lexer }) => {
+            match value {
                 Some(Spanned { value: args, span: args_span }) => {
                     res = CallExpr::Call {
                         operand: Box::new(Spanned {
@@ -369,15 +397,18 @@ pub fn call_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
                         args,
                     };
                     span = span.enclose(args_span);
-                    succ.lexer = args_succ.lexer;
+                    log::trace!("    call_expr: sublexer {}", lexer);
+                    succ.lexer = lexer;
                 },
-                None => break,
-            },
-            Err(None)     => break,
-            Err(Some(e))  => return Err(e),
-        }
+                None => (),
+            }
+        },
+        Err(None)     => (),
+        Err(Some(e))  => return Err(e),
     }
 
+    log::trace!("    call_expr: lexer after {}", succ.lexer);
+    log::trace!("END call_expr: {:?}", res);
     Ok(Success {
         value: res,
         lexer: succ.lexer,
@@ -388,6 +419,7 @@ pub fn primary_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, PrimaryExpr<'text>>
     where Cm: ColumnMetrics,
 {
+    log::trace!("BEGIN: primary_expr");
     use AtmaToken::*;
     match lexer.peek() {
         Some(Ident) => text(one(Ident))

@@ -443,24 +443,21 @@ impl UnaryBlendMethod {
 }
 
 impl std::str::FromStr for UnaryBlendMethod {
-    type Err = FailureOwned;
+    type Err = InvalidBlendMethod;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        // Setup parser.
-        let scanner = AtmaScanner::new();
-        let column_metrics = Lf::with_tab_width(4);
-        let mut lexer = Lexer::new(scanner, text, column_metrics);
-        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
-
-        // Perform parse.
-        let ast = ast_expr(lexer)
-            .finish()?;
-
-        UnaryBlendMethod::match_expr(ast, column_metrics)
-            .map_err(|parse_error| FailureOwned {
-                parse_error: parse_error.into_owned(),
-                source: None,
-            })
+        match text {
+            "set_red"    => Ok(UnaryBlendMethod::SetRed),
+            "set_green"  => Ok(UnaryBlendMethod::SetGreen),
+            "set_blue"   => Ok(UnaryBlendMethod::SetBlue),
+            "hue_shift"  => Ok(UnaryBlendMethod::HueShift),
+            "set_hue"    => Ok(UnaryBlendMethod::SetHue),
+            "saturate"   => Ok(UnaryBlendMethod::Saturate),
+            "desaturate" => Ok(UnaryBlendMethod::Desaturate),
+            "lighten"    => Ok(UnaryBlendMethod::Lighten),
+            "darken"     => Ok(UnaryBlendMethod::Darken),
+            _            => Err(InvalidBlendMethod),
+        }
     }
 }
 
@@ -633,24 +630,27 @@ impl BinaryBlendMethod {
 
 
 impl std::str::FromStr for BinaryBlendMethod {
-    type Err = FailureOwned;
+    type Err = InvalidBlendMethod;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        // Setup parser.
-        let scanner = AtmaScanner::new();
-        let column_metrics = Lf::with_tab_width(4);
-        let mut lexer = Lexer::new(scanner, text, column_metrics);
-        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
-
-        // Perform parse.
-        let ast = ast_expr(lexer)
-            .finish()?;
-
-        BinaryBlendMethod::match_expr(ast, column_metrics)
-            .map_err(|parse_error| FailureOwned {
-                parse_error: parse_error.into_owned(),
-                source: None,
-            })
+        match text {
+            "blend"        => Ok(BinaryBlendMethod::Blend),
+            "multiply"     => Ok(BinaryBlendMethod::Multiply),
+            "divide"       => Ok(BinaryBlendMethod::Divide),
+            "subtract"     => Ok(BinaryBlendMethod::Subtract),
+            "difference"   => Ok(BinaryBlendMethod::Difference),
+            "screen"       => Ok(BinaryBlendMethod::Screen),
+            "overlay"      => Ok(BinaryBlendMethod::Overlay),
+            "hard_light"   => Ok(BinaryBlendMethod::HardLight),
+            "soft_light"   => Ok(BinaryBlendMethod::SoftLight),
+            "color_dodge"  => Ok(BinaryBlendMethod::ColorDodge),
+            "color_burn"   => Ok(BinaryBlendMethod::ColorBurn),
+            "vivid_light"  => Ok(BinaryBlendMethod::VividLight),
+            "linear_dodge" => Ok(BinaryBlendMethod::LinearDodge),
+            "linear_burn"  => Ok(BinaryBlendMethod::LinearBurn),
+            "linear_light" => Ok(BinaryBlendMethod::LinearLight),
+            _              => Err(InvalidBlendMethod),
+        }
     }
 }
 

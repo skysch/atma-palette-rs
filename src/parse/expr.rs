@@ -72,25 +72,29 @@ impl AstExprMatch for InsertExpr {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: InsertExpr from AstExpr {:?}", ast_expr);
         let ast_span = ast_expr.span();
         
         // Ramp
         match RampExpr::match_expr(ast_expr.clone(), metrics) {
             Ok(expr) => return Ok(InsertExpr::Ramp(expr)),
-            Err(_) => (),
+            Err(e) => (),
         }
+        log::trace!("  InsertExpr match (Ramp) fails.");
 
         // Blend
         match BlendExpr::match_expr(ast_expr.clone(), metrics) {
             Ok(expr) => return Ok(InsertExpr::Blend(expr)),
             Err(_) => (),
         }
+        log::trace!("  InsertExpr match (Blend) fails.");
 
         // Color
         match Color::match_expr(ast_expr.clone(), metrics) {
             Ok(color) => return Ok(InsertExpr::Color(color)),
             Err(_) => (),
         }
+        log::trace!("  InsertExpr match (Color) fails.");
 
         // Copy
         match <FunctionCall<Ident, (CellRef<'static>,)>>::match_expr(
@@ -102,13 +106,16 @@ impl AstExprMatch for InsertExpr {
             },
             _ => (),
         }
+        log::trace!("  InsertExpr match (Copy) fails.");
 
         // Reference
         match <CellRef<'static>>::match_expr(ast_expr.clone(), metrics) {
             Ok(cell_ref) => return Ok(InsertExpr::Reference(cell_ref)),
             Err(_) => (),
         }
+        log::trace!("  InsertExpr match (Reference) fails.");
 
+        log::trace!("  InsertExpr match fails completely.");
         Err(ParseError::new("invalid insert expression")
             .with_span("unrecognized insert expression",
                 ast_span,
@@ -126,6 +133,7 @@ impl AstExprMatch for RampExpr {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: RampExpr from AstExpr. {:?}", ast_expr);
         let ast_span = ast_expr.span();
         
         match <FunctionCall<Ident, (u8, BlendFunction)>>::match_expr(
@@ -133,6 +141,7 @@ impl AstExprMatch for RampExpr {
             metrics)
         {
             Ok(FunctionCall { operand: Ident(i), args }) if i == "ramp" => {
+                log::trace!("  RampExpr match succeeds (1).");
                 return Ok(RampExpr {
                     count: args.0,
                     blend_fn: args.1,
@@ -146,10 +155,11 @@ impl AstExprMatch for RampExpr {
                 u8,
                 BlendFunction,
                 InterpolateRange)>>::match_expr(
-            ast_expr.clone(),
+            ast_expr,
             metrics)
         {
             Ok(FunctionCall { operand: Ident(i), args }) if i == "ramp" => {
+                log::trace!("  RampExpr match succeeds (2).");
                 return Ok(RampExpr {
                     count: args.0,
                     blend_fn: args.1,
@@ -159,6 +169,7 @@ impl AstExprMatch for RampExpr {
             _ => (),
         }
 
+        log::trace!("  RampExpr match fails.");
         Err(ParseError::new("invalid ramp function")
             .with_span("unrecognized ramp function",
                 ast_span,
@@ -176,6 +187,7 @@ impl AstExprMatch for BlendExpr {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: BlendExpr from AstExpr: {:?}", ast_expr);
         let ast_span = ast_expr.span();
         
         match <FunctionCall<UnaryBlendMethod, (
@@ -185,6 +197,7 @@ impl AstExprMatch for BlendExpr {
             metrics)
         {
             Ok(FunctionCall { operand, args }) => {
+                log::trace!("  BlendExpr match succeeds (1).");
                 return Ok(BlendExpr {
                     blend_fn: BlendFunction::Unary(UnaryBlendFunction {
                         blend_method: operand,
@@ -205,6 +218,7 @@ impl AstExprMatch for BlendExpr {
             metrics)
         {
             Ok(FunctionCall { operand, args }) => {
+                log::trace!("  BlendExpr match succeeds (2).");
                 return Ok(BlendExpr {
                     blend_fn: BlendFunction::Unary(UnaryBlendFunction {
                         blend_method: operand,
@@ -224,6 +238,7 @@ impl AstExprMatch for BlendExpr {
             metrics)
         {
             Ok(FunctionCall { operand, args }) => {
+                log::trace!("  BlendExpr match succeeds (3).");
                 return Ok(BlendExpr {
                     blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                         blend_method: operand,
@@ -245,6 +260,7 @@ impl AstExprMatch for BlendExpr {
             metrics)
         {
             Ok(FunctionCall { operand, args }) => {
+                log::trace!("  BlendExpr match succeeds (4).");
                 return Ok(BlendExpr {
                     blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                         blend_method: operand,
@@ -267,6 +283,7 @@ impl AstExprMatch for BlendExpr {
             metrics)
         {
             Ok(FunctionCall { operand, args }) => {
+                log::trace!("  BlendExpr match succeeds (5).");
                 return Ok(BlendExpr {
                     blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                         blend_method: operand,
@@ -288,7 +305,7 @@ impl AstExprMatch for BlendExpr {
             metrics)
         {
             Ok(FunctionCall { operand, args }) => {
-                
+                log::trace!("  BlendExpr match succeeds (6).");
                 return Ok(BlendExpr {
                     blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                         blend_method: operand,
@@ -302,6 +319,7 @@ impl AstExprMatch for BlendExpr {
             _ => (),
         }
 
+        log::trace!("  BlendExpr match fails.");
         Err(ParseError::new("invalid blend function")
             .with_span("unrecognized blend function",
                 ast_span,
@@ -317,6 +335,7 @@ impl AstExprMatch for BlendFunction {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: BlendFunction from AstExpr: {:?}", ast_expr);
         let ast_span = ast_expr.span();
 
         // Unary
@@ -349,6 +368,7 @@ impl AstExprMatch for UnaryBlendFunction {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: UnaryBlendFunction from AstExpr: {:?}", ast_expr);
         let ast_span = ast_expr.span();
 
         match <FunctionCall<
@@ -380,7 +400,7 @@ impl AstExprMatch for BinaryBlendFunction {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-
+        log::trace!("MATCH: BinaryBlendFunction from AstExpr: {:?}", ast_expr);
         let ast_span = ast_expr.span();
 
         match <FunctionCall<
@@ -436,6 +456,7 @@ impl AstExprMatch for UnaryBlendMethod {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: UnaryBlendMethod from AstExpr: {:?}", ast_expr);
         let ast_span = ast_expr.span();
         
         match Ident::match_expr(ast_expr, metrics) {
@@ -458,6 +479,7 @@ impl AstExprMatch for BinaryBlendMethod {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: BinaryBlendMethod from AstExpr: {:?}", ast_expr);
         let ast_span = ast_expr.span();
         
         match Ident::match_expr(ast_expr, metrics) {
@@ -484,6 +506,7 @@ impl AstExprMatch for Interpolate {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: Interpolate from AstExpr: {:?}", ast_expr);
         let ast_span = ast_expr.span();
 
         match f32::match_expr(ast_expr.clone(), metrics) {
@@ -557,6 +580,7 @@ impl AstExprMatch for InterpolateRange {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: InterpolateRange from AstExpr: {:?}", ast_expr);
         let ast_span = ast_expr.span();
         match InterpolateFunction::match_expr(ast_expr.clone(), metrics) {
             Ok(interpolate_fn) => {
@@ -655,6 +679,7 @@ impl AstExprMatch for InterpolateFunction {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: InterpolateFunction from AstExpr: {:?}", ast_expr);
         let ast_span = ast_expr.span();
         match Ident::match_expr(ast_expr.clone(), metrics) {
             Ok(Ident(ident)) if ident == "linear" => return Ok(
@@ -689,6 +714,7 @@ impl AstExprMatch for ColorSpace {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: ColorSpace from AstExpr: {:?}", ast_expr);
         let ast_span = ast_expr.span();
         match Ident::match_expr(ast_expr, metrics) {
             Ok(Ident(ident)) if ident == "rgb" => Ok(ColorSpace::Rgb),

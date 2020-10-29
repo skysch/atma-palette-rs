@@ -15,7 +15,6 @@ mod ast_match;
 mod color;
 mod common;
 mod expr;
-mod function;
 mod scanner;
 mod selection;
 
@@ -25,7 +24,6 @@ pub use ast_helper::*;
 pub use ast_match::*;
 pub use common::*;
 pub use expr::*;
-pub use function::*;
 pub use scanner::*;
 pub use selection::*;
 pub use self::color::*;

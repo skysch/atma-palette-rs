@@ -13,31 +13,35 @@
 
 
 // Local imports.
-use crate::parse::AtmaScanner;
-use crate::parse::AtmaToken;
-use crate::parse::FnArg;
-use crate::parse::fn_call;
 use crate::color::Color;
 use crate::color::Rgb;
+use crate::parse::AtmaScanner;
+use crate::parse::AtmaToken;
+use crate::parse::float;
+use crate::parse::uint;
 
 // External library imports.
 use tephra::combinator::any;
+use tephra::combinator::both;
 use tephra::combinator::bracket;
 use tephra::combinator::bracket_dynamic;
 use tephra::combinator::exact;
+use tephra::combinator::intersperse_collect;
 use tephra::combinator::one;
 use tephra::combinator::right;
+use tephra::combinator::section;
 use tephra::combinator::seq;
+use tephra::combinator::spanned;
 use tephra::combinator::text;
 use tephra::lexer::Lexer;
 use tephra::lexer::Scanner;
+use tephra::position::ColumnMetrics;
 use tephra::result::Failure;
 use tephra::result::ParseError;
 use tephra::result::ParseResult;
 use tephra::result::ParseResultExt as _;
-use tephra::result::Success;
 use tephra::result::Spanned;
-use tephra::position::ColumnMetrics;
+use tephra::result::Success;
 use tephra::span::Span;
 
 // Standard library imports.
@@ -261,4 +265,71 @@ fn rgb_from_args<'text, Cm>(
             source: None,
         }),
     }
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// FnCall
+////////////////////////////////////////////////////////////////////////////////
+/// An AST matcher for parsing a function call.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FnCall<'text> {
+    /// The name of the function.
+    pub name: &'text str,
+    /// The function arguments.
+    pub args: Vec<Spanned<'text, FnArg>>,
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// FnArg
+////////////////////////////////////////////////////////////////////////////////
+/// And AST matcher for parsing a function call argument.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum FnArg {
+    /// A u32 argument.
+    U32(u32),
+    /// An f32 argument.
+    F32(f32),
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Parsers
+////////////////////////////////////////////////////////////////////////////////
+/// Parses a simple function call.
+pub fn fn_call<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, FnCall<'text>>
+    where Cm: ColumnMetrics,
+{
+    both(
+        text(one(AtmaToken::Ident)),
+        bracket(
+            one(AtmaToken::OpenParen),
+            intersperse_collect(0, None,
+                section(spanned(fn_arg)),
+                one(AtmaToken::Comma)),
+            one(AtmaToken::CloseParen)))
+        (lexer)
+        .map_value(|(name, args)| FnCall { name, args })
+}
+
+/// Parses a simple function call arg.
+pub fn fn_arg<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, FnArg>
+    where Cm: ColumnMetrics,
+{
+    match float::<_, f32>
+        (lexer.clone())
+        .filter_lexer_error()
+    {
+        Ok(succ)        => return Ok(succ).map_value(FnArg::F32),
+        Err(Some(fail)) => return Err(fail),
+        Err(None)       => (),
+    }
+    
+    uint::<_, u32>
+        (lexer)
+        .map_value(FnArg::U32)
 }

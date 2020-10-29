@@ -93,6 +93,7 @@ impl AstExprMatch for Ident {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: Ident from AstExpr: {:?}", ast_expr);
         let AstExpr::Unary(Spanned { span, value }) = ast_expr;
         let ast_span = span;
 
@@ -122,6 +123,9 @@ macro_rules! float_matcher {
                 -> Result<Self, ParseError<'text, Cm>>
                 where Cm: ColumnMetrics
             {
+                log::trace!(
+                    std::concat!("MATCH: ", $rep, " from AstExpr: {:?}"),
+                    ast_expr);
                 let AstExpr::Unary(Spanned { span, value }) = ast_expr;
                 let ast_span = span;
 
@@ -170,6 +174,9 @@ macro_rules! negatable_integer_matcher {
                 -> Result<Self, ParseError<'text, Cm>>
                 where Cm: ColumnMetrics
             {
+                log::trace!(
+                    std::concat!("MATCH: ", $rep, " from AstExpr: {:?}"),
+                    ast_expr);
                 let AstExpr::Unary(Spanned { span, value }) = ast_expr;
                 let ast_span = span;
 
@@ -211,6 +218,9 @@ macro_rules! nonnegatable_integer_matcher {
                 -> Result<Self, ParseError<'text, Cm>>
                 where Cm: ColumnMetrics
             {
+                log::trace!(
+                    std::concat!("MATCH: ", $rep, " from AstExpr: {:?}"),
+                    ast_expr);
                 let AstExpr::Unary(Spanned { span, value }) = ast_expr;
                 let ast_span = span;
 
@@ -266,6 +276,7 @@ impl AstExprMatch for () {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: () from AstExpr: {:?}", ast_expr);
         let AstExpr::Unary(Spanned { span, value }) = ast_expr;
         let ast_span = span;
 
@@ -294,6 +305,7 @@ macro_rules! tuple_impls {
                     -> Result<Self, ParseError<'text, Cm>>
                     where Cm: ColumnMetrics
                 {
+                    log::trace!("MATCH: (tuple) from AstExpr: {:?}", ast_expr);
                     let AstExpr::Unary(Spanned { span, value }) = ast_expr;
                     let ast_span = span;
 
@@ -364,6 +376,7 @@ impl<T> AstExprMatch for Vec<T> where T: AstExprMatch {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: (Array) from AstExpr: {:?}", ast_expr);
         let AstExpr::Unary(Spanned { span, value }) = ast_expr;
         let ast_span = span;
 
@@ -398,6 +411,7 @@ impl AstExprMatch for Color {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: Color from AstExpr: {:?}", ast_expr);
         let AstExpr::Unary(Spanned { span, value }) = ast_expr;
         let ast_span = span;
 
@@ -471,6 +485,7 @@ impl AstExprMatch for CellRef<'static> {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        log::trace!("MATCH: CellRef from AstExpr: {:?}", ast_expr);
         let AstExpr::Unary(Spanned { span, value }) = ast_expr;
         let ast_span = span;
 
@@ -510,6 +525,8 @@ impl<T, A> AstExprMatch for FunctionCall<T, A>
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+
+        log::trace!("MATCH: FunctionCall from AstExpr: {:?}", ast_expr);
         let AstExpr::Unary(Spanned { span, value }) = ast_expr;
         let ast_span = span;
 

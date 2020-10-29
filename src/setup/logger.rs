@@ -211,8 +211,7 @@ impl Logger {
             if let Ok(log_path) = fern::log_file(path) {
                 self.dispatch = self.dispatch.chain(log_path)
             } else {
-                eprintln!("Unable to access the log file, as such it will not \
-                    be used")
+                eprintln!("Unable to access the log file; ignoring it.")
             }
         }
 
@@ -270,8 +269,8 @@ fn env_var_override(config: &mut LoggerConfig) {
     }
 
     if let Ok(var) = env::var("SUNFLOWER_LOG_LEVEL_FILTER") {
-        if let Ok(lf) = LevelFilter::from_str(&var) {
-            config.level_filter = lf;
+        if let Ok(level_filter) = LevelFilter::from_str(&var) {
+            config.level_filter = level_filter;
         }
     }
     

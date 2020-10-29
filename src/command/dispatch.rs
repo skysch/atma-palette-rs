@@ -192,6 +192,8 @@ pub fn dispatch(
         // Insert
         ////////////////////////////////////////////////////////////////////////
         Insert { exprs, name, at } => {
+            log::debug!(" Insert {{ exprs: {:?}, name: {:?}, at: {:?} }}",
+                exprs, name, at);
             let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
             if exprs.is_empty() {
                 println!("No expressions to insert.");

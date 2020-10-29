@@ -13,7 +13,7 @@ use crate::command::CommonOptions;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
 use crate::palette::Palette;
-use crate::palette::Expr;
+use crate::palette::InsertExpr;
 use crate::parse::AtmaScanner;
 use crate::parse::AtmaToken;
 use crate::parse::stmts;
@@ -113,7 +113,7 @@ impl std::str::FromStr for Script {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
     Insert {
-        expr: Expr,
+        expr: InsertExpr,
         as_clause: AsClause,
         at_clause: AtClause,
     },
