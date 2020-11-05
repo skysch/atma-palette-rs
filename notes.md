@@ -67,9 +67,13 @@
     
 # Scripting
 
-Scripting should only support editing commands: `insert`, `delete`, `move`, `set`. Settings modifications should only apply to the current script session, not to the save (unless otherwise specified.)
+page 1 "page 1 name":
+    line 1 "line 1 name":
+        ramp();
+        #ABCDEF;
+        
 
-Each script command is ended with `;`. Whitespace is ignored otherwise.
+
 
 # List options
 

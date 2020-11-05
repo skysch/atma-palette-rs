@@ -178,11 +178,14 @@ pub fn string<'text, Cm>(
     -> ParseResult<'text, AtmaScanner, Cm, Cow<'text, str>>
     where Cm: ColumnMetrics,
 {
-    if let Ok(succ) = raw_string(lexer.clone()) {
+    log::trace!("BEGIN: string");
+    if let Ok(succ) = raw_string(lexer.sublexer()) {
+        log::trace!("  string: raw_string succeeds.");
         return Ok(succ.map_value(Cow::from))
     }
 
-    escaped_string(lexer)
+    log::trace!("  string: raw_string fails.");
+    escaped_string(lexer.sublexer())
 }
 
 pub fn raw_string<'text, Cm>(
@@ -190,6 +193,7 @@ pub fn raw_string<'text, Cm>(
     -> ParseResult<'text, AtmaScanner, Cm, &'text str>
     where Cm: ColumnMetrics,
 {
+    log::trace!("BEGIN: raw_string", );
     use AtmaToken::*;
     bracket(
         one(RawStringOpen),
@@ -203,6 +207,7 @@ pub fn escaped_string<'text, Cm>(
     -> ParseResult<'text, AtmaScanner, Cm, Cow<'text, str>>
     where Cm: ColumnMetrics,
 {
+    log::trace!("BEGIN: escaped_string: {}", lexer);
     use AtmaToken::*;
     let corresponding = move |lexer, tok| match tok {
         StringOpenSingle => one(StringCloseSingle)(lexer),

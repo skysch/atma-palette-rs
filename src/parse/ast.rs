@@ -15,12 +15,12 @@
 use crate::cell::CellRef;
 use crate::parse::cell_ref;
 use crate::parse::color;
+use crate::parse::string;
+use crate::parse::uint;
 use crate::parse::AtmaToken;
 use crate::parse::AtmaScanner;
 use crate::parse::AstExprMatch as _;
 use crate::command::Stmt;
-use crate::command::AtClause;
-use crate::command::AsClause;
 use crate::palette::InsertExpr;
 
 // External library imports.
@@ -28,6 +28,7 @@ use tephra::combinator::atomic;
 use tephra::combinator::both;
 use tephra::combinator::bracket;
 use tephra::combinator::fail;
+use tephra::combinator::maybe;
 use tephra::combinator::left;
 use tephra::combinator::right;
 use tephra::combinator::intersperse_collect;
@@ -168,16 +169,18 @@ impl<'text> PrimaryExpr<'text> {
 // Stmt Parsers
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn stmts<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+pub fn stmts<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Vec<Stmt>>
     where Cm: ColumnMetrics,
 {
     log::trace!("BEGIN: stmts");
-    left(
-        intersperse_collect(0, None,
-            stmt,
-            repeat(1, None, one(AtmaToken::Semicolon))),
-        repeat(0, None, one(AtmaToken::Semicolon)))
+    // Skip beginning empty statements.
+    lexer = repeat(0, None, one(AtmaToken::Semicolon))
+        (lexer)?
+        .lexer;
+
+    log::trace!("  stmts: finished parsing starting empty stmts.");
+    repeat_collect(0, None, stmt)
         (lexer)
 }
 
@@ -186,28 +189,46 @@ pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Stmt>
     where Cm: ColumnMetrics,
 {
-    log::trace!("BEGIN: stmt\n");
+    log::trace!("BEGIN: stmt\n-------\n{}", lexer);
 
-    // next statement
-    match next_stmt(lexer.sublexer()) {
-        Ok(stmt) => return Ok(stmt),
+    // header statements
+    match header_stmt(lexer.sublexer()) {
+        Ok(mut stmt) => {
+            log::trace!("  stmt: header_stmt succeeds; parsing trailing empty \
+                stmts.");
+            // Parse any following empty statements.
+            stmt.lexer = repeat(0, None, one(AtmaToken::Semicolon))
+                (stmt.lexer)?
+                .lexer;
+
+            return Ok(stmt);
+        },
         Err(_) => (),
     }
-    log::trace!("  stmt: next_stmt failed");
+    log::trace!("  stmt: header_stmt failed");
 
-    // insert statement
-    match insert_stmt(lexer.sublexer()) {
-        Ok(stmt) => return Ok(stmt),
+    // expr statement
+    match expr_stmt(lexer.sublexer()) {
+        Ok(mut stmt) => {
+            log::trace!("  stmt: expr_statement succeeds: parsing trailing \
+                empty stmts.");
+            // Parse any following empty statements.
+            stmt.lexer = repeat(1, None, one(AtmaToken::Semicolon))
+                (stmt.lexer)?
+                .lexer;
+
+            return Ok(stmt);
+        },
         Err(_) => (),
     }
-    log::trace!("  stmt: insert_stmt failed");
+    log::trace!("  stmt: expr_stmt failed");
 
     
     match lexer.peek() {
         Some(_) => Err(Failure {
             parse_error: ParseError::new("unrecognized statement")
                 .with_span(
-                    "expected 'next' or 'insert'",
+                    "expected 'palette', 'page', 'line' or expression",
                     lexer.span(),
                     lexer.column_metrics()),
             lexer,
@@ -219,7 +240,7 @@ pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
             Err(Failure {
                 parse_error: ParseError::new("empty statement")
                     .with_span(
-                    "expected 'next' or 'insert'",
+                    "expected 'palette', 'page', 'line' or expression",
                     lexer.end_span(),
                     lexer.column_metrics()),
                 lexer,
@@ -230,44 +251,29 @@ pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
 }
 
 
-pub fn insert_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+pub fn expr_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Stmt>
     where Cm: ColumnMetrics,
 {
-    log::trace!("BEGIN: insert_stmt");
+    log::trace!("BEGIN: expr_stmt");
     use AtmaToken::*;
 
-    match both(
-        text(one(Ident)),
-        ast_expr)
+    match ast_expr
         (lexer.sublexer())
     {
-        Ok(Success { lexer, value }) => match value {
-            ("insert", ast_expr) => {
-                match InsertExpr::match_expr(ast_expr, lexer.column_metrics()) {
-                    Ok(expr) => Ok(Success { 
-                        lexer,
-                        value: Stmt::Insert {
-                            expr,
-                            as_clause: AsClause,
-                            at_clause: AtClause,
-                        }
-                    }),
-
-                    Err(parse_error) => Err(Failure {
-                        parse_error,
-                        lexer,
-                        source: None,
-                    }),
+        Ok(Success { lexer, value }) => match InsertExpr::match_expr(
+            value,
+            lexer.column_metrics())
+        {
+            Ok(expr) => Ok(Success { 
+                lexer,
+                value: Stmt::Expr {
+                    expr,
                 }
-            },
+            }),
 
-            _ => Err(Failure {
-                parse_error: ParseError::new("invalid 'insert' statement")
-                    .with_span(
-                        "expected 'insert'",
-                        lexer.span(),
-                        lexer.column_metrics()),
+            Err(parse_error) => Err(Failure {
+                parse_error,
                 lexer,
                 source: None,
             }),
@@ -276,42 +282,80 @@ pub fn insert_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     }
 }
 
-pub fn next_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
+pub fn header_stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Stmt>
     where Cm: ColumnMetrics,
 {
-    log::trace!("BEGIN: next_stmt");
+    log::trace!("BEGIN: header_stmt");
     use AtmaToken::*;
 
-    match both(
-        text(one(Ident)),
-        text(one(Ident)))
+    // introducer
+    let (lexer, mut stmt) = match text(one(Ident))
         (lexer)
     {
         Ok(Success { lexer, value }) => match value {
-            ("next", "page") => Ok(Success { lexer, value: Stmt::NextPage }),
-            ("next", "line") => Ok(Success { lexer, value: Stmt::NextLine }),
-            ("next", _)      => Err(Failure {
-                parse_error: ParseError::new("unrecognized 'next' parameter")
+            "palette" => (lexer, Stmt::PaletteHeader { name: None }),
+            "page"    => (lexer, Stmt::PageHeader { name: None, number: None }),
+            "line"    => (lexer, Stmt::LineHeader { name: None, number: None }),
+            _         => return Err(Failure {
+                parse_error: ParseError::new("invalid header statement")
                     .with_span(
-                        "expected 'line' or 'page'",
-                        lexer.span(),
-                        lexer.column_metrics()),
-                lexer,
-                source: None,
-            }),
-            _                => Err(Failure {
-                parse_error: ParseError::new("invalid 'next' statement")
-                    .with_span(
-                        "expected 'next'",
+                        "expected 'palette', 'page', or 'line'",
                         lexer.span(),
                         lexer.column_metrics()),
                 lexer,
                 source: None,
             }),
         },
-        Err(e) => Err(e),
+        Err(e) => return Err(e),
+    };
+
+    log::trace!("  header_stmt: introducer {:?}", stmt);
+
+    let (parsed_number, succ) = maybe(uint::<Cm, u16>)
+        (lexer)
+        .expect("header number parse cannot fail")
+        .take_value();
+    log::trace!("  header_stmt: parsed_number {:?}", parsed_number);
+
+    let (parsed_name, succ) = maybe(string)
+        (succ.lexer)
+        .expect("header string parse cannot fail")
+        .take_value();
+    log::trace!("  header_stmt: parsed_name {:?}", parsed_name);
+
+    let lexer = one(Colon)
+        (succ.lexer)?
+        .lexer;
+
+    match &mut stmt {
+        Stmt::PaletteHeader { name } => {
+            *name = parsed_name.map(|t| t.to_string().into());
+            if parsed_number.is_some() {
+                return Err(Failure {
+                    parse_error: ParseError::new("invalid palette header")
+                        .with_span(
+                            "palette numbering is not supported",
+                            lexer.span(),
+                            lexer.column_metrics()),
+                    lexer,
+                    source: None,
+                });
+            }
+        },
+        Stmt::LineHeader { name, number } |
+        Stmt::PageHeader { name, number } => {
+            *name = parsed_name.map(|t| t.to_string().into());
+            *number = parsed_number;
+        },
+        _ => unreachable!(),
     }
+
+    log::trace!("  header_stmt: {:?}", stmt);
+    Ok(Success {
+        value: stmt,
+        lexer,
+    })
 }
 
 

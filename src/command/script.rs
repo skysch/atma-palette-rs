@@ -11,7 +11,6 @@
 // Local imports.
 use crate::command::CommonOptions;
 use crate::error::FileError;
-use crate::error::FileErrorContext as _;
 use crate::palette::Palette;
 use crate::palette::InsertExpr;
 use crate::parse::AtmaScanner;
@@ -32,6 +31,7 @@ use tephra::result::ParseResultExt as _;
 use std::fmt::Debug;
 use std::fs::File;
 use std::fs::OpenOptions;
+use std::borrow::Cow;
 use std::io::Read;
 use std::path::Path;
 
@@ -60,7 +60,7 @@ impl Script {
             log::warn!("Executing empty script.");
         }
         for stmt in self.stmts {
-            log::debug!("Executing statement {:?}", stmt);
+            stmt.execute(palette, common, config, settings)?;
         }
         Ok(())
     }
@@ -70,6 +70,8 @@ impl Script {
     pub fn read_from_path<P>(path: P) -> Result<Self, FileError>
         where P: AsRef<Path> + Debug
     {
+        use crate::error::FileErrorContext as _;
+
         let path = path.as_ref();
         let mut file = OpenOptions::new()
             .read(true)
@@ -112,19 +114,50 @@ impl std::str::FromStr for Script {
 /// A script statement.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
-    Insert {
-        expr: InsertExpr,
-        as_clause: AsClause,
-        at_clause: AtClause,
+    PaletteHeader { 
+        name: Option<Cow<'static, str>>,
     },
-    NextPage,
-    NextLine,
+    PageHeader {
+        name: Option<Cow<'static, str>>,
+        number: Option<u16>,
+    },
+    LineHeader {
+        name: Option<Cow<'static, str>>,
+        number: Option<u16>,
+    },
+    Expr {
+        expr: InsertExpr,
+    },
 }
 
-/// An at-clause for an insert statement.
-#[derive(Debug, Clone, PartialEq)]
-pub struct AtClause;
+impl Stmt {
+    pub fn execute(
+        self,
+        palette: &mut Palette,
+        common: &CommonOptions,
+        config: &Config,
+        settings: &mut Settings)
+        -> Result<(), anyhow::Error>
+    {
+        use anyhow::Context as _;
+        
+        log::debug!("Executing statement {:?}", self);
+        match self {
+            Stmt::PaletteHeader { name }              => (),
+            Stmt::PageHeader { name, number }         => (),
+            Stmt::LineHeader { name, number }         => (),
+            Stmt::Expr { expr } => {
+                // TODO: implement expr naming.
+                let name: Option<Cow<'static, str>> = None;
+                let positioning = unimplemented!();
+                let cursor_behavior = unimplemented!();
 
-/// An as-clause for an insert statement.
-#[derive(Debug, Clone, PartialEq)]
-pub struct AsClause;
+                palette
+                    .insert_exprs(&[expr], name, positioning, cursor_behavior)
+                    .context("expr insert failed.")?;
+            },
+        }
+
+        Ok(())
+    }
+}
