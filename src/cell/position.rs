@@ -39,6 +39,8 @@ pub struct PositionCellConversionError;
 /// A reference to a `Cell` in a palette.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Serialize, Deserialize)]
+#[serde(from = "(u16, u16, u16)")]
+#[serde(into = "(u16, u16, u16)")]
 pub struct Position {
     /// The page number of the cell.
     pub page: u16,
@@ -100,6 +102,24 @@ impl Position {
     }
 }
 
+// Conversion for simplifying serialization.
+impl From<Position> for (u16, u16, u16) {
+    fn from(pos: Position) -> Self {
+        (pos.page, pos.line, pos.column)
+    }
+}
+
+// Conversion for simplifying serialization.
+impl From<(u16, u16, u16)> for Position {
+    fn from(t: (u16, u16, u16)) -> Self {
+        Position {
+            page: t.0,
+            line: t.1,
+            column: t.2,
+        }
+    }
+}
+
 impl TryFrom<PositionSelector> for Position {
     type Error = PositionCellConversionError;
 
@@ -154,6 +174,7 @@ impl std::fmt::Display for PositionParseError {
 }
 
 impl std::error::Error for PositionParseError {}
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
