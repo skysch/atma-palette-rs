@@ -9,15 +9,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
+use crate::cell::PositionSelector;
+use crate::cell::Position;
 use crate::command::CommonOptions;
 use crate::error::FileError;
-use crate::palette::Palette;
 use crate::palette::InsertExpr;
+use crate::palette::Palette;
 use crate::parse::AtmaScanner;
 use crate::parse::AtmaToken;
 use crate::parse::stmts;
 use crate::setup::Config;
 use crate::setup::Settings;
+use crate::command::Positioning;
+use crate::command::CursorBehavior;
 
 // External library imports.
 use tephra::combinator::left;
@@ -101,7 +105,8 @@ impl std::str::FromStr for Script {
         let mut lexer = Lexer::new(scanner, text, column_metrics);
         lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
-        left(stmts, end_of_text)(lexer)
+        left(stmts, end_of_text)
+            (lexer)
             .map_value(|stmts| Script { stmts })
             .finish()
     }
@@ -139,18 +144,56 @@ impl Stmt {
         settings: &mut Settings)
         -> Result<(), anyhow::Error>
     {
+        use Stmt::*;
         use anyhow::Context as _;
         
         log::debug!("Executing statement {:?}", self);
         match self {
-            Stmt::PaletteHeader { name }              => (),
-            Stmt::PageHeader { name, number }         => (),
-            Stmt::LineHeader { name, number }         => (),
-            Stmt::Expr { expr } => {
+            PaletteHeader { name }      => {
+                if name.is_some() {
+                    palette.set_name(name, PositionSelector::ALL)?;
+                }
+                let _ = palette.set_position_cursor(Position::MIN);
+            },
+
+            PageHeader { name, number } => {
+                let page = number.unwrap_or_else(|| palette
+                    .position_cursor().page);
+
+                let _ = palette
+                    .set_position_cursor(Position { page, line: 0, column: 0 });
+
+                if name.is_some() {
+                    palette.set_name(name, PositionSelector {
+                        page: Some(page),
+                        line: None,
+                        column: None,
+                    })?;
+                }
+            },
+            
+            LineHeader { name, number } => {
+                let page = palette.position_cursor().page;
+                let line = number.unwrap_or_else(|| palette
+                    .position_cursor().line);
+
+                let _ = palette
+                    .set_position_cursor(Position { page, line, column: 0 });
+
+                if name.is_some() {
+                    palette.set_name(name, PositionSelector {
+                        page: Some(page),
+                        line: Some(line),
+                        column: None,
+                    })?;
+                }
+            },
+            
+            Expr { expr }               => {
                 // TODO: implement expr naming.
                 let name: Option<Cow<'static, str>> = None;
-                let positioning = unimplemented!();
-                let cursor_behavior = unimplemented!();
+                let positioning = Positioning::Cursor;
+                let cursor_behavior = CursorBehavior::MoveAfterEnd;
 
                 palette
                     .insert_exprs(&[expr], name, positioning, cursor_behavior)

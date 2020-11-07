@@ -507,6 +507,13 @@ impl Palette {
         std::mem::replace(&mut self.history, None)
     }
 
+    /// Returns the palette's `Position` cursor.
+    pub fn position_cursor(&mut self)
+        -> Position
+    {
+        self.inner.position_cursor()
+    }
+
     /// Sets the palette's `Position` cursor, returning its previous value.
     pub fn set_position_cursor(&mut self, position: Position)
         -> Position
