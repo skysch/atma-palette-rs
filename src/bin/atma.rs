@@ -68,7 +68,7 @@ pub fn main_facade() -> Result<(), Error> {
     config.normalize_paths(&cur_dir);
 
     // Initialize the global tracing subscriber.
-    config.trace_config.init_global_default(
+    let _worker_guard = config.trace_config.init_global_default(
         common.verbose,
         common.quiet,
         common.trace)?;

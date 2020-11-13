@@ -27,7 +27,6 @@ use tephra::position::ColumnMetrics;
 use tephra::result::ParseError;
 use tephra::result::Spanned;
 use tephra::span::Span;
-use tracing::event;
 use tracing::Level;
 use tracing::span;
 

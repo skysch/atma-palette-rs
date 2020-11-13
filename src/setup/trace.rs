@@ -17,18 +17,25 @@ use serde::Serialize;
 use tracing::subscriber::set_global_default;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
-use tracing_subscriber::fmt::format::FmtSpan;
+// use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::FmtSubscriber;
+use tracing_appender::non_blocking::WorkerGuard;
 
 // Standard library imports.
 use std::borrow::Cow;
+use std::fs::OpenOptions;
+use std::path::PathBuf;
+use std::path::Path;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // Constants
 ////////////////////////////////////////////////////////////////////////////////
-/// Default value for default_settings_path.
+/// Default value for the tracing environment variable.
 const DEFAULT_TRACE_ENV_VAR: &'static str = "ATMA_LOG";
+
+/// Default value for ansi_colors.
+const DEFAULT_ANSI_COLORS: bool = true;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +45,16 @@ const DEFAULT_TRACE_ENV_VAR: &'static str = "ATMA_LOG";
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TraceConfig {
     /// Trace level filters.
+    #[serde(default = "TraceConfig::default_filters")]
     pub filters: Vec<Cow<'static, str>>,
+    
+    /// The output path. If None, trace will output to stdout.
+    #[serde(default = "TraceConfig::default_output_path")]
+    pub output_path: Option<PathBuf>,
+
+    /// Whether to use ANSI coloring in the output.
+    #[serde(default = "TraceConfig::default_ansi_colors")]
+    pub ansi_colors: bool,
 }
 
 
@@ -50,7 +66,7 @@ impl TraceConfig {
         verbose: bool,
         quiet: bool,
         trace: bool)
-        -> Result<(), Error>
+        -> Result<Option<WorkerGuard>, Error>
     {
         let mut env_filter = EnvFilter::from_env(DEFAULT_TRACE_ENV_VAR);
 
@@ -71,14 +87,70 @@ impl TraceConfig {
             env_filter = env_filter.add_directive(directive);
         }
 
-        let subscriber = FmtSubscriber::builder()
-            // .with_span_events(FmtSpan::ACTIVE)
-            .with_env_filter(env_filter)
-            .without_time()
-            .finish();
+        match &self.output_path {
 
-        set_global_default(subscriber)
-            .with_context(|| format!("failed to set global tracing subscriber"))
+            Some(output_path) => {
+                let path: &Path = output_path.as_ref();
+                let file = OpenOptions::new()
+                    .write(true)
+                    .truncate(true)
+                    .create(true)
+                    .open(path)
+                    .with_context(|| format!(
+                        "Failed to create/open log file for writing: {}",
+                        path.display()))?;
+                let (writer, guard) = tracing_appender::non_blocking(file);
+
+                let subscriber = FmtSubscriber::builder()
+                    // .with_span_events(FmtSpan::ACTIVE)
+                    .with_env_filter(env_filter)
+                    .without_time()
+                    .with_writer(writer)
+                    .with_ansi(self.ansi_colors)
+                    .finish();
+
+                set_global_default(subscriber)
+                    .with_context(|| format!(
+                        "failed to set global tracing subscriber"))?;
+
+                Ok(Some(guard))
+            },
+
+            None => {
+                let subscriber = FmtSubscriber::builder()
+                    // .with_span_events(FmtSpan::ACTIVE)
+                    .with_env_filter(env_filter)
+                    .without_time()
+                    .with_ansi(self.ansi_colors)
+                    .finish();
+
+                set_global_default(subscriber)
+                    .with_context(|| format!(
+                        "failed to set global tracing subscriber"))?;
+                Ok(None)
+            }
+        }
+    }
+
+
+    /// Returns the default value for filters.
+    #[inline(always)]
+    fn default_filters() -> Vec<Cow<'static, str>> {
+        vec![
+            "atma=INFO".into(),
+        ]
+    }
+
+    /// Returns the default value for output_path.
+    #[inline(always)]
+    fn default_output_path() -> Option<PathBuf> {
+        None
+    }
+
+    /// Returns the default value for ansi_colors.
+    #[inline(always)]
+    fn default_ansi_colors() -> bool {
+        DEFAULT_ANSI_COLORS
     }
 }
 
@@ -86,9 +158,9 @@ impl TraceConfig {
 impl Default for TraceConfig {
     fn default() -> Self {
         TraceConfig {
-            filters: vec![
-                "atma=INFO".into(),
-            ],
+            output_path: TraceConfig::default_output_path(),
+            ansi_colors: TraceConfig::default_ansi_colors(),
+            filters: TraceConfig::default_filters(),
         }
     }
 }
