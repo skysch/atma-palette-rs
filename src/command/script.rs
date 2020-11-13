@@ -61,7 +61,7 @@ impl Script {
         -> Result<(), anyhow::Error>
     {
         if self.stmts.is_empty() {
-            log::warn!("Executing empty script.");
+            tracing::warn!("Executing empty script.");
         }
         for stmt in self.stmts {
             stmt.execute(palette, common, config, settings)?;
@@ -147,7 +147,7 @@ impl Stmt {
         use Stmt::*;
         use anyhow::Context as _;
         
-        log::debug!("Executing statement {:?}", self);
+        tracing::debug!("Executing statement {:?}", self);
         match self {
             PaletteHeader { name }      => {
                 if name.is_some() {

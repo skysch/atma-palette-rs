@@ -89,8 +89,8 @@ pub fn new_palette(
     };
 
     if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
-        log::info!("Palette file already exists.");
-        log::debug!("Palette load path {:?}", palette.load_path());
+        tracing::info!("Palette file already exists.");
+        tracing::debug!("Palette load path {:?}", palette.load_path());
     } else {
         let _ = res.with_context(|| 
             if let Some(path) = palette.load_path() {
@@ -114,8 +114,8 @@ pub fn new_config(path: PathBuf, overwrite: bool) -> Result<(), FileError> {
     };
 
     if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
-        log::info!("Config file already exists.");
-        log::debug!("Config {:?}", new.load_path());
+        tracing::info!("Config file already exists.");
+        tracing::debug!("Config {:?}", new.load_path());
     } else {
         let _ = res.with_context(|| 
             if let Some(path) = new.load_path() {
@@ -138,8 +138,8 @@ pub fn new_settings(path: PathBuf, overwrite: bool) -> Result<(), FileError> {
     };
 
     if res.as_ref().map_err(already_exists).err().unwrap_or(false) {
-        log::info!("Settings file already exists.");
-        log::debug!("Settings {:?}", new.load_path());
+        tracing::info!("Settings file already exists.");
+        tracing::debug!("Settings {:?}", new.load_path());
     } else {
         let _ = res.with_context(|| 
             if let Some(path) = new.load_path() {

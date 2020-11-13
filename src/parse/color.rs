@@ -124,6 +124,8 @@ pub fn color_function<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
             .map_value(Color::from);
     }
 
+    unimplemented!();
+
     Err(Failure {
         parse_error: ParseError::new("invalid color")
             .with_span(

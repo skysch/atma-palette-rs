@@ -173,13 +173,13 @@ pub fn stmts<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Vec<Stmt>>
     where Cm: ColumnMetrics,
 {
-    log::trace!("BEGIN: stmts");
+    tracing::trace!("BEGIN: stmts");
     // Skip beginning empty statements.
     lexer = repeat(0, None, one(AtmaToken::Semicolon))
         (lexer)?
         .lexer;
 
-    log::trace!("  stmts: finished parsing starting empty stmts.");
+    tracing::trace!("  stmts: finished parsing starting empty stmts.");
     repeat_collect(0, None, stmt)
         (lexer)
 }
@@ -189,12 +189,12 @@ pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Stmt>
     where Cm: ColumnMetrics,
 {
-    log::trace!("BEGIN: stmt\n-------\n{}", lexer);
+    tracing::trace!("BEGIN: stmt\n-------\n{}", lexer);
 
     // header statements
     match header_stmt(lexer.sublexer()) {
         Ok(mut stmt) => {
-            log::trace!("  stmt: header_stmt succeeds; parsing trailing empty \
+            tracing::trace!("  stmt: header_stmt succeeds; parsing trailing empty \
                 stmts.");
             // Parse any following empty statements.
             stmt.lexer = repeat(0, None, one(AtmaToken::Semicolon))
@@ -205,12 +205,12 @@ pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
         },
         Err(_) => (),
     }
-    log::trace!("  stmt: header_stmt failed");
+    tracing::trace!("  stmt: header_stmt failed");
 
     // expr statement
     match expr_stmt(lexer.sublexer()) {
         Ok(mut stmt) => {
-            log::trace!("  stmt: expr_statement succeeds: parsing trailing \
+            tracing::trace!("  stmt: expr_statement succeeds: parsing trailing \
                 empty stmts.");
             // Parse any following empty statements.
             stmt.lexer = repeat(1, None, one(AtmaToken::Semicolon))
@@ -221,7 +221,7 @@ pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
         },
         Err(_) => (),
     }
-    log::trace!("  stmt: expr_stmt failed");
+    tracing::trace!("  stmt: expr_stmt failed");
 
     
     match lexer.peek() {
@@ -236,7 +236,7 @@ pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
         }),
 
         None => {
-            log::trace!("  stmt: end of text");
+            tracing::trace!("  stmt: end of text");
             Err(Failure {
                 parse_error: ParseError::new("empty statement")
                     .with_span(
@@ -255,7 +255,7 @@ pub fn expr_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Stmt>
     where Cm: ColumnMetrics,
 {
-    log::trace!("BEGIN: expr_stmt");
+    tracing::trace!("BEGIN: expr_stmt");
     use AtmaToken::*;
 
     match ast_expr
@@ -286,7 +286,7 @@ pub fn header_stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Stmt>
     where Cm: ColumnMetrics,
 {
-    log::trace!("BEGIN: header_stmt");
+    tracing::trace!("BEGIN: header_stmt");
     use AtmaToken::*;
 
     // introducer
@@ -310,19 +310,19 @@ pub fn header_stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
         Err(e) => return Err(e),
     };
 
-    log::trace!("  header_stmt: introducer {:?}", stmt);
+    tracing::trace!("  header_stmt: introducer {:?}", stmt);
 
     let (parsed_number, succ) = maybe(uint::<Cm, u16>)
         (lexer)
         .expect("header number parse cannot fail")
         .take_value();
-    log::trace!("  header_stmt: parsed_number {:?}", parsed_number);
+    tracing::trace!("  header_stmt: parsed_number {:?}", parsed_number);
 
     let (parsed_name, succ) = maybe(string)
         (succ.lexer)
         .expect("header string parse cannot fail")
         .take_value();
-    log::trace!("  header_stmt: parsed_name {:?}", parsed_name);
+    tracing::trace!("  header_stmt: parsed_name {:?}", parsed_name);
 
     let lexer = one(Colon)
         (succ.lexer)?
@@ -351,7 +351,7 @@ pub fn header_stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
         _ => unreachable!(),
     }
 
-    log::trace!("  header_stmt: {:?}", stmt);
+    tracing::trace!("  header_stmt: {:?}", stmt);
     Ok(Success {
         value: stmt,
         lexer,
@@ -367,7 +367,7 @@ pub fn ast_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, AstExpr<'text>>
     where Cm: ColumnMetrics,
 {
-    log::trace!("BEGIN: ast_expr");
+    tracing::trace!("BEGIN: ast_expr");
     spanned(unary_expr)
         (lexer)
         .map_value(AstExpr::Unary)
@@ -377,7 +377,7 @@ pub fn unary_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, UnaryExpr<'text>>
     where Cm: ColumnMetrics,
 {
-    log::trace!("BEGIN: unary_expr");
+    tracing::trace!("BEGIN: unary_expr");
     use AtmaToken::*;
     match lexer.peek() {
         Some(Minus) => both(
@@ -407,16 +407,16 @@ pub fn call_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, CallExpr<'text>>
     where Cm: ColumnMetrics,
 {
-    log::trace!("BEGIN: call_expr");
+    tracing::trace!("BEGIN: call_expr");
     use AtmaToken::*;
 
-    // log::trace!("    call_expr: lexer before {}", lexer);
+    // tracing::trace!("    call_expr: lexer before {}", lexer);
     let (Spanned { value, mut span }, mut succ) = spanned(primary_expr)
         (lexer)?
         .take_value();
 
-    log::trace!("    call_expr: prefix is '{:?}'", value);
-    log::trace!("    call_expr: suffix {}", succ.lexer);
+    tracing::trace!("    call_expr: prefix is '{:?}'", value);
+    tracing::trace!("    call_expr: suffix {}", succ.lexer);
     let mut res = CallExpr::Primary(value);
 
     match atomic(
@@ -441,7 +441,7 @@ pub fn call_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
                         args,
                     };
                     span = span.enclose(args_span);
-                    log::trace!("    call_expr: sublexer {}", lexer);
+                    tracing::trace!("    call_expr: sublexer {}", lexer);
                     succ.lexer = lexer;
                 },
                 None => (),
@@ -451,8 +451,8 @@ pub fn call_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
         Err(Some(e))  => return Err(e),
     }
 
-    log::trace!("    call_expr: lexer after {}", succ.lexer);
-    log::trace!("END call_expr: {:?}", res);
+    tracing::trace!("    call_expr: lexer after {}", succ.lexer);
+    tracing::trace!("END call_expr: {:?}", res);
     Ok(Success {
         value: res,
         lexer: succ.lexer,
@@ -463,7 +463,7 @@ pub fn primary_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, PrimaryExpr<'text>>
     where Cm: ColumnMetrics,
 {
-    log::trace!("BEGIN: primary_expr");
+    tracing::trace!("BEGIN: primary_expr");
     use AtmaToken::*;
     match lexer.peek() {
         Some(Ident) => text(one(Ident))

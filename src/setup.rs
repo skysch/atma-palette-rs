@@ -10,12 +10,12 @@
 
 // Internal modules.
 mod config;
-mod logger;
-mod settings;
 mod load_status;
+mod settings;
+mod trace;
 
 // Exports.
 pub use self::config::*;
-pub use self::logger::*;
-pub use self::settings::*;
 pub use self::load_status::*;
+pub use self::settings::*;
+pub use self::trace::*;

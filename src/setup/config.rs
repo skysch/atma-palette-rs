@@ -21,19 +21,14 @@ use crate::command::RuleStyle;
 use crate::command::TextStyle;
 use crate::error::FileError;
 use crate::error::FileErrorContext as _;
-use crate::setup::LevelFilter;
 use crate::setup::LoadStatus;
-use crate::setup::LoggerConfig;
-use crate::setup::StdoutLogOutput;
-use crate::utility::normalize_path;
+use crate::setup::TraceConfig;
 
 // External library imports.
 use serde::Deserialize;
 use serde::Serialize;
 
 // Standard library imports.
-use std::borrow::Cow;
-use std::collections::BTreeMap;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Read;
@@ -118,13 +113,9 @@ pub struct Config {
     #[serde(skip)]
     load_status: LoadStatus,
 
-    /// The logger configuration.
-    #[serde(default = "Config::default_logger_config")]
-    pub logger_config: LoggerConfig,
-
-    /// Module specific log levels.
-    #[serde(default = "Config::default_log_levels")]
-    pub log_levels: BTreeMap<Cow<'static, str>, LevelFilter>,
+    /// The trace configuration.
+    #[serde(default = "Config::default_trace_config")]
+    pub trace_config: TraceConfig,
 
     /// The default path to look for the [`Settings`] file, relative to the
     /// application root.
@@ -201,8 +192,7 @@ impl Config {
     pub fn new() -> Self {
         Config {
             load_status: LoadStatus::default(),
-            logger_config: Config::default_logger_config(),
-            log_levels: Config::default_log_levels(),
+            trace_config: Config::default_trace_config(),
             default_settings_path: Config::default_default_settings_path(),
             default_palette_path: Config::default_default_palette_path(),
             load_default_palette: DEFAULT_LOAD_DEFAULT_PALETTE,
@@ -367,7 +357,7 @@ impl Config {
 
     /// Parses a `Config` from a file using the RON format.
     fn generate_ron_into_file(&self, file: &mut File) -> Result<(), FileError> {
-        log::debug!("Serializing & writing Config file.");
+        tracing::debug!("Serializing & writing Config file.");
         let pretty = ron::ser::PrettyConfig::new()
             .with_depth_limit(2)
             .with_separate_tuple_members(true)
@@ -381,31 +371,20 @@ impl Config {
 
     /// Normalizes paths in the config by expanding them relative to the given
     /// root path.
-    pub fn normalize_paths(&mut self, base: &PathBuf) {
-        self.logger_config.log_path = self.logger_config.log_path
-            .as_ref()
-            .map(|p| normalize_path(base, p));
+    pub fn normalize_paths(&mut self, _base: &PathBuf) {
+        // NOTE: No paths currently in config, nothing to do.
     }
 
     ////////////////////////////////////////////////////////////////////////////
     // Default constructors for serde.
     ////////////////////////////////////////////////////////////////////////////
 
-    /// Returns the default [`LoggerConfig`].
+    /// Returns the default [`TraceConfig`].
     ///
-    /// [`LoggerConfig`]: ../logger/struct.LoggerConfig.html
+    /// [`TraceConfig`]: ../logger/struct.TraceConfig.html
     #[inline(always)]
-    fn default_logger_config() -> LoggerConfig {
-        LoggerConfig {
-            stdout_log_output: StdoutLogOutput::Colored,
-            .. Default::default()
-        }
-    }
-
-    /// Returns the default log levels for modules.
-    #[inline(always)]
-    fn default_log_levels() -> BTreeMap<Cow<'static, str>, LevelFilter> {
-        Default::default()
+    fn default_trace_config() -> TraceConfig {
+        TraceConfig::default()
     }
 
     /// Returns the default value for default_settings_path.
@@ -507,10 +486,8 @@ impl Default for Config {
 
 impl std::fmt::Display for Config {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(fmt, "\n\tlogger_config/stdout_log_output: {:?}",
-            self.logger_config.stdout_log_output)?;
-        writeln!(fmt, "\tlogger_config/level_filter: {:?}",
-            self.logger_config.level_filter)?;
+        writeln!(fmt, "\n\ttrace_config/filters: {:?}",
+            self.trace_config.filters)?;
         writeln!(fmt, "\tload_default_palette: {:?}",
             self.load_default_palette)?;
         writeln!(fmt, "\tnew_from_script_history: {:?}",

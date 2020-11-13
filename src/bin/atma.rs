@@ -14,13 +14,11 @@ use atma::Config;
 use atma::Palette;
 use atma::Settings;
 use atma::setup::DEFAULT_CONFIG_PATH;
-use atma::setup::Logger;
 use atma::utility::normalize_path;
 
 // Standard library imports.
 use anyhow::Context;
 use anyhow::Error;
-use log::LevelFilter;
 
 // External library imports.
 use structopt::StructOpt;
@@ -33,7 +31,7 @@ use structopt::StructOpt;
 pub fn main() {
     if let Err(err) = main_facade() {
         // Print errors to stderr and exit with error code.
-        log::error!("{:?}", err);
+        tracing::error!("{:?}", err);
         eprintln!("{:?}", err);
         std::process::exit(1);
     }
@@ -67,32 +65,26 @@ pub fn main_facade() -> Result<(), Error> {
         });
     config.normalize_paths(&cur_dir);
 
-    // Setup and start the global logger.
-    let mut logger =  Logger::from_config(config.logger_config.clone());
-    for (context, level) in &config.log_levels {
-        logger = logger.level_for(context.clone(), *level);
-    }
-    match (common.verbose, common.quiet, common.trace) {
-        (_, _, true) => logger.level_for("atma", LevelFilter::Trace).start(),
-        (_, true, _) => (),
-        (true, _, _) => logger.level_for("atma", LevelFilter::Debug).start(),
-        _            => logger.level_for("atma", LevelFilter::Info).start(),
-    }
+    // Initialize the global tracing subscriber.
+    config.trace_config.init_global_default(
+        common.verbose,
+        common.quiet,
+        common.trace)?;
 
     // Print version information.
-    log::debug!("Atma version: {}", env!("CARGO_PKG_VERSION"));
+    tracing::debug!("Atma version: {}", env!("CARGO_PKG_VERSION"));
     #[cfg(feature = "png")]
-    log::debug!("PNG support enabled.");
+    tracing::debug!("PNG support enabled.");
     #[cfg(feature = "termsize")]
-    log::debug!("Terminal size detection support enabled.");
+    tracing::debug!("Terminal size detection support enabled.");
     let rustc_meta = rustc_version_runtime::version_meta();
-    log::trace!("Rustc version: {} {:?}", rustc_meta.semver, rustc_meta.channel);
+    tracing::trace!("Rustc version: {} {:?}", rustc_meta.semver, rustc_meta.channel);
     if let Some(hash) = rustc_meta.commit_hash {
-        log::trace!("Rustc git commit: {}", hash);
+        tracing::trace!("Rustc git commit: {}", hash);
     }
-    log::trace!("{:#?}", common);
-    log::trace!("{:#?}", command);
-    log::trace!("{:#?}", config);
+    tracing::trace!("{:#?}", common);
+    tracing::trace!("{:#?}", command);
+    tracing::trace!("{:#?}", config);
 
     // Log any config loading errors.
     match config_load_status {
@@ -104,7 +96,7 @@ pub fn main_facade() -> Result<(), Error> {
         },
         Err(_) => {
             // Path is default, so it is ok to use default.
-            log::debug!("Using default config.");
+            tracing::debug!("Using default config.");
         },
 
         Ok(_) => (),
@@ -127,13 +119,13 @@ pub fn main_facade() -> Result<(), Error> {
         },
         Err(_) => {
             // Path is default, so it is ok to use default settings.
-            log::debug!("Using default settings.");
+            tracing::debug!("Using default settings.");
             Settings::new().with_load_path(settings_path)
         },
 
         Ok(mut settings) => {
             settings.normalize_paths(&cur_dir);
-            log::trace!("{:#?}", settings); 
+            tracing::trace!("{:#?}", settings); 
             settings
         },
     };
@@ -150,13 +142,13 @@ pub fn main_facade() -> Result<(), Error> {
             None => match &settings.active_palette {
                 Some(pal_path) => Some(Palette::read_from_path(&pal_path)?),
                 None => if config.load_default_palette {
-                    log::debug!("No specified active palette, loading from default \
+                    tracing::debug!("No specified active palette, loading from default \
                         location.");
                     let default_path = cur_dir.clone()
                         .join(&config.default_palette_path);
                     Palette::read_from_path(&default_path).ok()
                 } else {
-                    log::debug!("No active palette.");
+                    tracing::debug!("No active palette.");
                     None
                 },
             },
@@ -164,7 +156,7 @@ pub fn main_facade() -> Result<(), Error> {
     } else {
         None
     };
-    log::trace!("Palette: {:#?}", palette);
+    tracing::trace!("Palette: {:#?}", palette);
 
     // Dispatch to appropriate commands.
     atma::command::dispatch(
@@ -177,7 +169,7 @@ pub fn main_facade() -> Result<(), Error> {
 
     if let Some(pal) = palette {
         if pal.modified() {
-            log::trace!("Palette modified, saving to load path.");
+            tracing::trace!("Palette modified, saving to load path.");
             pal.write_to_load_path()
                 .map(|_| ())
                 .context("Failed to write palette pile")?;
@@ -185,14 +177,14 @@ pub fn main_facade() -> Result<(), Error> {
     }
 
     if config.modified() {
-        log::trace!("Config modified, saving to load path.");
+        tracing::trace!("Config modified, saving to load path.");
         config.write_to_load_path()
             .map(|_| ())
             .context("Failed to write config file")?;
     }
 
     if settings.modified() {
-        log::trace!("Settings modified, saving to load path.");
+        tracing::trace!("Settings modified, saving to load path.");
         settings.write_to_load_path()
             .map(|_| ())
             .context("Failed to write settings file")?;

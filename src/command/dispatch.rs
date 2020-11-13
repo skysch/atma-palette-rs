@@ -57,7 +57,7 @@ pub fn dispatch(
     cur_dir: Option<&Path>)
     -> Result<(), anyhow::Error>
 {
-    log::trace!("Begin command dispatch.");
+    tracing::trace!("Begin command dispatch.");
     use CommandOption::*;
     use anyhow::Context as _;
 
@@ -138,7 +138,7 @@ pub fn dispatch(
                 (Some(ColorStyle::None), Some(TextStyle::None))
                     = (color_style, text_style) 
             {
-                log::warn!("Invalid combination of color-style and text-style.\
+                tracing::warn!("Invalid combination of color-style and text-style.\
                     Using --text-style hex.");
                 config.invalid_color_display_fallback
             } else {
@@ -192,7 +192,7 @@ pub fn dispatch(
         // Insert
         ////////////////////////////////////////////////////////////////////////
         Insert { exprs, name, at } => {
-            log::debug!(" Insert {{ exprs: {:?}, name: {:?}, at: {:?} }}",
+            tracing::debug!(" Insert {{ exprs: {:?}, name: {:?}, at: {:?} }}",
                 exprs, name, at);
             let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
             if exprs.is_empty() {

@@ -78,7 +78,7 @@ impl History {
     /// beyond the cursor.
     pub fn push_undo_ops(&mut self, ops: Vec<Operation>) {
         assert_eq!(self.cursor_state, CursorState::Valid);
-        log::trace!("History: cursor: {}, len: {}", self.cursor, self.ops.len());
+        tracing::trace!("History: cursor: {}, len: {}", self.cursor, self.ops.len());
 
         if self.cursor >= self.ops.len() {
             self.ops.push(ops);

@@ -35,7 +35,8 @@ colored = { version = "2.0" }
 fern = { version = "*", features = ["colored"] }
 few = { version = "0.1.4" }
 normalize_interval = { version = "0.14" }
-log = { version = "*", features = ["serde"] }
+tracing = { version = "0.1" }
+tracing-subscriber = "0.2.15"
 ron = "*"
 rustc_version_runtime = "*"
 serde = { version = "*", features = ["derive"] }
