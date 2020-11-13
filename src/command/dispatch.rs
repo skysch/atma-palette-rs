@@ -31,11 +31,9 @@ use crate::utility::normalize_path;
 
 // External library imports.
 use anyhow::anyhow;
-use tracing::debug;
+use tracing::event;
 use tracing::Level;
 use tracing::span;
-use tracing::trace;
-use tracing::warn;
 
 
 // Standard library imports.
@@ -146,8 +144,9 @@ pub fn dispatch(
                 (Some(ColorStyle::None), Some(TextStyle::None))
                     = (color_style, text_style) 
             {
-                warn!("Invalid combination of color-style and text-style.\
-                    Using --text-style hex.");
+                event!(Level::WARN,
+                    "Invalid combination of color-style and text-style. Using \
+                    --text-style hex.");
                 config.invalid_color_display_fallback
             } else {
                 ColorDisplay {
@@ -200,7 +199,8 @@ pub fn dispatch(
         // Insert
         ////////////////////////////////////////////////////////////////////////
         Insert { exprs, name, at } => {
-            debug!(" Insert {{ exprs: {:?}, name: {:?}, at: {:?} }}",
+            event!(Level::DEBUG,
+                "\nInsert {{ exprs: {:?}, name: {:?}, at: {:?} }}",
                 exprs, name, at);
             let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
             if exprs.is_empty() {

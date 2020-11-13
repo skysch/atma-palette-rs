@@ -25,30 +25,33 @@ use crate::parse::string;
 use crate::parse::uint;
 
 // External library imports.
-use tephra::combinator::fail;
 use tephra::combinator::any;
 use tephra::combinator::atomic;
-use tephra::combinator::maybe;
 use tephra::combinator::both;
-use tephra::combinator::filter;
 use tephra::combinator::bracket;
 use tephra::combinator::bracket_dynamic;
 use tephra::combinator::exact;
-use tephra::combinator::repeat;
+use tephra::combinator::fail;
+use tephra::combinator::filter;
 use tephra::combinator::intersperse_collect;
 use tephra::combinator::left;
+use tephra::combinator::maybe;
 use tephra::combinator::one;
+use tephra::combinator::repeat;
 use tephra::combinator::right;
 use tephra::combinator::section;
 use tephra::combinator::seq;
 use tephra::combinator::text;
 use tephra::lexer::Lexer;
+use tephra::position::ColumnMetrics;
 use tephra::result::Failure;
-use tephra::result::Success;
 use tephra::result::ParseError;
 use tephra::result::ParseResult;
 use tephra::result::ParseResultExt as _;
-use tephra::position::ColumnMetrics;
+use tephra::result::Success;
+use tracing::event;
+use tracing::Level;
+use tracing::span;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -63,6 +66,9 @@ pub fn cell_ref<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, CellRef<'text>>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "cell_ref");
+    let _enter = span.enter();
+
     use AtmaToken::*;
     match lexer.peek() {
         Some(Colon) => position_or_index
@@ -88,6 +94,9 @@ pub fn position_or_index<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, PositionOrIndex>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "position_or_index");
+    let _enter = span.enter();
+
     lexer.filter_next();
     let (idx, idx_succ) = exact(
         right(one(AtmaToken::Colon),
@@ -140,6 +149,9 @@ pub fn index<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, u32>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "index");
+    let _enter = span.enter();
+
     lexer.filter_next();
     exact(
         right(one(AtmaToken::Colon),
@@ -151,6 +163,9 @@ pub fn position<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Position>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "position");
+    let _enter = span.enter();
+
     lexer.filter_next();
     exact(
         right(one(AtmaToken::Colon),
@@ -167,6 +182,9 @@ pub fn group_or_name<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, (Cow<'text, str>, Option<u32>)>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "group_or_name");
+    let _enter = span.enter();
+
     exact(
         both(
             string,
@@ -184,6 +202,9 @@ pub fn cell_selection<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, CellSelection<'text>>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "cell_selection");
+    let _enter = span.enter();
+
     intersperse_collect(1, None,
         section(cell_selector),
         one(AtmaToken::Comma))
@@ -200,6 +221,9 @@ pub fn cell_selector<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, CellSelector<'text>>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "cell_selector");
+    let _enter = span.enter();
+
     use AtmaToken::*;
     use CellSelector::*;
     match lexer.peek() {
@@ -356,6 +380,9 @@ pub fn position_selector<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, PositionSelector>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "position_selector");
+    let _enter = span.enter();
+
     exact(
         right(one(AtmaToken::Colon),
             both(
@@ -375,6 +402,9 @@ fn uint_16_or_all<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Option<u16>>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "uint_16_or_all");
+    let _enter = span.enter();
+
     if let Ok(succ) = one(AtmaToken::Mult)(lexer.clone()) {
         return Ok(succ).map_value(|_| None);
     }
@@ -392,6 +422,9 @@ fn range<'text, Cm, F, V: std::fmt::Debug>(mut parser: F)
         F: FnMut(Lexer<'text, AtmaScanner, Cm>)
             -> ParseResult<'text, AtmaScanner, Cm, V>,
 {
+    let span = span!(Level::DEBUG, "range");
+    let _enter = span.enter();
+
     move |lexer| {
         let (l, succ) = (&mut parser)
             (lexer)?

@@ -33,6 +33,9 @@ use tephra::result::Failure;
 use tephra::result::ParseError;
 use tephra::result::ParseResult;
 use tephra::result::ParseResultExt as _;
+use tracing::event;
+use tracing::Level;
+use tracing::span;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -48,6 +51,9 @@ pub fn uint<'text, Cm, T>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
         Cm: ColumnMetrics,
         T: FromStrRadix + std::fmt::Debug,
 {
+    let span = span!(Level::DEBUG, "uint");
+    let _enter = span.enter();
+
     lexer.filter_next(); // Remove prefixed tokens.
     let (mut val, succ) = text(one(AtmaToken::Uint))
         (lexer)?
@@ -149,10 +155,12 @@ pub fn float<'text, Cm, T>(lexer: Lexer<'text, AtmaScanner, Cm>)
         T: std::str::FromStr,
         <T as std::str::FromStr>::Err: std::error::Error + Sync + Send + 'static
 {
+    let span = span!(Level::DEBUG, "float");
+    let _enter = span.enter();
+
     let (mut val, succ) = text(one(AtmaToken::Float))
         (lexer)?
         .take_value();
-
     
     match T::from_str(&*val) {
         Ok(val) => Ok(succ.map_value(|_| val)),
@@ -178,13 +186,15 @@ pub fn string<'text, Cm>(
     -> ParseResult<'text, AtmaScanner, Cm, Cow<'text, str>>
     where Cm: ColumnMetrics,
 {
-    tracing::trace!("BEGIN: string");
+    let span = span!(Level::DEBUG, "string");
+    let _enter = span.enter();
+
     if let Ok(succ) = raw_string(lexer.sublexer()) {
-        tracing::trace!("  string: raw_string succeeds.");
+        event!(Level::TRACE, "raw_string succeeds");
         return Ok(succ.map_value(Cow::from))
     }
 
-    tracing::trace!("  string: raw_string fails.");
+    event!(Level::TRACE, "raw_string fails");
     escaped_string(lexer.sublexer())
 }
 
@@ -193,7 +203,9 @@ pub fn raw_string<'text, Cm>(
     -> ParseResult<'text, AtmaScanner, Cm, &'text str>
     where Cm: ColumnMetrics,
 {
-    tracing::trace!("BEGIN: raw_string", );
+    let span = span!(Level::DEBUG, "raw_string");
+    let _enter = span.enter();
+
     use AtmaToken::*;
     bracket(
         one(RawStringOpen),
@@ -207,7 +219,9 @@ pub fn escaped_string<'text, Cm>(
     -> ParseResult<'text, AtmaScanner, Cm, Cow<'text, str>>
     where Cm: ColumnMetrics,
 {
-    tracing::trace!("BEGIN: escaped_string: {}", lexer);
+    let span = span!(Level::DEBUG, "escaped_string");
+    let _enter = span.enter();
+
     use AtmaToken::*;
     let corresponding = move |lexer, tok| match tok {
         StringOpenSingle => one(StringCloseSingle)(lexer),
@@ -224,6 +238,9 @@ pub fn escaped_string<'text, Cm>(
 }
 
 fn unescape<'text>(input: &'text str) -> Cow<'text, str> {
+    let span = span!(Level::DEBUG, "unescape");
+    let _enter = span.enter();
+
     const ESCAPES: [char; 6] = ['\\', '"', '\'', 't', 'r', 'n'];
     let mut owned: Option<String> = None;
 

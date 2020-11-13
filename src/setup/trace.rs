@@ -72,7 +72,7 @@ impl TraceConfig {
         }
 
         let subscriber = FmtSubscriber::builder()
-            .with_span_events(FmtSpan::ACTIVE)
+            // .with_span_events(FmtSpan::ACTIVE)
             .with_env_filter(env_filter)
             .without_time()
             .finish();

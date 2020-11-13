@@ -44,8 +44,8 @@ pub enum PositionOrIndex {
 }
 
 impl<'name> From<PositionOrIndex> for CellRef<'name> {
-    fn from(poi: PositionOrIndex) -> Self {
-        match poi {
+    fn from(pos_or_idx: PositionOrIndex) -> Self {
+        match pos_or_idx {
             PositionOrIndex::Position(pos) => CellRef::Position(pos),
             PositionOrIndex::Index(idx)    => CellRef::Index(idx),
         }

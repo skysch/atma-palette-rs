@@ -58,6 +58,9 @@ use tephra::result::ParseResult;
 use tephra::result::Spanned;
 use tephra::result::ParseResultExt as _;
 use tephra::position::ColumnMetrics;
+use tracing::event;
+use tracing::Level;
+use tracing::span;
 
 // Standard library imports.
 use std::str::FromStr as _;
@@ -72,7 +75,9 @@ impl AstExprMatch for InsertExpr {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: InsertExpr from AstExpr {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "InsertExpr::match_expr");
+        let _enter = span.enter();
+
         let ast_span = ast_expr.span();
         
         // Ramp
@@ -80,21 +85,21 @@ impl AstExprMatch for InsertExpr {
             Ok(expr) => return Ok(InsertExpr::Ramp(expr)),
             Err(e) => (),
         }
-        tracing::trace!("  InsertExpr match (Ramp) fails.");
+        event!(Level::TRACE, "InsertExpr match (Ramp) fails.");
 
         // Blend
         match BlendExpr::match_expr(ast_expr.clone(), metrics) {
             Ok(expr) => return Ok(InsertExpr::Blend(expr)),
             Err(_) => (),
         }
-        tracing::trace!("  InsertExpr match (Blend) fails.");
+        event!(Level::TRACE, "InsertExpr match (Blend) fails.");
 
         // Color
         match Color::match_expr(ast_expr.clone(), metrics) {
             Ok(color) => return Ok(InsertExpr::Color(color)),
             Err(_) => (),
         }
-        tracing::trace!("  InsertExpr match (Color) fails.");
+        event!(Level::TRACE, "InsertExpr match (Color) fails.");
 
         // Copy
         match <FunctionCall<Ident, (CellRef<'static>,)>>::match_expr(
@@ -106,16 +111,16 @@ impl AstExprMatch for InsertExpr {
             },
             _ => (),
         }
-        tracing::trace!("  InsertExpr match (Copy) fails.");
+        event!(Level::TRACE, "InsertExpr match (Copy) fails.");
 
         // Reference
         match <CellRef<'static>>::match_expr(ast_expr.clone(), metrics) {
             Ok(cell_ref) => return Ok(InsertExpr::Reference(cell_ref)),
             Err(_) => (),
         }
-        tracing::trace!("  InsertExpr match (Reference) fails.");
+        event!(Level::TRACE, "InsertExpr match (Reference) fails.");
 
-        tracing::trace!("  InsertExpr match fails completely.");
+        event!(Level::TRACE, "InsertExpr match fails completely.");
         Err(ParseError::new("invalid insert expression")
             .with_span("unrecognized insert expression",
                 ast_span,
@@ -133,7 +138,9 @@ impl AstExprMatch for RampExpr {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: RampExpr from AstExpr. {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "RampExpr::match_expr");
+        let _enter = span.enter();
+
         let ast_span = ast_expr.span();
         
         match <FunctionCall<Ident, (u8, BlendFunction)>>::match_expr(
@@ -141,7 +148,7 @@ impl AstExprMatch for RampExpr {
             metrics)
         {
             Ok(FunctionCall { operand: Ident(i), args }) if i == "ramp" => {
-                tracing::trace!("  RampExpr match succeeds (1).");
+                event!(Level::TRACE, "RampExpr match succeeds (1).");
                 return Ok(RampExpr {
                     count: args.0,
                     blend_fn: args.1,
@@ -159,7 +166,7 @@ impl AstExprMatch for RampExpr {
             metrics)
         {
             Ok(FunctionCall { operand: Ident(i), args }) if i == "ramp" => {
-                tracing::trace!("  RampExpr match succeeds (2).");
+                event!(Level::TRACE, "RampExpr match succeeds (2).");
                 return Ok(RampExpr {
                     count: args.0,
                     blend_fn: args.1,
@@ -169,7 +176,7 @@ impl AstExprMatch for RampExpr {
             _ => (),
         }
 
-        tracing::trace!("  RampExpr match fails.");
+        event!(Level::TRACE, "RampExpr match fails.");
         Err(ParseError::new("invalid ramp function")
             .with_span("unrecognized ramp function",
                 ast_span,
@@ -187,7 +194,9 @@ impl AstExprMatch for BlendExpr {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: BlendExpr from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "BlendExpr::match_expr");
+        let _enter = span.enter();
+
         let ast_span = ast_expr.span();
         
         match <FunctionCall<UnaryBlendMethod, (
@@ -197,7 +206,7 @@ impl AstExprMatch for BlendExpr {
             metrics)
         {
             Ok(FunctionCall { operand, args }) => {
-                tracing::trace!("  BlendExpr match succeeds (1).");
+                event!(Level::TRACE, "BlendExpr match succeeds (1).");
                 return Ok(BlendExpr {
                     blend_fn: BlendFunction::Unary(UnaryBlendFunction {
                         blend_method: operand,
@@ -218,7 +227,7 @@ impl AstExprMatch for BlendExpr {
             metrics)
         {
             Ok(FunctionCall { operand, args }) => {
-                tracing::trace!("  BlendExpr match succeeds (2).");
+                event!(Level::TRACE, "BlendExpr match succeeds (2).");
                 return Ok(BlendExpr {
                     blend_fn: BlendFunction::Unary(UnaryBlendFunction {
                         blend_method: operand,
@@ -238,7 +247,7 @@ impl AstExprMatch for BlendExpr {
             metrics)
         {
             Ok(FunctionCall { operand, args }) => {
-                tracing::trace!("  BlendExpr match succeeds (3).");
+                event!(Level::TRACE, "BlendExpr match succeeds (3).");
                 return Ok(BlendExpr {
                     blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                         blend_method: operand,
@@ -260,7 +269,7 @@ impl AstExprMatch for BlendExpr {
             metrics)
         {
             Ok(FunctionCall { operand, args }) => {
-                tracing::trace!("  BlendExpr match succeeds (4).");
+                event!(Level::TRACE, "BlendExpr match succeeds (4).");
                 return Ok(BlendExpr {
                     blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                         blend_method: operand,
@@ -283,7 +292,7 @@ impl AstExprMatch for BlendExpr {
             metrics)
         {
             Ok(FunctionCall { operand, args }) => {
-                tracing::trace!("  BlendExpr match succeeds (5).");
+                event!(Level::TRACE, "BlendExpr match succeeds (5).");
                 return Ok(BlendExpr {
                     blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                         blend_method: operand,
@@ -305,7 +314,7 @@ impl AstExprMatch for BlendExpr {
             metrics)
         {
             Ok(FunctionCall { operand, args }) => {
-                tracing::trace!("  BlendExpr match succeeds (6).");
+                event!(Level::TRACE, "BlendExpr match succeeds (6).");
                 return Ok(BlendExpr {
                     blend_fn: BlendFunction::Binary(BinaryBlendFunction {
                         blend_method: operand,
@@ -319,7 +328,7 @@ impl AstExprMatch for BlendExpr {
             _ => (),
         }
 
-        tracing::trace!("  BlendExpr match fails.");
+        event!(Level::TRACE, "BlendExpr match fails.");
         Err(ParseError::new("invalid blend function")
             .with_span("unrecognized blend function",
                 ast_span,
@@ -335,7 +344,9 @@ impl AstExprMatch for BlendFunction {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: BlendFunction from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "BlendFunction::match_expr");
+        let _enter = span.enter();
+
         let ast_span = ast_expr.span();
 
         // Unary
@@ -368,7 +379,9 @@ impl AstExprMatch for UnaryBlendFunction {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: UnaryBlendFunction from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "UnaryBlendFunction::match_expr");
+        let _enter = span.enter();
+
         let ast_span = ast_expr.span();
 
         match <FunctionCall<
@@ -400,7 +413,9 @@ impl AstExprMatch for BinaryBlendFunction {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: BinaryBlendFunction from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "BinaryBlendFunction::match_expr");
+        let _enter = span.enter();
+
         let ast_span = ast_expr.span();
 
         match <FunctionCall<
@@ -456,7 +471,9 @@ impl AstExprMatch for UnaryBlendMethod {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: UnaryBlendMethod from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "UnaryBlendMethod::match_expr");
+        let _enter = span.enter();
+
         let ast_span = ast_expr.span();
         
         match Ident::match_expr(ast_expr, metrics) {
@@ -479,7 +496,9 @@ impl AstExprMatch for BinaryBlendMethod {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: BinaryBlendMethod from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "BinaryBlendMethod::match_expr");
+        let _enter = span.enter();
+
         let ast_span = ast_expr.span();
         
         match Ident::match_expr(ast_expr, metrics) {
@@ -506,7 +525,9 @@ impl AstExprMatch for Interpolate {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: Interpolate from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "Interpolate::match_expr");
+        let _enter = span.enter();
+
         let ast_span = ast_expr.span();
 
         match f32::match_expr(ast_expr.clone(), metrics) {
@@ -580,7 +601,9 @@ impl AstExprMatch for InterpolateRange {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: InterpolateRange from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "InterpolateRange::match_expr");
+        let _enter = span.enter();
+
         let ast_span = ast_expr.span();
         match InterpolateFunction::match_expr(ast_expr.clone(), metrics) {
             Ok(interpolate_fn) => {
@@ -679,7 +702,9 @@ impl AstExprMatch for InterpolateFunction {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: InterpolateFunction from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "InterpolateFunction::match_expr");
+        let _enter = span.enter();
+
         let ast_span = ast_expr.span();
         match Ident::match_expr(ast_expr.clone(), metrics) {
             Ok(Ident(ident)) if ident == "linear" => return Ok(
@@ -714,7 +739,9 @@ impl AstExprMatch for ColorSpace {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: ColorSpace from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "ColorSpace::match_expr");
+        let _enter = span.enter();
+
         let ast_span = ast_expr.span();
         match Ident::match_expr(ast_expr, metrics) {
             Ok(Ident(ident)) if ident == "rgb" => Ok(ColorSpace::Rgb),

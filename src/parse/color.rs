@@ -43,6 +43,9 @@ use tephra::result::ParseResultExt as _;
 use tephra::result::Spanned;
 use tephra::result::Success;
 use tephra::span::Span;
+use tracing::event;
+use tracing::Level;
+use tracing::span;
 
 // Standard library imports.
 use std::str::FromStr as _;
@@ -58,6 +61,9 @@ pub fn color<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Color>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "color");
+    let _enter = span.enter();
+
     match rgb_hex_code
         (lexer.clone())
         .filter_lexer_error()
@@ -80,6 +86,9 @@ pub fn rgb_hex_code<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Rgb>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "rgb_hex_code");
+    let _enter = span.enter();
+
     let (mut val, succ) = text(exact(
             seq(&[AtmaToken::Hash, AtmaToken::HexDigits])))
         (lexer)?
@@ -115,6 +124,9 @@ pub fn color_function<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, Color>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "color_function");
+    let _enter = span.enter();
+
     let (val, succ) = fn_call
             (lexer.sublexer())?
         .take_value();
@@ -123,8 +135,6 @@ pub fn color_function<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
         return rgb_from_args(lexer.join(succ.lexer), val.args)
             .map_value(Color::from);
     }
-
-    unimplemented!();
 
     Err(Failure {
         parse_error: ParseError::new("invalid color")
@@ -144,6 +154,9 @@ fn rgb_from_args<'text, Cm>(
     -> ParseResult<'text, AtmaScanner, Cm, Rgb>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "rgb_from_args");
+    let _enter = span.enter();
+
     if args.len() != 3 {
         return Err(Failure {
             parse_error: ParseError::new("invalid RGB color")
@@ -305,6 +318,9 @@ pub fn fn_call<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, FnCall<'text>>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "fn_call");
+    let _enter = span.enter();
+
     both(
         text(one(AtmaToken::Ident)),
         bracket(
@@ -322,6 +338,9 @@ pub fn fn_arg<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
     -> ParseResult<'text, AtmaScanner, Cm, FnArg>
     where Cm: ColumnMetrics,
 {
+    let span = span!(Level::DEBUG, "fn_arg");
+    let _enter = span.enter();
+
     match float::<_, f32>
         (lexer.clone())
         .filter_lexer_error()

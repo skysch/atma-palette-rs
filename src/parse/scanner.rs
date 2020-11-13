@@ -13,22 +13,25 @@
 
 
 // External library imports.
-use tephra::lexer::Scanner;
+use tephra::combinator::any;
+use tephra::combinator::both;
+use tephra::combinator::bracket;
+use tephra::combinator::bracket_dynamic;
+use tephra::combinator::exact;
+use tephra::combinator::one;
+use tephra::combinator::right;
+use tephra::combinator::text;
 use tephra::lexer::Lexer;
-use tephra::position::Pos;
+use tephra::lexer::Scanner;
 use tephra::position::ColumnMetrics;
+use tephra::position::Pos;
+use tephra::result::Failure;
+use tephra::result::ParseError;
 use tephra::result::ParseResult;
 use tephra::result::ParseResultExt as _;
-use tephra::result::ParseError;
-use tephra::result::Failure;
-use tephra::combinator::one;
-use tephra::combinator::both;
-use tephra::combinator::right;
-use tephra::combinator::any;
-use tephra::combinator::bracket_dynamic;
-use tephra::combinator::bracket;
-use tephra::combinator::exact;
-use tephra::combinator::text;
+use tracing::event;
+use tracing::Level;
+use tracing::span;
 
 // Standard library imports.
 use std::convert::TryInto as _;
@@ -185,7 +188,6 @@ impl AtmaScanner {
     {
         if text.starts_with(pattern) {
             let pos = metrics.width(pattern);
-            tracing::trace!("Scanned {:?} token: \"{}\".", token, &text[..pos.byte]);
             Some((token, pos))
         } else {
             None
@@ -217,10 +219,6 @@ impl AtmaScanner {
             }
         }
 
-        tracing::trace!(
-            "Scanned {:?} token: \"{}\".",
-            AtmaToken::Ident,
-            &text[..pos.byte]);
         Some((AtmaToken::Ident, pos))
     }
 
@@ -250,10 +248,6 @@ impl AtmaScanner {
         
         if !substr.is_empty() {
             let pos = adv + metrics.width(substr);
-            tracing::trace!(
-                "Scanned {:?} token: \"{}\".",
-                AtmaToken::Uint,
-                &text[..pos.byte]);
             return Some((AtmaToken::Uint, pos));
         } else {
             None
@@ -271,10 +265,6 @@ impl AtmaScanner {
         
         if !substr.is_empty() {
             let pos = metrics.width(substr);
-            tracing::trace!(
-                "Scanned {:?} token: \"{}\".",
-                AtmaToken::HexDigits,
-                &text[..pos.byte]);
             return Some((AtmaToken::HexDigits, pos));
         } else {
             None
@@ -288,18 +278,10 @@ impl AtmaScanner {
     {
         if text.starts_with("inf") {
             let pos = Pos::new(3, 0, 3);
-            tracing::trace!(
-                "Scanned {:?} token: \"{}\".",
-                AtmaToken::Float,
-                &text[..pos.byte]);
             return Some((AtmaToken::Float, pos));
         }
         if text.starts_with("nan") {
             let pos = Pos::new(3, 0, 3);
-            tracing::trace!(
-                "Scanned {:?} token: \"{}\".",
-                AtmaToken::Float,
-                &text[..pos.byte]);
             return Some((AtmaToken::Float, pos));
         }
 
@@ -325,10 +307,6 @@ impl AtmaScanner {
                 { 
                     let cols = text.len() - rest.len();
                     let pos = Pos::new(cols, 0, cols);
-                    tracing::trace!(
-                        "Scanned {:?} token: \"{}\".",
-                        AtmaToken::Float,
-                        &text[..pos.byte]);
                     return Some((AtmaToken::Float, pos));
                 }
                 rest = &rest[1..];
@@ -343,10 +321,6 @@ impl AtmaScanner {
                     rest = next;
                     let cols = text.len() - rest.len();
                     let pos = Pos::new(cols, 0, cols);
-                    tracing::trace!(
-                        "Scanned {:?} token: \"{}\".",
-                        AtmaToken::Float,
-                        &text[..pos.byte]);
                     return Some((AtmaToken::Float, pos));
                 }
             }
@@ -374,10 +348,6 @@ impl AtmaScanner {
                 },
                 '"' => {
                     pos += Pos::new(1, 0, 1);
-                    tracing::trace!(
-                        "Scanned {:?} token: \"{}\".",
-                        AtmaToken::RawStringOpen,
-                        &text[..pos.byte]);
                     return Some((AtmaToken::RawStringOpen, pos));
                 },
                 _ => return None,
@@ -413,10 +383,6 @@ impl AtmaScanner {
         }
 
         if self.depth == raw_count {
-            tracing::trace!(
-                "Scanned {:?} token: \"{}\".",
-                AtmaToken::RawStringClose,
-                &text[..pos.byte]);
             Some((AtmaToken::RawStringClose, pos))
         } else {
             None
@@ -437,20 +403,12 @@ impl AtmaScanner {
                 .is_some()
             {
                 self.open = Some(AtmaToken::RawStringText);
-                tracing::trace!(
-                    "Scanned {:?} token: \"{}\".",
-                    AtmaToken::RawStringText,
-                    &text[..pos.byte]);
                 return Some((AtmaToken::RawStringText, pos));
             } else {
                 pos += adv;
             }
         }
 
-        tracing::trace!(
-            "Scanned {:?} token: \"{}\".",
-            AtmaToken::RawStringText,
-            &text[..pos.byte]);
         Some((AtmaToken::RawStringText, pos))
     }
 
@@ -481,10 +439,6 @@ impl AtmaScanner {
                 
                 ("'",  AtmaToken::StringOpenSingle) |
                 ("\"", AtmaToken::StringOpenDouble) => {
-                    tracing::trace!(
-                        "Scanned {:?} token: \"{}\".",
-                        AtmaToken::StringText,
-                        &text[..pos.byte]);
                     return Some((AtmaToken::StringText, pos));
                 },
 
@@ -492,10 +446,6 @@ impl AtmaScanner {
             }
         }
 
-        tracing::trace!(
-            "Scanned {:?} token: \"{}\".",
-            AtmaToken::StringText,
-            &text[..pos.byte]);
         Some((AtmaToken::StringText, pos))
     }
 
@@ -508,24 +458,18 @@ impl AtmaScanner {
         if rest.len() < text.len() {
             let substr = &text[..text.len() - rest.len()];
             let pos = metrics.width(substr);
-            tracing::trace!(
-                "Scanned {:?} token: \"{}\".",
-                AtmaToken::Whitespace,
-                &text[..pos.byte]);
             Some((AtmaToken::Whitespace, pos))
         } else {
             None
         }
     }
-}
 
-impl Scanner for AtmaScanner {
-    type Token = AtmaToken;
-
-    fn scan<'text, Cm>(&mut self, text: &'text str, metrics: Cm)
-        -> Option<(Self::Token, Pos)>
+    fn parse_token<'text, Cm>(&mut self, text: &'text str, metrics: Cm)
+        -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
     {
+        event!(Level::TRACE, "state: {:?}", self);
+
         use AtmaToken::*;
         match self.open.take() {
             Some(RawStringText) => {
@@ -549,7 +493,8 @@ impl Scanner for AtmaScanner {
             },
 
             Some(StringOpenSingle) => {
-                return_if_some!(self.parse_str(text, metrics, "\'", StringCloseSingle));
+                return_if_some!(
+                    self.parse_str(text, metrics, "\'", StringCloseSingle));
                 if let Some(parse) = self
                     .parse_string_text(text, metrics, StringOpenSingle)
                 {
@@ -559,7 +504,8 @@ impl Scanner for AtmaScanner {
                 None
             },
             Some(StringOpenDouble) => {
-                return_if_some!(self.parse_str(text, metrics, "\"", StringCloseDouble));
+                return_if_some!(
+                    self.parse_str(text, metrics, "\"", StringCloseDouble));
                 if let Some(parse) = self
                     .parse_string_text(text, metrics, StringOpenDouble)
                 {
@@ -647,6 +593,25 @@ impl Scanner for AtmaScanner {
             Some(s) => panic!(
                 "invalid lexer state Some({:?}) continuing at {:?}", s, text),
         }
+    }
+}
+
+impl Scanner for AtmaScanner {
+    type Token = AtmaToken;
+
+    fn scan<'text, Cm>(&mut self, text: &'text str, metrics: Cm)
+        -> Option<(Self::Token, Pos)>
+        where Cm: ColumnMetrics,
+    {
+        let span = span!(Level::DEBUG, "AtmaScanner::scan");
+        let _enter = span.enter();
+        
+        let res = self.parse_token(text, metrics);
+
+        event!(Level::DEBUG,
+            "scan result:\n{:?}",
+            res.map(|(t, p)| (t, &text[..p.byte])));
+        res
     }
 }
 

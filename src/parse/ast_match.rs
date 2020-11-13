@@ -27,6 +27,9 @@ use tephra::position::ColumnMetrics;
 use tephra::result::ParseError;
 use tephra::result::Spanned;
 use tephra::span::Span;
+use tracing::event;
+use tracing::Level;
+use tracing::span;
 
 // Standard library imports.
 use std::str::FromStr as _;
@@ -93,7 +96,9 @@ impl AstExprMatch for Ident {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: Ident from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "Ident::match_expr");
+        let _enter = span.enter();
+
         let AstExpr::Unary(Spanned { span, value }) = ast_expr;
         let ast_span = span;
 
@@ -123,9 +128,10 @@ macro_rules! float_matcher {
                 -> Result<Self, ParseError<'text, Cm>>
                 where Cm: ColumnMetrics
             {
-                tracing::trace!(
-                    std::concat!("MATCH: ", $rep, " from AstExpr: {:?}"),
-                    ast_expr);
+                let span = span!(Level::DEBUG,
+                    std::concat!($rep, "::match_expr"));
+                let _enter = span.enter();
+
                 let AstExpr::Unary(Spanned { span, value }) = ast_expr;
                 let ast_span = span;
 
@@ -174,9 +180,10 @@ macro_rules! negatable_integer_matcher {
                 -> Result<Self, ParseError<'text, Cm>>
                 where Cm: ColumnMetrics
             {
-                tracing::trace!(
-                    std::concat!("MATCH: ", $rep, " from AstExpr: {:?}"),
-                    ast_expr);
+                let span = span!(Level::DEBUG,
+                    std::concat!($rep, "::match_expr"));
+                let _enter = span.enter();
+
                 let AstExpr::Unary(Spanned { span, value }) = ast_expr;
                 let ast_span = span;
 
@@ -218,9 +225,10 @@ macro_rules! nonnegatable_integer_matcher {
                 -> Result<Self, ParseError<'text, Cm>>
                 where Cm: ColumnMetrics
             {
-                tracing::trace!(
-                    std::concat!("MATCH: ", $rep, " from AstExpr: {:?}"),
-                    ast_expr);
+                let span = span!(Level::DEBUG,
+                    std::concat!($rep, "::match_expr"));
+                let _enter = span.enter();
+
                 let AstExpr::Unary(Spanned { span, value }) = ast_expr;
                 let ast_span = span;
 
@@ -276,7 +284,9 @@ impl AstExprMatch for () {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: () from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "()::match_expr");
+        let _enter = span.enter();
+
         let AstExpr::Unary(Spanned { span, value }) = ast_expr;
         let ast_span = span;
 
@@ -305,7 +315,9 @@ macro_rules! tuple_impls {
                     -> Result<Self, ParseError<'text, Cm>>
                     where Cm: ColumnMetrics
                 {
-                    tracing::trace!("MATCH: (tuple) from AstExpr: {:?}", ast_expr);
+                    let span = span!(Level::DEBUG, "(tuple)::match_expr");
+                    let _enter = span.enter();
+
                     let AstExpr::Unary(Spanned { span, value }) = ast_expr;
                     let ast_span = span;
 
@@ -376,7 +388,9 @@ impl<T> AstExprMatch for Vec<T> where T: AstExprMatch {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: (Array) from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "(array)::match_expr");
+        let _enter = span.enter();
+
         let AstExpr::Unary(Spanned { span, value }) = ast_expr;
         let ast_span = span;
 
@@ -411,15 +425,14 @@ impl AstExprMatch for Color {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: Color from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "Color::match_expr");
+        let _enter = span.enter();
+
         let AstExpr::Unary(Spanned { span, value }) = ast_expr;
         let ast_span = span;
 
-        let default_error = ParseError::new(
-                concat!("expected color"))
-            .with_span(concat!("not a valid color"),
-                ast_span,
-                metrics);
+        let default_error = ParseError::new("expected color")
+            .with_span("not a valid color", ast_span, metrics);
 
         match value {
             UnaryExpr::Call(CallExpr::Primary(PrimaryExpr::Color(color))) => {
@@ -485,7 +498,9 @@ impl AstExprMatch for CellRef<'static> {
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
-        tracing::trace!("MATCH: CellRef from AstExpr: {:?}", ast_expr);
+        let span = span!(Level::DEBUG, "CellRef::match_expr");
+        let _enter = span.enter();
+
         let AstExpr::Unary(Spanned { span, value }) = ast_expr;
         let ast_span = span;
 
@@ -525,8 +540,9 @@ impl<T, A> AstExprMatch for FunctionCall<T, A>
         -> Result<Self, ParseError<'text, Cm>>
         where Cm: ColumnMetrics
     {
+        let span = span!(Level::DEBUG, "FunctionCall::match_expr");
+        let _enter = span.enter();
 
-        tracing::trace!("MATCH: FunctionCall from AstExpr: {:?}", ast_expr);
         let AstExpr::Unary(Spanned { span, value }) = ast_expr;
         let ast_span = span;
 
