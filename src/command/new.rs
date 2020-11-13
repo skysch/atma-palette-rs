@@ -18,6 +18,10 @@ use crate::palette::Palette;
 use crate::setup::Config;
 use crate::setup::Settings;
 
+// External library imports.
+use tracing::Level;
+use tracing::span;
+
 // Standard library imports.
 use std::path::PathBuf;
 
@@ -57,6 +61,9 @@ pub fn new_palette(
     settings: &mut Settings)
     -> Result<(), anyhow::Error>
 {
+    let span = span!(Level::TRACE, "new_palette");
+    let _enter = span.enter();
+
     let mut settings_changed = false;
     let mut palette = create_new_palette(path, no_history, name)?;
 

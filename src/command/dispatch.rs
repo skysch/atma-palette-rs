@@ -31,6 +31,12 @@ use crate::utility::normalize_path;
 
 // External library imports.
 use anyhow::anyhow;
+use tracing::debug;
+use tracing::Level;
+use tracing::span;
+use tracing::trace;
+use tracing::warn;
+
 
 // Standard library imports.
 use std::path::Path;
@@ -57,7 +63,9 @@ pub fn dispatch(
     cur_dir: Option<&Path>)
     -> Result<(), anyhow::Error>
 {
-    tracing::trace!("Begin command dispatch.");
+    let span = span!(Level::TRACE, "dispatch");
+    let _enter = span.enter();
+
     use CommandOption::*;
     use anyhow::Context as _;
 
@@ -138,7 +146,7 @@ pub fn dispatch(
                 (Some(ColorStyle::None), Some(TextStyle::None))
                     = (color_style, text_style) 
             {
-                tracing::warn!("Invalid combination of color-style and text-style.\
+                warn!("Invalid combination of color-style and text-style.\
                     Using --text-style hex.");
                 config.invalid_color_display_fallback
             } else {
@@ -192,7 +200,7 @@ pub fn dispatch(
         // Insert
         ////////////////////////////////////////////////////////////////////////
         Insert { exprs, name, at } => {
-            tracing::debug!(" Insert {{ exprs: {:?}, name: {:?}, at: {:?} }}",
+            debug!(" Insert {{ exprs: {:?}, name: {:?}, at: {:?} }}",
                 exprs, name, at);
             let pal = palette.ok_or(anyhow!(NO_PALETTE))?;
             if exprs.is_empty() {

@@ -27,6 +27,8 @@ use crate::cell::PositionSelector;
 
 // External module imports.
 use colored::Colorize as _;
+use tracing::Level;
+use tracing::span;
 
 
 
@@ -46,6 +48,9 @@ pub fn list(
     settings: &mut Settings)
     -> Result<(), anyhow::Error>
 {
+    let span = span!(Level::TRACE, "list");
+    let _enter = span.enter();
+
     match mode {
         ListMode::Grid => list_grid(
             palette,
@@ -78,6 +83,9 @@ fn list_lines<'a>(
     _settings: &mut Settings)
     -> Result<(), anyhow::Error>
 {
+    let span = span!(Level::TRACE, "list_lines");
+    let _enter = span.enter();
+
     tracing::debug!("Start listing for selection {:?}", selection);
     let selection = selection.unwrap_or(CellSelector::All.into());
     let index_selection = selection.resolve(palette.inner());
@@ -133,6 +141,9 @@ fn list_grid<'a>(
     _settings: &mut Settings)
     -> Result<(), anyhow::Error>
 {
+    let span = span!(Level::TRACE, "list_grid");
+    let _enter = span.enter();
+
     if max_columns == 0 { return Ok(()); }
     let print_line_numbers = true;
     let print_column_rule = true;

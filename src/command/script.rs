@@ -9,9 +9,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local imports.
-use crate::cell::PositionSelector;
 use crate::cell::Position;
+use crate::cell::PositionSelector;
 use crate::command::CommonOptions;
+use crate::command::CursorBehavior;
+use crate::command::Positioning;
 use crate::error::FileError;
 use crate::palette::InsertExpr;
 use crate::palette::Palette;
@@ -20,22 +22,23 @@ use crate::parse::AtmaToken;
 use crate::parse::stmts;
 use crate::setup::Config;
 use crate::setup::Settings;
-use crate::command::Positioning;
-use crate::command::CursorBehavior;
 
 // External library imports.
-use tephra::combinator::left;
 use tephra::combinator::end_of_text;
+use tephra::combinator::left;
 use tephra::lexer::Lexer;
 use tephra::position::Lf;
 use tephra::result::FailureOwned;
 use tephra::result::ParseResultExt as _;
+use tracing::event;
+use tracing::Level;
+use tracing::span;
 
 // Standard library imports.
+use std::borrow::Cow;
 use std::fmt::Debug;
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::borrow::Cow;
 use std::io::Read;
 use std::path::Path;
 
@@ -60,6 +63,9 @@ impl Script {
         settings: &mut Settings)
         -> Result<(), anyhow::Error>
     {
+        let span = span!(Level::TRACE, "Script::execute");
+        let _enter = span.enter();
+
         if self.stmts.is_empty() {
             tracing::warn!("Executing empty script.");
         }
@@ -144,10 +150,13 @@ impl Stmt {
         settings: &mut Settings)
         -> Result<(), anyhow::Error>
     {
+        let span = span!(Level::TRACE, "Stmt::execute");
+        let _enter = span.enter();
+        event!(Level::TRACE, "executing statement:\n{:?}", self);
+
         use Stmt::*;
         use anyhow::Context as _;
         
-        tracing::debug!("Executing statement {:?}", self);
         match self {
             PaletteHeader { name }      => {
                 if name.is_some() {

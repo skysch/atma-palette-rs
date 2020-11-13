@@ -22,6 +22,10 @@ use anyhow::Error;
 
 // External library imports.
 use structopt::StructOpt;
+use tracing::debug;
+use tracing::error;
+use tracing::info;
+use tracing::trace;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -31,7 +35,7 @@ use structopt::StructOpt;
 pub fn main() {
     if let Err(err) = main_facade() {
         // Print errors to stderr and exit with error code.
-        tracing::error!("{:?}", err);
+        error!("{:?}", err);
         eprintln!("{:?}", err);
         std::process::exit(1);
     }
@@ -72,19 +76,19 @@ pub fn main_facade() -> Result<(), Error> {
         common.trace)?;
 
     // Print version information.
-    tracing::info!("Atma version: {}", env!("CARGO_PKG_VERSION"));
+    info!("Atma version: {}", env!("CARGO_PKG_VERSION"));
     #[cfg(feature = "png")]
-    tracing::info!("PNG support enabled.");
+    info!("PNG support enabled.");
     #[cfg(feature = "termsize")]
-    tracing::info!("Terminal size detection support enabled.");
+    info!("Terminal size detection support enabled.");
     let rustc_meta = rustc_version_runtime::version_meta();
-    tracing::trace!("Rustc version: {} {:?}", rustc_meta.semver, rustc_meta.channel);
+    debug!("Rustc version: {} {:?}", rustc_meta.semver, rustc_meta.channel);
     if let Some(hash) = rustc_meta.commit_hash {
-        tracing::trace!("Rustc git commit: {}", hash);
+        debug!("Rustc git commit: {}", hash);
     }
-    tracing::trace!("{:#?}", common);
-    tracing::trace!("{:#?}", command);
-    tracing::trace!("{:#?}", config);
+    debug!("{:#?}", common);
+    debug!("{:#?}", command);
+    debug!("{:#?}", config);
 
     // Log any config loading errors.
     match config_load_status {
@@ -96,7 +100,7 @@ pub fn main_facade() -> Result<(), Error> {
         },
         Err(_) => {
             // Path is default, so it is ok to use default.
-            tracing::debug!("Using default config.");
+            debug!("Using default config.");
         },
 
         Ok(_) => (),
@@ -119,13 +123,13 @@ pub fn main_facade() -> Result<(), Error> {
         },
         Err(_) => {
             // Path is default, so it is ok to use default settings.
-            tracing::debug!("Using default settings.");
+            debug!("Using default settings.");
             Settings::new().with_load_path(settings_path)
         },
 
         Ok(mut settings) => {
             settings.normalize_paths(&cur_dir);
-            tracing::trace!("{:#?}", settings); 
+            trace!("{:#?}", settings); 
             settings
         },
     };
@@ -142,13 +146,13 @@ pub fn main_facade() -> Result<(), Error> {
             None => match &settings.active_palette {
                 Some(pal_path) => Some(Palette::read_from_path(&pal_path)?),
                 None => if config.load_default_palette {
-                    tracing::debug!("No specified active palette, loading from default \
+                    debug!("No specified active palette, loading from default \
                         location.");
                     let default_path = cur_dir.clone()
                         .join(&config.default_palette_path);
                     Palette::read_from_path(&default_path).ok()
                 } else {
-                    tracing::debug!("No active palette.");
+                    debug!("No active palette.");
                     None
                 },
             },
@@ -156,7 +160,7 @@ pub fn main_facade() -> Result<(), Error> {
     } else {
         None
     };
-    tracing::trace!("Palette: {:#?}", palette);
+    trace!("Palette: {:#?}", palette);
 
     // Dispatch to appropriate commands.
     atma::command::dispatch(
@@ -169,7 +173,7 @@ pub fn main_facade() -> Result<(), Error> {
 
     if let Some(pal) = palette {
         if pal.modified() {
-            tracing::trace!("Palette modified, saving to load path.");
+            debug!("Palette modified, saving to load path.");
             pal.write_to_load_path()
                 .map(|_| ())
                 .context("Failed to write palette pile")?;
@@ -177,19 +181,19 @@ pub fn main_facade() -> Result<(), Error> {
     }
 
     if config.modified() {
-        tracing::trace!("Config modified, saving to load path.");
+        debug!("Config modified, saving to load path.");
         config.write_to_load_path()
             .map(|_| ())
             .context("Failed to write config file")?;
     }
 
     if settings.modified() {
-        tracing::trace!("Settings modified, saving to load path.");
+        debug!("Settings modified, saving to load path.");
         settings.write_to_load_path()
             .map(|_| ())
             .context("Failed to write settings file")?;
     }
-    
+
 
     Ok(())
 }

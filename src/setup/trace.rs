@@ -10,13 +10,14 @@
 #![warn(missing_docs)]
 
 // External library imports.
-use anyhow::Error;
 use anyhow::Context;
+use anyhow::Error;
 use serde::Deserialize;
 use serde::Serialize;
 use tracing::subscriber::set_global_default;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::FmtSubscriber;
 
 // Standard library imports.
@@ -53,6 +54,14 @@ impl TraceConfig {
     {
         let mut env_filter = EnvFilter::from_env(DEFAULT_TRACE_ENV_VAR);
 
+        let atma_level_filter = match (verbose, quiet, trace) {
+            (_, _, true) => LevelFilter::TRACE,
+            (_, true, _) => LevelFilter::WARN,
+            (true, _, _) => LevelFilter::INFO,
+            _            => LevelFilter::WARN,
+        };
+        env_filter = env_filter.add_directive(atma_level_filter.into());
+        
         for filter in &self.filters[..] {
             let directive = filter
                 .parse()
@@ -62,21 +71,14 @@ impl TraceConfig {
             env_filter = env_filter.add_directive(directive);
         }
 
-        let atma_level_filter = match (verbose, quiet, trace) {
-            (_, _, true) => LevelFilter::TRACE,
-            (_, true, _) => LevelFilter::WARN,
-            (true, _, _) => LevelFilter::INFO,
-            _            => LevelFilter::WARN,
-        };
-        env_filter = env_filter.add_directive(atma_level_filter.into());
-        
-
         let subscriber = FmtSubscriber::builder()
-            .with_env_filter(env_filter);
+            .with_span_events(FmtSpan::ACTIVE)
+            .with_env_filter(env_filter)
+            .without_time()
+            .finish();
 
-        set_global_default(subscriber.finish())
-            .with_context(|| format!(
-                "failed to set global tracing subscriber"))
+        set_global_default(subscriber)
+            .with_context(|| format!("failed to set global tracing subscriber"))
     }
 }
 
