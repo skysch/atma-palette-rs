@@ -53,13 +53,6 @@ impl TraceConfig {
     {
         let mut env_filter = EnvFilter::from_env(DEFAULT_TRACE_ENV_VAR);
 
-        env_filter = env_filter.add_directive(match (verbose, quiet, trace) {
-            (_, _, true) => LevelFilter::TRACE,
-            (_, true, _) => LevelFilter::WARN,
-            (true, _, _) => LevelFilter::DEBUG,
-            _            => LevelFilter::INFO,
-        }.into());
-
         for filter in &self.filters[..] {
             let directive = filter
                 .parse()
@@ -69,9 +62,17 @@ impl TraceConfig {
             env_filter = env_filter.add_directive(directive);
         }
 
+        let atma_level_filter = match (verbose, quiet, trace) {
+            (_, _, true) => LevelFilter::TRACE,
+            (_, true, _) => LevelFilter::WARN,
+            (true, _, _) => LevelFilter::INFO,
+            _            => LevelFilter::WARN,
+        };
+        env_filter = env_filter.add_directive(atma_level_filter.into());
+        
+
         let subscriber = FmtSubscriber::builder()
-            .with_env_filter(env_filter)
-            .with_max_level(LevelFilter::TRACE);
+            .with_env_filter(env_filter);
 
         set_global_default(subscriber.finish())
             .with_context(|| format!(
@@ -83,7 +84,9 @@ impl TraceConfig {
 impl Default for TraceConfig {
     fn default() -> Self {
         TraceConfig {
-            filters: Vec::new(),
+            filters: vec![
+                "atma=INFO".into(),
+            ],
         }
     }
 }

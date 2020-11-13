@@ -60,7 +60,7 @@ pub fn main_facade() -> Result<(), Error> {
             config_path))
         .unwrap_or_else(|e| {
             // Store the error for output until after the logger is configured.
-            config_load_status = Err(e);
+            config_load_status = dbg!(Err(e));
             Config::new().with_load_path(&config_path)
         });
     config.normalize_paths(&cur_dir);
@@ -72,11 +72,11 @@ pub fn main_facade() -> Result<(), Error> {
         common.trace)?;
 
     // Print version information.
-    tracing::debug!("Atma version: {}", env!("CARGO_PKG_VERSION"));
+    tracing::info!("Atma version: {}", env!("CARGO_PKG_VERSION"));
     #[cfg(feature = "png")]
-    tracing::debug!("PNG support enabled.");
+    tracing::info!("PNG support enabled.");
     #[cfg(feature = "termsize")]
-    tracing::debug!("Terminal size detection support enabled.");
+    tracing::info!("Terminal size detection support enabled.");
     let rustc_meta = rustc_version_runtime::version_meta();
     tracing::trace!("Rustc version: {} {:?}", rustc_meta.semver, rustc_meta.channel);
     if let Some(hash) = rustc_meta.commit_hash {
