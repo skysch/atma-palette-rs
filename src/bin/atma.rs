@@ -19,10 +19,12 @@ use atma::utility::normalize_path;
 // Standard library imports.
 use anyhow::Context;
 use anyhow::Error;
+use tracing_appender::non_blocking::WorkerGuard;
 
 // External library imports.
 use structopt::StructOpt;
 use tracing::event;
+use tracing::span;
 use tracing::Level;
 
 
@@ -31,7 +33,11 @@ use tracing::Level;
 ////////////////////////////////////////////////////////////////////////////////
 /// The application entry point.
 pub fn main() {
-    if let Err(err) = main_facade() {
+    // The _worker_guard holds the worker thread handle managing the nonblocking
+    // trace writer, and should be held until all tracing is complete.
+    let mut worker_guard: Option<WorkerGuard> = None;
+
+    if let Err(err) = main_facade(&mut worker_guard) {
         // Print errors to stderr and exit with error code.
         event!(Level::ERROR, "{:?}", err);
         eprintln!("{:?}", err);
@@ -44,7 +50,9 @@ pub fn main() {
 // main_facade
 ////////////////////////////////////////////////////////////////////////////////
 /// The application facade for propagating user errors.
-pub fn main_facade() -> Result<(), Error> {
+pub fn main_facade(worker_guard: &mut Option<WorkerGuard>)
+    -> Result<(), Error>
+{
     // Parse command line options.
     let AtmaOptions { common, command } = AtmaOptions::from_args();
 
@@ -68,10 +76,13 @@ pub fn main_facade() -> Result<(), Error> {
     config.normalize_paths(&cur_dir);
 
     // Initialize the global tracing subscriber.
-    let _worker_guard = config.trace_config.init_global_default(
+    
+    *worker_guard = config.trace_config.init_global_default(
         common.verbose,
         common.quiet,
         common.trace)?;
+    let span = span!(Level::INFO, "main");
+    let _enter = span.enter();
 
     // Print version information.
     event!(Level::INFO, "Atma version: {}", env!("CARGO_PKG_VERSION"));

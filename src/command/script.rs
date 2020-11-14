@@ -105,6 +105,9 @@ impl std::str::FromStr for Script {
     type Err = FailureOwned;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let span = span!(Level::DEBUG, "Script::from_str");
+        let _enter = span.enter();
+
         // Setup parser.
         let scanner = AtmaScanner::new();
         let column_metrics = Lf::with_tab_width(4);

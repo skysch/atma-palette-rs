@@ -73,7 +73,6 @@ pub const DEFAULT_DEFAULT_INSERT_CURSOR_BEHAVIOR: CursorBehavior
 pub const DEFAULT_DEFAULT_MOVE_CURSOR_BEHAVIOR: CursorBehavior
     = CursorBehavior::RemainInPlace;
 
-
 /// Default value for default_list_mode.
 pub const DEFAULT_DEFAULT_LIST_MODE: ListMode = ListMode::Lines;
 
@@ -91,7 +90,6 @@ pub const DEFAULT_DEFAULT_LIST_LINE_STYLE: LineStyle = LineStyle::Auto;
 
 /// Default value for default_list_gutter_style.
 pub const DEFAULT_DEFAULT_LIST_GUTTER_STYLE: GutterStyle = GutterStyle::Auto;
-
 
 /// The default value for  invalid_color_display_fallback.
 pub const DEFAULT_INVALID_COLOR_DISPLAY_FALLBACK: ColorDisplay = ColorDisplay {
@@ -143,7 +141,6 @@ pub struct Config {
     /// Default value when positioning is not given.
     #[serde(default = "Config::default_default_positioning")]
     pub default_positioning: Positioning,
-
 
     /// The default behavior of the cursor after a delete command is run.
     #[serde(default = "Config::default_default_delete_cursor_behavior")]
@@ -486,7 +483,11 @@ impl Default for Config {
 
 impl std::fmt::Display for Config {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(fmt, "\n\ttrace_config/filters: {:?}",
+        writeln!(fmt, "\n\ttrace_config.output_path: {:?}",
+            self.trace_config.output_path)?;
+        writeln!(fmt, "\n\ttrace_config.ansi_colors: {:?}",
+            self.trace_config.ansi_colors)?;
+        writeln!(fmt, "\n\ttrace_config.filters: {:?}",
             self.trace_config.filters)?;
         writeln!(fmt, "\tload_default_palette: {:?}",
             self.load_default_palette)?;
