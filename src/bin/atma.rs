@@ -33,13 +33,18 @@ use tracing::Level;
 ////////////////////////////////////////////////////////////////////////////////
 /// The application entry point.
 pub fn main() {
-    // The _worker_guard holds the worker thread handle managing the nonblocking
-    // trace writer, and should be held until all tracing is complete.
+    // The worker_guard holds the worker thread handle for the nonblocking
+    // trace writer. It should be held until all tracing is complete, as any
+    // trace spans or events after it is dropped will be ignored.
     let mut worker_guard: Option<WorkerGuard> = None;
 
     if let Err(err) = main_facade(&mut worker_guard) {
-        // Print errors to stderr and exit with error code.
+        // Trace errors without coloring.
+        colored::control::set_override(false);
         event!(Level::ERROR, "{:?}", err);
+
+        // Print errors to stderr and exit with error code.
+        colored::control::unset_override();
         eprintln!("{:?}", err);
         std::process::exit(1);
     }

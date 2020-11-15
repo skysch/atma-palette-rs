@@ -40,7 +40,6 @@ use tephra::combinator::right;
 use tephra::combinator::section;
 use tephra::combinator::spanned;
 use tephra::combinator::text;
-use tephra::combinator::trace_break_count;
 use tephra::lexer::Lexer;
 use tephra::position::ColumnMetrics;
 use tephra::result::Failure;

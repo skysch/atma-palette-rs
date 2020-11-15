@@ -376,7 +376,7 @@ impl<'name> TryFrom<(CellRef<'name>, CellRef<'name>)> for CellSelector<'name> {
 }
 
 impl std::str::FromStr for CellSelector<'static> {
-    type Err = FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         // Setup parser.

@@ -92,7 +92,7 @@ impl<'name> std::fmt::Display for CellRef<'name> {
 }
 
 impl std::str::FromStr for CellRef<'static> {
-    type Err = FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         // Setup parser.

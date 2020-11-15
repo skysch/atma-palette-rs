@@ -20,9 +20,10 @@ use crate::parse::position_selector;
 // External library imports.
 use serde::Deserialize;
 use serde::Serialize;
-use tephra::result::ParseResultExt as _;
 use tephra::lexer::Lexer;
 use tephra::position::Lf;
+use tephra::result::FailureOwned;
+use tephra::result::ParseResultExt as _;
 
 // Standard library imports.
 use std::convert::TryFrom;
@@ -291,7 +292,7 @@ impl std::fmt::Display for PositionSelector {
 }
 
 impl std::str::FromStr for PositionSelector {
-    type Err = tephra::result::FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         // Setup parser.

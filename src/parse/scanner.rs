@@ -609,7 +609,7 @@ impl Scanner for AtmaScanner {
         let res = self.parse_token(text, metrics);
 
         event!(Level::DEBUG,
-            "scan result:\n{:?}",
+            "scan result: {:?}",
             res.map(|(t, p)| (t, &text[..p.byte])));
         res
     }

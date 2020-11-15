@@ -13,9 +13,9 @@ use crate::cell::CellRef;
 use crate::parse::AtmaScanner;
 
 // External library imports.
-use tephra::position::ColumnMetrics;
-use tephra::result::FailureOwned;
+use tephra::position::Lf;
 use tephra::result::Failure;
+use tephra::result::FailureOwned;
 
 // Standard library imports.
 use std::borrow::Cow;
@@ -30,7 +30,7 @@ pub struct ParseError {
     /// The error message.
     msg: Option<String>,
     /// The error source.
-    source: FailureOwned,
+    source: FailureOwned<Lf>,
 }
 
 impl std::fmt::Display for ParseError {
@@ -46,16 +46,14 @@ impl std::error::Error for ParseError {
     }
 }
 
-impl From<FailureOwned> for ParseError {
-    fn from(err: FailureOwned) -> Self {
+impl From<FailureOwned<Lf>> for ParseError {
+    fn from(err: FailureOwned<Lf>) -> Self {
         ParseError { msg: Some("parse error".to_owned()), source: err }
     }
 }
 
-impl<'t, Cm> From<Failure<'t, AtmaScanner, Cm>> for ParseError
-    where Cm: ColumnMetrics,
-{
-    fn from(err: Failure<'t, AtmaScanner, Cm>) -> Self {
+impl<'t> From<Failure<'t, AtmaScanner, Lf>> for ParseError {
+    fn from(err: Failure<'t, AtmaScanner, Lf>) -> Self {
         FailureOwned::from(err).into()
     }
 }
@@ -110,7 +108,7 @@ pub enum FileError {
         /// The error message.
         msg: Option<String>,
         /// The error source.
-        source: FailureOwned,
+        source: FailureOwned<Lf>,
     }
 }
 
@@ -182,8 +180,8 @@ impl From<ParseError> for FileError {
     }
 }
 
-impl From<FailureOwned> for FileError {
-    fn from(err: FailureOwned) -> Self {
+impl From<FailureOwned<Lf>> for FileError {
+    fn from(err: FailureOwned<Lf>) -> Self {
         FileError::ParseError {
             msg: Some("file parse error".to_owned()),
             source: err,
@@ -191,10 +189,8 @@ impl From<FailureOwned> for FileError {
     }
 }
 
-impl<'t, Cm> From<Failure<'t, AtmaScanner, Cm>> for FileError 
-    where Cm: ColumnMetrics,
-{
-    fn from(err: Failure<'t, AtmaScanner, Cm>) -> Self {
+impl<'t> From<Failure<'t, AtmaScanner, Lf>> for FileError {
+    fn from(err: Failure<'t, AtmaScanner, Lf>) -> Self {
         FailureOwned::from(err).into()
     }
 }

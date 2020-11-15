@@ -19,13 +19,13 @@ use crate::palette::InsertExpr;
 use crate::palette::Palette;
 use crate::parse::AtmaScanner;
 use crate::parse::AtmaToken;
+use crate::parse::stmt;
 use crate::parse::stmts;
 use crate::setup::Config;
 use crate::setup::Settings;
 
 // External library imports.
 use tephra::combinator::end_of_text;
-use tephra::combinator::left;
 use tephra::lexer::Lexer;
 use tephra::position::Lf;
 use tephra::result::FailureOwned;
@@ -102,7 +102,7 @@ impl Script {
 }
 
 impl std::str::FromStr for Script {
-    type Err = FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         let span = span!(Level::DEBUG, "Script::from_str");
@@ -114,10 +114,25 @@ impl std::str::FromStr for Script {
         let mut lexer = Lexer::new(scanner, text, column_metrics);
         lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
 
-        left(stmts, end_of_text)
+        let (script, succ) = stmts
             (lexer)
-            .map_value(|stmts| Script { stmts })
-            .finish()
+            .map_value(|stmts| Script { stmts })?
+            .take_value();
+
+        // Try to parse end-of-text, and if it fails, return the error from
+        // a stmt parse.
+        let end = end_of_text
+            (succ.lexer);
+        if let Err(mut fail) = end {
+            fail.lexer.reset();
+            stmt
+                (fail.lexer)
+                .map_value(|_| script)
+                .finish()
+        } else {
+            end.map_value(|_| script)
+                .finish()
+        }
     }
 }
 

@@ -124,7 +124,7 @@ impl<'name> std::fmt::Display for CellSelection<'name> {
 }
 
 impl std::str::FromStr for CellSelection<'static> {
-    type Err = FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         // Setup parser.

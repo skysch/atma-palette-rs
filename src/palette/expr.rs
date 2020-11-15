@@ -134,7 +134,7 @@ impl InsertExpr {
 }
 
 impl std::str::FromStr for InsertExpr {
-    type Err = FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         // Setup parser.
@@ -171,7 +171,7 @@ pub struct RampExpr {
 }
 
 impl std::str::FromStr for RampExpr {
-    type Err = FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         // Setup parser.
@@ -219,7 +219,7 @@ impl BlendExpr {
 }
 
 impl std::str::FromStr for BlendExpr {
-    type Err = FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         // Setup parser.
@@ -275,7 +275,7 @@ impl BlendFunction {
 }
 
 impl std::str::FromStr for BlendFunction {
-    type Err = FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         // Setup parser.
@@ -350,7 +350,7 @@ impl UnaryBlendFunction {
 }
 
 impl std::str::FromStr for UnaryBlendFunction {
-    type Err = FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         // Setup parser.
@@ -523,7 +523,7 @@ impl BinaryBlendFunction {
 }
 
 impl std::str::FromStr for BinaryBlendFunction {
-    type Err = FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         // Setup parser.
@@ -718,7 +718,7 @@ impl Default for ColorSpace {
 
 
 impl std::str::FromStr for ColorSpace {
-    type Err = FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         // Setup parser.
@@ -798,7 +798,7 @@ impl Default for Interpolate {
 }
 
 impl std::str::FromStr for Interpolate {
-    type Err = FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         // Setup parser.
@@ -887,7 +887,7 @@ impl Default for InterpolateRange {
 }
 
 impl std::str::FromStr for InterpolateRange {
-    type Err = FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         // Setup parser.
@@ -955,7 +955,7 @@ impl Default for InterpolateFunction {
 }
 
 impl std::str::FromStr for InterpolateFunction {
-    type Err = FailureOwned;
+    type Err = FailureOwned<Lf>;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         // Setup parser.
