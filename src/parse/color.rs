@@ -106,7 +106,7 @@ pub fn rgb_hex_code<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
                 .with_span(
                     format!("3 or 6 digits required, {} provided",
                         val.len() - 1),
-                    succ.lexer.last_span(),
+                    succ.lexer.token_span(),
                     succ.lexer.column_metrics()),
             lexer: succ.lexer,
             source: None,
@@ -140,7 +140,7 @@ pub fn color_function<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
         parse_error: ParseError::new("invalid color")
             .with_span(
                 "not a recognized color form",
-                succ.lexer.full_span(),
+                succ.lexer.parse_span(),
                 succ.lexer.column_metrics()),
         lexer: lexer.join(succ.lexer),
         source: None,
@@ -163,7 +163,7 @@ fn rgb_from_args<'text, Cm>(
                 .with_span(
                     format!("RGB color requires 3 arguments, {} provided",
                         args.len()),
-                    lexer.last_span(),
+                    lexer.token_span(),
                     lexer.column_metrics()),
             lexer,
             source: None,

@@ -233,7 +233,7 @@ pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
             parse_error: ParseError::new("unrecognized statement")
                 .with_span(
                     "expected 'palette', 'page', 'line' or expression",
-                    lexer.span(),
+                    lexer.parse_span(),
                     lexer.column_metrics()),
             lexer,
             source: None,
@@ -309,7 +309,7 @@ pub fn header_stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
                 parse_error: ParseError::new("invalid header statement")
                     .with_span(
                         "expected 'palette', 'page', or 'line'",
-                        lexer.span(),
+                        lexer.parse_span(),
                         lexer.column_metrics()),
                 lexer,
                 source: None,
@@ -343,7 +343,7 @@ pub fn header_stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
                     parse_error: ParseError::new("invalid palette header")
                         .with_span(
                             "palette numbering is not supported",
-                            lexer.span(),
+                            lexer.parse_span(),
                             lexer.column_metrics()),
                     lexer,
                     source: None,

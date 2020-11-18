@@ -133,7 +133,7 @@ pub fn position_or_index<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
                             .with_span(format!(
                                 "value ({}) is too large for unsigned 16 bit value",
                                     idx),
-                                idx_succ.lexer.last_span(),
+                                idx_succ.lexer.token_span(),
                                 idx_succ.lexer.column_metrics()),
                         lexer: succ.lexer,
                         source: Some(Box::new(e)),
@@ -244,7 +244,7 @@ pub fn cell_selector<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
                                 parse_error: ParseError::new("invalid index range")
                                     .with_span(
                                         "range bounds are in the wrong order", 
-                                        succ.lexer.span(),
+                                        succ.lexer.token_span(),
                                         succ.lexer.column_metrics()),
                                 lexer: succ.lexer,
                                 source: None,
@@ -262,7 +262,7 @@ pub fn cell_selector<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
                                 parse_error: ParseError::new("invalid position range")
                                     .with_span(
                                         "range bounds are in the wrong order", 
-                                        succ.lexer.span(),
+                                        succ.lexer.token_span(),
                                         succ.lexer.column_metrics()),
                                 lexer: succ.lexer,
                                 source: None,
@@ -276,7 +276,7 @@ pub fn cell_selector<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
                             parse_error: ParseError::new("invalid range")
                                 .with_span(
                                     "range bounds have incompatable types", 
-                                    succ.lexer.span(),
+                                    succ.lexer.token_span(),
                                     succ.lexer.column_metrics()),
                             lexer: succ.lexer,
                             source: None,
@@ -329,7 +329,7 @@ pub fn cell_selector<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
                         parse_error: ParseError::new("invalid group range")
                             .with_span(
                                 "range bounds are in the wrong order", 
-                                succ.lexer.span(),
+                                succ.lexer.token_span(),
                                 succ.lexer.column_metrics()),
                         lexer: succ.lexer,
                         source: None,
@@ -341,7 +341,7 @@ pub fn cell_selector<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
                         parse_error: ParseError::new("invalid group range")
                             .with_span(
                                 "range bounds are in different groups", 
-                                succ.lexer.span(),
+                                succ.lexer.token_span(),
                                 succ.lexer.column_metrics()),
                         lexer: succ.lexer,
                         source: None,
@@ -356,7 +356,7 @@ pub fn cell_selector<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
                     parse_error: ParseError::new("invalid range")
                         .with_span(
                             "range bounds have incompatable types", 
-                            succ.lexer.span(),
+                            succ.lexer.token_span(),
                             succ.lexer.column_metrics()),
                     lexer: succ.lexer,
                     source: None,

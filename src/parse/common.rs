@@ -88,7 +88,7 @@ pub fn uint<'text, Cm, T>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
                                 || val.to_string(),
                                 |v| v.to_string()),
                             T::SIZE_DESCRIPTION),
-                        succ.lexer.last_span(),
+                        succ.lexer.token_span(),
                         succ.lexer.column_metrics()),
                 lexer: succ.lexer,
                 source: Some(Box::new(e)),
@@ -168,7 +168,7 @@ pub fn float<'text, Cm, T>(lexer: Lexer<'text, AtmaScanner, Cm>)
             parse_error: ParseError::new("invalid float value")
                 .with_span(
                     "invalid value", 
-                    succ.lexer.span(),
+                    succ.lexer.parse_span(),
                     succ.lexer.column_metrics()),
             lexer: succ.lexer,
             source: Some(Box::new(e)),

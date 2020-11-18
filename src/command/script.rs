@@ -123,8 +123,7 @@ impl std::str::FromStr for Script {
         // a stmt parse.
         let end = end_of_text
             (succ.lexer);
-        if let Err(mut fail) = end {
-            fail.lexer.reset();
+        if let Err(fail) = end {
             stmt
                 (fail.lexer)
                 .map_value(|_| script)
