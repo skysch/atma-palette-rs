@@ -196,7 +196,7 @@ pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     let _enter = span.enter();
 
     // header statements
-    match header_stmt(lexer.sublexer()) {
+    match header_stmt(lexer.clone()) {
         Ok(mut stmt) => {
             event!(Level::TRACE,
                 "header_stmt succeeds; parsing trailing empty stmts");
@@ -212,7 +212,7 @@ pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     event!(Level::TRACE, "header_stmt failed");
 
     // expr statement
-    match expr_stmt(lexer.sublexer()) {
+    match expr_stmt(lexer.clone()) {
         Ok(mut stmt) => {
             event!(Level::TRACE, "expr_statement succeeds: parsing trailing \
                 empty stmts.");
@@ -319,10 +319,16 @@ pub fn header_stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     };
     event!(Level::TRACE, "introducer: {:?}", stmt);
 
-    let (parsed_number, succ) = maybe(uint::<Cm, u16>)
-        (lexer)
-        .expect("header number parse cannot fail")
-        .take_value();
+    let (parsed_number, succ) = match stmt {
+        Stmt::PaletteHeader { .. } => (None, Success { value: (), lexer}),
+        Stmt::PageHeader { .. }    |
+        Stmt::LineHeader { .. }    => maybe(uint::<Cm, u16>)
+            (lexer)
+            .expect("header number parse cannot fail")
+            .take_value(),
+
+        _ => unreachable!(),
+    };
     event!(Level::TRACE, "parsed_number: {:?}", parsed_number);
 
     let (parsed_name, succ) = maybe(string)

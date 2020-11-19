@@ -18,7 +18,6 @@ use crate::error::FileError;
 use crate::palette::InsertExpr;
 use crate::palette::Palette;
 use crate::parse::AtmaScanner;
-use crate::parse::AtmaToken;
 use crate::parse::stmt;
 use crate::parse::stmts;
 use crate::setup::Config;
@@ -112,7 +111,7 @@ impl std::str::FromStr for Script {
         let scanner = AtmaScanner::new();
         let column_metrics = Lf::with_tab_width(4);
         let mut lexer = Lexer::new(scanner, text, column_metrics);
-        lexer.set_filter_fn(|tok| *tok != AtmaToken::Whitespace);
+        lexer.set_filter_fn(|tok| !tok.is_whitespace_or_comment());
 
         let (script, succ) = stmts
             (lexer)

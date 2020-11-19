@@ -189,13 +189,13 @@ pub fn string<'text, Cm>(
     let span = span!(Level::DEBUG, "string");
     let _enter = span.enter();
 
-    if let Ok(succ) = raw_string(lexer.sublexer()) {
+    if let Ok(succ) = raw_string(lexer.clone()) {
         event!(Level::TRACE, "raw_string succeeds");
         return Ok(succ.map_value(Cow::from))
     }
 
     event!(Level::TRACE, "raw_string fails");
-    escaped_string(lexer.sublexer())
+    escaped_string(lexer)
 }
 
 pub fn raw_string<'text, Cm>(

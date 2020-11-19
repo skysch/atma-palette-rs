@@ -56,6 +56,15 @@ macro_rules! return_if_some {
 pub enum AtmaToken {
     /// Any number of whitespace characters.
     Whitespace,
+
+    /// An open line comment sequence '//'.
+    OpenLineComment,
+    /// An open block comment sequence '/*'.
+    OpenBlockComment,
+    /// A close block comment sequence '*/'.
+    CloseBlockComment,
+    /// Comment text.
+    CommentText,
     
     /// An open parenthesis character '('.
     OpenParen,
@@ -123,11 +132,29 @@ pub enum AtmaToken {
     Underscore,
 }
 
+impl AtmaToken {
+    pub fn is_whitespace_or_comment(&self) -> bool {
+        use AtmaToken::*;
+        match self {
+            Whitespace        |
+            OpenLineComment   |
+            OpenBlockComment  |
+            CloseBlockComment |
+            CommentText       => true,
+            _                 => false,
+        }
+    }
+}
+
 impl std::fmt::Display for AtmaToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use AtmaToken::*;
         match self {
             Whitespace        => write!(f, "whitespace"),
+            OpenLineComment   => write!(f, "'//'"),
+            OpenBlockComment  => write!(f, "'/*'"),
+            CloseBlockComment => write!(f, "'*/'"),
+            CommentText       => write!(f, "comment text"),
             OpenParen         => write!(f, "'('"),
             CloseParen        => write!(f, "')'"),
             OpenBracket       => write!(f, "'['"),
@@ -464,6 +491,60 @@ impl AtmaScanner {
         }
     }
 
+    fn parse_line_comment_text<Cm>(
+        &mut self,
+        text: &str,
+        metrics: Cm)
+        -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
+    {
+        let mut pos = Pos::ZERO;
+        let mut col_iter = metrics.iter_columns(text);
+
+        while let Some((next, adv)) = col_iter.next() {
+            if adv.is_line_start() { break; }
+            pos += adv;
+        }
+
+        Some((AtmaToken::CommentText, pos))
+    }
+
+    fn parse_block_comment_text<Cm>(
+        &mut self,
+        text: &str,
+        metrics: Cm)
+        -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
+    {
+        let mut pos = Pos::ZERO;
+        let mut col_iter = metrics.iter_columns(text);
+
+        while let Some((next, adv)) = col_iter.next() {
+            match next {
+                "/" => match col_iter.next() {
+                    Some(("*", adv2)) => {
+                        self.depth += 1;
+                        pos += (adv + adv2);
+                    },
+                    Some((_, adv2)) => pos += (adv + adv2),
+                    _ => pos += adv,
+                },
+                "*" => match col_iter.next() {
+                    Some(("/", adv2)) => {
+                        if self.depth == 1 { break; }
+                        self.depth -= 1;
+                    },
+                    Some((_, adv2)) => pos += (adv + adv2),
+                    _ => pos += adv,
+                },
+                
+                _ => pos += adv,
+            }
+        }
+
+        Some((AtmaToken::CommentText, pos))
+    }
+
     fn parse_token<'text, Cm>(&mut self, text: &'text str, metrics: Cm)
         -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
@@ -472,6 +553,26 @@ impl AtmaScanner {
 
         use AtmaToken::*;
         match self.open.take() {
+            Some(OpenLineComment) => {
+                // Line comment cannot fail, so no other parse could be returned
+                // here.
+                self.parse_line_comment_text(text, metrics)
+            },
+            Some(OpenBlockComment) => {
+                if let Some(parse) = self
+                    .parse_str(text, metrics, "*/", CloseBlockComment)
+                {
+                    self.depth = 0;
+                    return Some(parse);
+                }
+                
+                self.open = Some(OpenBlockComment);
+                // Block comment cannot fail, so no other parse could be
+                // returned here.
+                self.parse_block_comment_text(text, metrics)
+            },
+
+
             Some(RawStringText) => {
                 // Because it is necessary to recognize the RawStringClose to
                 // finish parsing RawStringText, we should never get here unless
@@ -544,6 +645,21 @@ impl AtmaScanner {
                 return_if_some!(self.parse_str(text, metrics, "]", CloseBracket));
                 return_if_some!(self.parse_str(text, metrics, "{", OpenBrace));
                 return_if_some!(self.parse_str(text, metrics, "}", CloseBrace));
+
+
+                if let Some(parse) = self
+                    .parse_str(text, metrics, "//", OpenLineComment)
+                {
+                    self.open = Some(OpenLineComment);
+                    return Some(parse);
+                }
+                if let Some(parse) = self
+                    .parse_str(text, metrics, "/*", OpenBlockComment)
+                {
+                    self.open = Some(OpenBlockComment);
+                    self.depth = 1;
+                    return Some(parse);
+                }
 
                 // RawStringOpen must be parsed before Hash.
                 if let Some(parse) = self.parse_raw_string_open(text, metrics) {
