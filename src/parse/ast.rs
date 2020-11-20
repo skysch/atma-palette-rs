@@ -35,6 +35,7 @@ use tephra::combinator::left;
 use tephra::combinator::maybe;
 use tephra::combinator::one;
 use tephra::combinator::repeat;
+use tephra::combinator::end_of_text;
 use tephra::combinator::repeat_collect;
 use tephra::combinator::right;
 use tephra::combinator::section;
@@ -177,13 +178,22 @@ pub fn stmts<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     let span = span!(Level::DEBUG, "stmts");
     let _enter = span.enter();
 
-    // Skip beginning empty statements.
-    lexer = repeat(0, None, one(AtmaToken::Semicolon))
-        (lexer)?
-        .lexer;
-    event!(Level::TRACE, "finished parsing starting empty stmts");
+    intersperse_collect_until(0, None,
+        end_of_text,
+        stmt,
+        empty_stmts)
+        (lexer)
+}
 
-    repeat_collect(0, None, stmt)
+
+pub fn empty_stmts<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
+    -> ParseResult<'text, AtmaScanner, Cm, usize>
+    where Cm: ColumnMetrics,
+{
+    let span = span!(Level::DEBUG, "empty_stmts");
+    let _enter = span.enter();
+
+    repeat(0, None, one(AtmaToken::Semicolon))
         (lexer)
 }
 
@@ -196,33 +206,21 @@ pub fn stmt<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     let _enter = span.enter();
 
     // header statements
-    match header_stmt(lexer.clone()) {
-        Ok(mut stmt) => {
-            event!(Level::TRACE,
-                "header_stmt succeeds; parsing trailing empty stmts");
-            // Parse any following empty statements.
-            stmt.lexer = repeat(0, None, one(AtmaToken::Semicolon))
-                (stmt.lexer)?
-                .lexer;
-
-            return Ok(stmt);
-        },
+    match header_stmt
+        (lexer.clone())
+        .trace_result(Level::TRACE, "header_stmt")
+    {
+        Ok(mut stmt) => return Ok(stmt),
         Err(_) => (),
     }
     event!(Level::TRACE, "header_stmt failed");
 
     // expr statement
-    match expr_stmt(lexer.clone()) {
-        Ok(mut stmt) => {
-            event!(Level::TRACE, "expr_statement succeeds: parsing trailing \
-                empty stmts.");
-            // Parse any following empty statements.
-            stmt.lexer = repeat(1, None, one(AtmaToken::Semicolon))
-                (stmt.lexer)?
-                .lexer;
-
-            return Ok(stmt);
-        },
+    match expr_stmt
+        (lexer.clone())
+        .trace_result(Level::TRACE, "expr_stmt")
+    {
+        Ok(mut stmt) => return Ok(stmt),
         Err(_) => (),
     }
     event!(Level::TRACE, "expr_stmt failed");
@@ -264,7 +262,9 @@ pub fn expr_stmt<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
 
     use AtmaToken::*;
 
-    match ast_expr
+    match left(
+        ast_expr,
+        one(Semicolon))
         (lexer.sublexer())
     {
         Ok(Success { lexer, value }) => match InsertExpr::match_expr(
