@@ -178,10 +178,12 @@ pub fn stmts<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     let span = span!(Level::DEBUG, "stmts");
     let _enter = span.enter();
 
-    intersperse_collect_until(0, None,
-        end_of_text,
-        stmt,
-        empty_stmts)
+    right(
+        empty_stmts,
+        intersperse_collect_until(0, None,
+            end_of_text,
+            stmt,
+            empty_stmts))
         (lexer)
 }
 

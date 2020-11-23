@@ -63,7 +63,7 @@ pub enum AtmaToken {
     OpenBlockComment,
     /// A close block comment sequence '*/'.
     CloseBlockComment,
-    /// Comment text.
+    /// Comment source.
     CommentText,
     
     /// An open parenthesis character '('.
@@ -84,7 +84,7 @@ pub enum AtmaToken {
     /// A raw string open "r[#*]\"".
     RawStringOpen,
     /// A raw string close "\"[#*]", which must match the corresponding open
-    /// text.
+    /// source.
     RawStringClose,
     /// A raw string, ignoring escape characters.
     RawStringText,
@@ -154,7 +154,7 @@ impl std::fmt::Display for AtmaToken {
             OpenLineComment   => write!(f, "'//'"),
             OpenBlockComment  => write!(f, "'/*'"),
             CloseBlockComment => write!(f, "'*/'"),
-            CommentText       => write!(f, "comment text"),
+            CommentText       => write!(f, "comment source"),
             OpenParen         => write!(f, "'('"),
             CloseParen        => write!(f, "')'"),
             OpenBracket       => write!(f, "'['"),
@@ -163,12 +163,12 @@ impl std::fmt::Display for AtmaToken {
             CloseBrace        => write!(f, "'}}'"),
             RawStringOpen     => write!(f, "raw string quote"),
             RawStringClose    => write!(f, "raw string quote"),
-            RawStringText     => write!(f, "raw string text"),
+            RawStringText     => write!(f, "raw string source"),
             StringOpenSingle  => write!(f, "open quote '''"),
             StringCloseSingle => write!(f, "close qoute '''"),
             StringOpenDouble  => write!(f, "open quote '\"'"),
             StringCloseDouble => write!(f, "close quote '\"'"),
-            StringText        => write!(f, "string text"),
+            StringText        => write!(f, "string source"),
             Semicolon         => write!(f, "';'"),
             Colon             => write!(f, "':'"),
             Comma             => write!(f, "','"),
@@ -203,255 +203,244 @@ impl AtmaScanner {
         }
     }
 
+
     /// Parses a string.
     fn parse_str<Cm>(
         &mut self,
-        text: &str,
+        source: &str,
+        base: Pos,
         metrics: Cm,
         pattern: &str,
         token: AtmaToken)
         -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
     {
-        if text.starts_with(pattern) {
-            let pos = metrics.width(pattern);
-            Some((token, pos))
-        } else {
-            None
-        }
+        metrics.position_after_str(source, base, pattern)
+            .map(|end| (token, end))
     }
 
     /// Parses a Ident token.
-    fn parse_ident<Cm>(&mut self, text: &str, metrics: Cm)
+    fn parse_ident<Cm>(&mut self, source: &str, base: Pos, metrics: Cm)
         -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
     {
-        let mut pos = Pos::ZERO;
-        let mut col_iter = metrics.iter_columns(text);
-        match col_iter.next() {
-            Some((next, adv)) if next
-                .chars()
-                .all(|c| c.is_alphabetic() || c == '_') =>
-            {
-                pos += adv;
-            }
-            _ => return None,
+        let span = span!(Level::TRACE, "AtmaScanner::parse_ident");
+        let _enter = span.enter();
+
+        // Parse alpha or underscore.
+        let end = metrics
+            .next_position_after_chars_matching(source, base,
+                |c|  c.is_alphabetic() || c == '_')?;
+
+        // Parse alphanumerics or underscores.
+        let end = metrics
+            .position_after_chars_matching(source, end,
+                |c|  c.is_alphanumeric() || c == '_')
+            .unwrap_or(end);
+
+        Some((AtmaToken::Ident, end))
+    }
+
+    /// Parses an Uint token.
+    fn parse_uint<Cm>(&mut self, source: &str, base: Pos, metrics: Cm)
+        -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
+    {
+        let span = span!(Level::TRACE, "AtmaScanner::parse_uint");
+        let _enter = span.enter();
+
+        let mut end = base;
+
+        // Unprefixed uints can't start with '_'.
+        if source[end.byte..].starts_with('_') { return None; }
+
+        // Identify radix.
+        let radix = if source[end.byte..].starts_with("0b") {
+            end += Pos::new(2, 0, 2);
+            2
+        } else if source[end.byte..].starts_with("0o") {
+            end += Pos::new(2, 0, 2);
+            8
+        } else if source[end.byte..].starts_with("0x") {
+            end += Pos::new(2, 0, 2);
+            16
+        } else {
+            10
+        };
+
+        // Parse digits or underscore.
+        metrics
+            .position_after_chars_matching(source, end,
+                |c| c.is_digit(radix) || c == '_')
+            .map(|end| (AtmaToken::Uint, end))
+    }
+
+    /// Parses an HexDigits token.
+    fn parse_hex_digits<Cm>(&mut self, source: &str, base: Pos, metrics: Cm)
+        -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
+    {
+        let span = span!(Level::TRACE, "AtmaScanner::parse_hex_digits");
+        let _enter = span.enter();
+
+        // Parse digits or underscore.
+        metrics
+            .position_after_chars_matching(source, base,
+                |c| c.is_digit(16))
+            .map(|end| (AtmaToken::HexDigits, end))
+    }
+
+    /// Parses a Float token.
+    fn parse_float<Cm>(&mut self, source: &str, base: Pos, metrics: Cm)
+        -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
+    {
+        let span = span!(Level::TRACE, "AtmaScanner::parse_float");
+        let _enter = span.enter();
+
+        // Check for special float forms.
+        return_if_some!(metrics.position_after_str(source, base, "inf")
+            .map(|end| (AtmaToken::Float, end)));
+
+        return_if_some!(metrics.position_after_str(source, base, "nan")
+            .map(|end| (AtmaToken::Float, end)));
+
+        // Parse digits, fail if not found.
+        let end = metrics
+            .position_after_chars_matching(source, base,
+                |c| c.is_digit(10))?;
+
+        // Parse decimal point, fail if not found.
+        let end = metrics
+            .position_after_str(source, end, ".")?;
+
+        // Parse digits.
+        let end = metrics
+            .position_after_chars_matching(source, end,
+                |c| c.is_digit(10))
+            .unwrap_or(end);
+
+        // Parse exponent.
+        if let Some(end) = metrics
+            .next_position_after_chars_matching(source, end,
+                |c| c == 'e' || c == 'E')
+        {
+            // Parse exponent sign.
+            let end = metrics
+                .next_position_after_chars_matching(source, end,
+                    |c| c == '+' || c == '-')
+                .unwrap_or(end);
+
+            // Parse exponent digits, fail if not found.
+            let end = metrics
+                .position_after_chars_matching(source, end,
+                    |c| c.is_digit(10))?;
+
+            Some((AtmaToken::Float, end))
+        } else {
+            Some((AtmaToken::Float, end))
+        }
+    }
+
+    /// Parses a RawStringOpen token.
+    fn parse_raw_string_open<Cm>(
+        &mut self,
+        source: &str,
+        base: Pos,
+        metrics: Cm)
+        -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
+    {
+        let span = span!(Level::TRACE, "AtmaScanner::parse_raw_string_open");
+        let _enter = span.enter();
+
+        let mut end = metrics.position_after_str(source, base, "r")?;
+
+        while let Some(adv) = metrics
+            .position_after_chars_matching(source, end,
+                |c| c == '#')
+        {
+            self.depth += 1;
+            end = adv;
         }
 
-        while let Some((next, adv)) = col_iter.next() {
-            if next.chars().all(|c| c.is_alphanumeric() || c == '_') {
-                pos += adv;
-            } else {
+        metrics.position_after_str(source, end, "\"")
+            .map(|end| (AtmaToken::RawStringOpen, end))
+    }
+
+    /// Parses a RawStringClose token.
+    fn parse_raw_string_close<Cm>(
+        &mut self,
+        source: &str,
+        base: Pos,
+        metrics: Cm)
+        -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
+    {
+        let span = span!(Level::TRACE, "AtmaScanner::parse_raw_string_close");
+        let _enter = span.enter();
+
+        let mut end = metrics.position_after_str(source, base, "\"")?;
+
+        while let Some(adv) = metrics
+            .position_after_chars_matching(source, end,
+                |c| c == '#')
+        {
+            if self.depth == 0 { return None; }
+            self.depth -= 1;
+            end = adv;
+        }
+
+        Some((AtmaToken::RawStringOpen, end))
+    }
+
+    /// Parses a RawStringText token.
+    fn parse_raw_string_text<Cm>(
+        &mut self,
+        source: &str,
+        base: Pos,
+        metrics: Cm)
+        -> Option<(AtmaToken, Pos)>
+        where Cm: ColumnMetrics,
+    {
+        let span = span!(Level::TRACE, "AtmaScanner::parse_raw_string_text");
+        let _enter = span.enter();
+
+        let mut end = base;
+        let mut col_iter = metrics.iter_columns(source, end);
+
+        while let Some((_, adv)) = col_iter.next() {
+            end = adv;
+            if self
+                .parse_raw_string_close(source, adv, metrics)
+                .is_some()
+            {
+                self.open = Some(AtmaToken::RawStringText);
                 break;
             }
         }
 
-        Some((AtmaToken::Ident, pos))
-    }
-
-    /// Parses an Uint token.
-    fn parse_uint<Cm>(&mut self, mut text: &str, metrics: Cm)
-        -> Option<(AtmaToken, Pos)>
-        where Cm: ColumnMetrics,
-    {
-        let (radix, adv) = if text.starts_with("0b") {
-            text = &text[2..];
-            (2, Pos::new(2, 0, 2))
-        } else if text.starts_with("0o") {
-            text = &text[2..];
-            (8, Pos::new(2, 0, 2))
-        } else if text.starts_with("0x") {
-            text = &text[2..];
-            (16, Pos::new(2, 0, 2))
-        } else {
-            // Unprefixed uints can't start with '_'.
-            if text.starts_with('_') { return None; }
-            (10, Pos::ZERO)
-        };
-
-        let rest = text
-            .trim_start_matches(|c: char| c.is_digit(radix) || c == '_');
-        let substr = &text[..text.len() - rest.len()];
-        
-        if !substr.is_empty() {
-            let pos = adv + metrics.width(substr);
-            return Some((AtmaToken::Uint, pos));
-        } else {
-            None
-        }
-    }
-
-    /// Parses an HexDigits token.
-    fn parse_hex_digits<Cm>(&mut self, mut text: &str, metrics: Cm)
-        -> Option<(AtmaToken, Pos)>
-        where Cm: ColumnMetrics,
-    {
-        let rest = text
-            .trim_start_matches(|c: char| c.is_digit(16));
-        let substr = &text[..text.len() - rest.len()];
-        
-        if !substr.is_empty() {
-            let pos = metrics.width(substr);
-            return Some((AtmaToken::HexDigits, pos));
-        } else {
-            None
-        }
-    }
-
-    /// Parses a Float token.
-    fn parse_float<Cm>(&mut self, text: &str, metrics: Cm)
-        -> Option<(AtmaToken, Pos)>
-        where Cm: ColumnMetrics,
-    {
-        if text.starts_with("inf") {
-            let pos = Pos::new(3, 0, 3);
-            return Some((AtmaToken::Float, pos));
-        }
-        if text.starts_with("nan") {
-            let pos = Pos::new(3, 0, 3);
-            return Some((AtmaToken::Float, pos));
-        }
-
-        let mut rest = text.trim_start_matches(|c: char| c.is_digit(10));
-
-        if rest.len() != text.len() {
-            if rest.starts_with('.') {
-                rest = &rest[1..];
-            } else {
-                return None;
-            }
-
-            let next = rest.trim_start_matches(|c: char| c.is_digit(10));
-            if next.len() != rest.len() {
-                rest = next;
-
-                // A single decimal is not a float.
-                if rest.len() + 1 == text.len() { return None; }
-
-                // Parse exponent or return.
-                if rest.len() == 0 ||
-                    !rest.starts_with(|c: char| c == 'e' || c == 'E')
-                { 
-                    let cols = text.len() - rest.len();
-                    let pos = Pos::new(cols, 0, cols);
-                    return Some((AtmaToken::Float, pos));
-                }
-                rest = &rest[1..];
-
-                if rest.starts_with('+') || rest.starts_with('-') { 
-                    rest = &rest[1..];
-                }
-                if rest.len() == 0 { return None; }
-
-                let next = text.trim_start_matches(|c: char| c.is_digit(10));
-                if next.len() != rest.len() {
-                    rest = next;
-                    let cols = text.len() - rest.len();
-                    let pos = Pos::new(cols, 0, cols);
-                    return Some((AtmaToken::Float, pos));
-                }
-            }
-        }
-        None
-    }
-
-    /// Parses a RawStringOpen token.
-    fn parse_raw_string_open<Cm>(&mut self, text: &str, metrics: Cm)
-        -> Option<(AtmaToken, Pos)>
-        where Cm: ColumnMetrics,
-    {
-        let mut pos = Pos::ZERO;
-        let mut chars = text.chars();
-        match chars.next() {
-            Some('r') => pos += Pos::new(1, 0, 1),
-            _         => return None,
-        }
-        while let Some(c) = chars.next() {
-            match c {
-                '#' => {
-                    pos += Pos::new(1, 0, 1);
-                    self.depth += 1;
-                    continue;
-                },
-                '"' => {
-                    pos += Pos::new(1, 0, 1);
-                    return Some((AtmaToken::RawStringOpen, pos));
-                },
-                _ => return None,
-            }
-        }
-
-        None
-    }
-
-    /// Parses a RawStringClose token.
-    fn parse_raw_string_close<Cm>(&mut self, text: &str, metrics: Cm)
-        -> Option<(AtmaToken, Pos)>
-        where Cm: ColumnMetrics,
-    {
-        let mut raw_count = 0;
-        let mut pos = Pos::ZERO;
-        let mut chars = text.chars();
-        match chars.next() {
-            Some('"') => pos += Pos::new(1, 0, 1),
-            _         => return None,
-        }
-        while let Some(c) = chars.next() {
-            match c {
-                '#' => {
-                    pos += Pos::new(1, 0, 1);
-                    raw_count += 1;
-                    if raw_count >= self.depth {
-                        break;
-                    }
-                },
-                _ => break,
-            }
-        }
-
-        if self.depth == raw_count {
-            Some((AtmaToken::RawStringClose, pos))
-        } else {
-            None
-        }
-    }
-
-    /// Parses a RawStringText token.
-    fn parse_raw_string_text<Cm>(&mut self, text: &str, metrics: Cm)
-        -> Option<(AtmaToken, Pos)>
-        where Cm: ColumnMetrics,
-    {
-        let mut pos = Pos::ZERO;
-        let mut col_iter = metrics.iter_columns(text);
-
-        while let Some((next, adv)) = col_iter.next() {
-            if next == "\"" && self
-                .parse_raw_string_close(&text[pos.byte..], metrics)
-                .is_some()
-            {
-                self.open = Some(AtmaToken::RawStringText);
-                return Some((AtmaToken::RawStringText, pos));
-            } else {
-                pos += adv;
-            }
-        }
-
-        Some((AtmaToken::RawStringText, pos))
+        Some((AtmaToken::RawStringText, end))
     }
 
     /// Parses a StringText token.
     fn parse_string_text<Cm>(
         &mut self,
-        text: &str,
+        source: &str,
+        base: Pos,
         metrics: Cm,
         open: AtmaToken)
         -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
     {
-        let mut pos = Pos::ZERO;
-        let mut col_iter = metrics.iter_columns(text);
+        let span = span!(Level::TRACE, "AtmaScanner::parse_string_text");
+        let _enter = span.enter();
+
+        let mut end = base;
+        let mut col_iter = metrics.iter_columns(source, end);
 
         while let Some((next, adv)) = col_iter.next() {
+            event!(Level::TRACE, "next: {:?}, adv: {}", next, adv);
             match (next, open) {
                 ("\\", _) => match col_iter.next() {
                     Some(("\\", adv2)) |
@@ -459,96 +448,111 @@ impl AtmaScanner {
                     Some(("'",  adv2)) |
                     Some(("t",  adv2)) |
                     Some(("r",  adv2)) |
-                    Some(("n",  adv2)) => pos += (adv + adv2),
+                    Some(("n",  adv2)) => end = adv2,
                     Some(("u",  adv2)) => unimplemented!("unicode escapes unsupported"),
                     _                  => return None,
                 },
                 
                 ("'",  AtmaToken::StringOpenSingle) |
                 ("\"", AtmaToken::StringOpenDouble) => {
-                    return Some((AtmaToken::StringText, pos));
+                    return Some((AtmaToken::StringText, end));
                 },
 
-                _ => pos += adv,
+                _ => end = adv,
             }
         }
 
-        Some((AtmaToken::StringText, pos))
+        Some((AtmaToken::StringText, end))
     }
 
     /// Parses a Whitespace token.
-    fn parse_whitespace<Cm>(&mut self, text: &str, metrics: Cm)
+    fn parse_whitespace<Cm>(&mut self, source: &str, base: Pos, metrics: Cm)
         -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
     {
-        let rest = text.trim_start_matches(char::is_whitespace);
-        if rest.len() < text.len() {
-            let substr = &text[..text.len() - rest.len()];
-            let pos = metrics.width(substr);
-            Some((AtmaToken::Whitespace, pos))
-        } else {
-            None
-        }
+        let span = span!(Level::TRACE, "AtmaScanner::parse_whitespace");
+        let _enter = span.enter();
+
+        metrics
+            .position_after_chars_matching(source, base, char::is_whitespace)
+            .map(|end| (AtmaToken::Whitespace, end))
     }
 
     fn parse_line_comment_text<Cm>(
         &mut self,
-        text: &str,
+        source: &str,
+        base: Pos,
         metrics: Cm)
         -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
     {
-        let mut pos = Pos::ZERO;
-        let mut col_iter = metrics.iter_columns(text);
+        let span = span!(Level::TRACE, "AtmaScanner::parse_line_comment_text");
+        let _enter = span.enter();
 
-        while let Some((next, adv)) = col_iter.next() {
+        let mut end = base;
+        let mut col_iter = metrics.iter_columns(source, end);
+
+        while let Some((_, adv)) = col_iter.next() {
             if adv.is_line_start() { break; }
-            pos += adv;
+            end = adv;
         }
 
-        Some((AtmaToken::CommentText, pos))
+        Some((AtmaToken::CommentText, end))
     }
 
     fn parse_block_comment_text<Cm>(
         &mut self,
-        text: &str,
+        source: &str,
+        base: Pos,
         metrics: Cm)
         -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
     {
-        let mut pos = Pos::ZERO;
-        let mut col_iter = metrics.iter_columns(text);
+        let span = span!(Level::TRACE, "AtmaScanner::parse_block_comment_text");
+        let _enter = span.enter();
+
+        let mut end = base;
+        let mut col_iter = metrics.iter_columns(source, end);
 
         while let Some((next, adv)) = col_iter.next() {
+            event!(Level::TRACE, "next: {:?}", next);
+            event!(Level::TRACE, "adv: {:?}", adv);
             match next {
                 "/" => match col_iter.next() {
                     Some(("*", adv2)) => {
                         self.depth += 1;
-                        pos += (adv + adv2);
+                        end = adv2;
                     },
-                    Some((_, adv2)) => pos += (adv + adv2),
-                    _ => pos += adv,
+                    Some((_, adv2)) => end = adv2,
+                    _               => end = adv,
                 },
                 "*" => match col_iter.next() {
                     Some(("/", adv2)) => {
                         if self.depth == 1 { break; }
                         self.depth -= 1;
                     },
-                    Some((_, adv2)) => pos += (adv + adv2),
-                    _ => pos += adv,
+                    Some((_, adv2)) => end = adv2,
+                    _               => end = adv,
                 },
                 
-                _ => pos += adv,
+                _ => end = adv,
             }
         }
 
-        Some((AtmaToken::CommentText, pos))
+        Some((AtmaToken::CommentText, end))
     }
 
-    fn parse_token<'text, Cm>(&mut self, text: &'text str, metrics: Cm)
+    fn parse_token<'text, Cm>(
+        &mut self, 
+        source: &'text str,
+        base: Pos,
+        metrics: Cm)
         -> Option<(AtmaToken, Pos)>
         where Cm: ColumnMetrics,
     {
+        let span = span!(Level::TRACE, "AtmaScanner::parse_token");
+        let _enter = span.enter();
+
         event!(Level::TRACE, "state: {:?}", self);
 
         use AtmaToken::*;
@@ -556,11 +560,11 @@ impl AtmaScanner {
             Some(OpenLineComment) => {
                 // Line comment cannot fail, so no other parse could be returned
                 // here.
-                self.parse_line_comment_text(text, metrics)
+                self.parse_line_comment_text(source, base, metrics)
             },
             Some(OpenBlockComment) => {
                 if let Some(parse) = self
-                    .parse_str(text, metrics, "*/", CloseBlockComment)
+                    .parse_str(source, base, metrics, "*/", CloseBlockComment)
                 {
                     self.depth = 0;
                     return Some(parse);
@@ -569,14 +573,14 @@ impl AtmaScanner {
                 self.open = Some(OpenBlockComment);
                 // Block comment cannot fail, so no other parse could be
                 // returned here.
-                self.parse_block_comment_text(text, metrics)
+                self.parse_block_comment_text(source, base, metrics)
             },
 
 
             Some(RawStringText) => {
                 // Because it is necessary to recognize the RawStringClose to
                 // finish parsing RawStringText, we should never get here unless
-                // we know the next part of the text is the appropriately sized
+                // we know the next part of the source is the appropriately sized
                 // RawStringClose token. So instead of explicitely parsing it,
                 // we can just jump forward.
                 let byte: usize = (self.depth + 1)
@@ -585,41 +589,46 @@ impl AtmaScanner {
                 Some((RawStringClose, Pos::new(byte, 0, byte)))
             },
             Some(RawStringOpen) => {
-                if let Some(parse) = self.parse_raw_string_close(text, metrics) {
+                if let Some(parse) = self
+                    .parse_raw_string_close(source, base, metrics)
+                {
                     self.depth = 0;
                     return Some(parse);
                 }
-                return_if_some!(self.parse_raw_string_text(text, metrics));
+                return_if_some!(self
+                    .parse_raw_string_text(source, base, metrics));
                 None
             },
 
             Some(StringOpenSingle) => {
-                return_if_some!(
-                    self.parse_str(text, metrics, "\'", StringCloseSingle));
+                return_if_some!(self
+                    .parse_str(source, base, metrics, "\'", StringCloseSingle));
                 if let Some(parse) = self
-                    .parse_string_text(text, metrics, StringOpenSingle)
+                    .parse_string_text(source, base, metrics, StringOpenSingle)
                 {
+                    // Keep this open to prioritize the close.
                     self.open = Some(StringOpenSingle);
                     return Some(parse);
                 }
-                None
+                panic!("invalid scanner state");
             },
             Some(StringOpenDouble) => {
-                return_if_some!(
-                    self.parse_str(text, metrics, "\"", StringCloseDouble));
+                return_if_some!(self
+                    .parse_str(source, base, metrics, "\"", StringCloseDouble));
                 if let Some(parse) = self
-                    .parse_string_text(text, metrics, StringOpenDouble)
+                    .parse_string_text(source, base, metrics, StringOpenDouble)
                 {
+                    // Keep this open to prioritize the close.
                     self.open = Some(StringOpenDouble);
                     return Some(parse);
                 }
-                None
+                panic!("invalid scanner state");
             },
 
             Some(Hash) => {
                 // HexDigits can only come after Hash.
-                return_if_some!(self.parse_hex_digits(text, metrics));
-                self.scan(text, metrics)
+                return_if_some!(self.parse_hex_digits(source, base, metrics));
+                self.scan(source, base, metrics)
             },
 
             Some(Colon) => {
@@ -627,34 +636,56 @@ impl AtmaScanner {
                 // else is seen. It is important to have uint before float to
                 // avoid swallowing them up with decimals.
                 self.open = Some(Colon);
-                return_if_some!(self.parse_uint(text, metrics));
-                return_if_some!(self.parse_str(text, metrics, ".", Decimal));
-                return_if_some!(self.parse_str(text, metrics, "*", Mult));
-                return_if_some!(self.parse_str(text, metrics, "+", Plus));
-                return_if_some!(self.parse_str(text, metrics, "-", Minus));
+                return_if_some!(self.parse_uint(source, base, metrics));
+
+                return_if_some!(self
+                    .parse_str(source, base, metrics, ".", Decimal));
+
+                return_if_some!(self
+                    .parse_str(source, base, metrics, "*", Mult));
+
+                return_if_some!(self
+                    .parse_str(source, base, metrics, "+", Plus));
+
+                return_if_some!(self
+                    .parse_str(source, base, metrics, "-", Minus));
+
 
                 self.open = None;
-                self.scan(text, metrics)
+                self.scan(source, base, metrics)
             },
 
             None => {
-                return_if_some!(self.parse_whitespace(text, metrics));
-                return_if_some!(self.parse_str(text, metrics, "(", OpenParen));
-                return_if_some!(self.parse_str(text, metrics, ")", CloseParen));
-                return_if_some!(self.parse_str(text, metrics, "[", OpenBracket));
-                return_if_some!(self.parse_str(text, metrics, "]", CloseBracket));
-                return_if_some!(self.parse_str(text, metrics, "{", OpenBrace));
-                return_if_some!(self.parse_str(text, metrics, "}", CloseBrace));
+                return_if_some!(self.parse_whitespace(source, base, metrics));
+
+                return_if_some!(self
+                    .parse_str(source, base, metrics, "(", OpenParen));
+
+                return_if_some!(self
+                    .parse_str(source, base, metrics, ")", CloseParen));
+
+                return_if_some!(self
+                    .parse_str(source, base, metrics, "[", OpenBracket));
+
+                return_if_some!(self
+                    .parse_str(source, base, metrics, "]", CloseBracket));
+
+                return_if_some!(self
+                    .parse_str(source, base, metrics, "{", OpenBrace));
+
+                return_if_some!(self
+                    .parse_str(source, base, metrics, "}", CloseBrace));
+
 
 
                 if let Some(parse) = self
-                    .parse_str(text, metrics, "//", OpenLineComment)
+                    .parse_str(source, base, metrics, "//", OpenLineComment)
                 {
                     self.open = Some(OpenLineComment);
                     return Some(parse);
                 }
                 if let Some(parse) = self
-                    .parse_str(text, metrics, "/*", OpenBlockComment)
+                    .parse_str(source, base, metrics, "/*", OpenBlockComment)
                 {
                     self.open = Some(OpenBlockComment);
                     self.depth = 1;
@@ -662,52 +693,70 @@ impl AtmaScanner {
                 }
 
                 // RawStringOpen must be parsed before Hash.
-                if let Some(parse) = self.parse_raw_string_open(text, metrics) {
+                if let Some(parse) = self
+                    .parse_raw_string_open(source, base, metrics)
+                {
                     self.open = Some(RawStringOpen);
                     return Some(parse);
                 }
                 if let Some(parse) = self
-                    .parse_str(text, metrics, "\'", StringOpenSingle)
+                    .parse_str(source, base, metrics, "\'", StringOpenSingle)
                 {
                     self.open = Some(StringOpenSingle);
                     return Some(parse);
                 }
                 if let Some(parse) = self
-                    .parse_str(text, metrics, "\"", StringOpenDouble)
+                    .parse_str(source, base, metrics, "\"", StringOpenDouble)
                 {
                     self.open = Some(StringOpenDouble);
                     return Some(parse);
                 }
 
-                return_if_some!(self.parse_str(text, metrics, ";", Semicolon));
-                if let Some(parse) = self.parse_str(text, metrics, ":", Colon) {
+                return_if_some!(self
+                    .parse_str(source, base, metrics, ";", Semicolon));
+                
+                if let Some(parse) = self
+                    .parse_str(source, base, metrics, ":", Colon)
+                {
                     self.open = Some(Colon);
                     return Some(parse);
                 }
-                return_if_some!(self.parse_str(text, metrics, ",", Comma));
-                if let Some(parse) = self.parse_str(text, metrics, "#", Hash) {
+
+                return_if_some!(self
+                    .parse_str(source, base, metrics, ",", Comma));
+                
+                if let Some(parse) = self
+                    .parse_str(source, base, metrics, "#", Hash)
+                {
                     self.open = Some(Hash);
                     return Some(parse);
                 }
 
-                return_if_some!(self.parse_str(text, metrics, "*", Mult));
-                return_if_some!(self.parse_str(text, metrics, "+", Plus));
-                return_if_some!(self.parse_str(text, metrics, "-", Minus));
+                return_if_some!(self
+                    .parse_str(source, base, metrics, "*", Mult));
+                return_if_some!(self
+                    .parse_str(source, base, metrics, "+", Plus));
+                return_if_some!(self
+                    .parse_str(source, base, metrics, "-", Minus));
                 
                 // Float must be parsed before Uint and Decimal.
-                return_if_some!(self.parse_float(text, metrics));
-                return_if_some!(self.parse_str(text, metrics, ".", Decimal));
-                return_if_some!(self.parse_uint(text, metrics));
+                return_if_some!(self.parse_float(source, base, metrics));
+
+                return_if_some!(self
+                    .parse_str(source, base, metrics, ".", Decimal));
+                return_if_some!(self.parse_uint(source, base, metrics));
 
                 // Ident must be parsed before Underscore.
-                return_if_some!(self.parse_ident(text, metrics));
-                return_if_some!(self.parse_str(text, metrics, "_", Underscore));
+                return_if_some!(self.parse_ident(source, base, metrics));
+                
+                return_if_some!(self
+                    .parse_str(source, base, metrics, "_", Underscore));
                 
                 None
             },
 
             Some(s) => panic!(
-                "invalid lexer state Some({:?}) continuing at {:?}", s, text),
+                "invalid lexer state Some({:?}) continuing at {:?}", s, source),
         }
     }
 }
@@ -715,18 +764,18 @@ impl AtmaScanner {
 impl Scanner for AtmaScanner {
     type Token = AtmaToken;
 
-    fn scan<'text, Cm>(&mut self, text: &'text str, metrics: Cm)
+    fn scan<'text, Cm>(&mut self, source: &'text str, base: Pos, metrics: Cm)
         -> Option<(Self::Token, Pos)>
         where Cm: ColumnMetrics,
     {
         let span = span!(Level::DEBUG, "AtmaScanner::scan");
         let _enter = span.enter();
         
-        let res = self.parse_token(text, metrics);
+        let res = self.parse_token(source, base, metrics);
 
         event!(Level::DEBUG,
             "scan result: {:?}",
-            res.map(|(t, p)| (t, &text[..p.byte])));
+            res.map(|(tok, end)| (tok, &source[base.byte..end.byte])));
         res
     }
 }
