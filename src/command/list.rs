@@ -29,6 +29,7 @@ use crate::cell::PositionSelector;
 use colored::Colorize as _;
 use tracing::Level;
 use tracing::span;
+use tracing::event;
 
 
 
@@ -48,7 +49,7 @@ pub fn list(
     settings: &mut Settings)
     -> Result<(), anyhow::Error>
 {
-    let span = span!(Level::TRACE, "list");
+    let span = span!(Level::DEBUG, "list");
     let _enter = span.enter();
 
     match mode {
@@ -56,7 +57,6 @@ pub fn list(
             palette,
             selection,
             size,
-            Position::ZERO,
             color_display,
             max_columns,
             config,
@@ -83,13 +83,13 @@ fn list_lines<'a>(
     _settings: &mut Settings)
     -> Result<(), anyhow::Error>
 {
-    let span = span!(Level::TRACE, "list_lines");
+    let span = span!(Level::DEBUG, "list_lines");
     let _enter = span.enter();
 
-    tracing::debug!("Start listing for selection {:?}", selection);
+    event!(Level::DEBUG, "Start listing for selection {:?}", selection);
     let selection = selection.unwrap_or(CellSelector::All.into());
     let index_selection = selection.resolve(palette.inner());
-    tracing::debug!("Start listing for {:?}", index_selection);
+    event!(Level::DEBUG, "Start listing for {:?}", index_selection);
 
     for idx in index_selection {
         if let Ok(Some(c)) = palette.inner()
@@ -132,17 +132,35 @@ fn list_lines<'a>(
 /// List palette cells in a grid.
 fn list_grid<'a>(
     palette: &Palette,
-    _selection: Option<CellSelection<'a>>,
+    selection: Option<CellSelection<'a>>,
     size: (u16, u16),
-    corner_position: Position,
     color_display: ColorDisplay,
     max_columns: u16,
     _config: &Config,
     _settings: &mut Settings)
     -> Result<(), anyhow::Error>
 {
-    let span = span!(Level::TRACE, "list_grid");
+    let span = span!(Level::DEBUG, "list_grid");
     let _enter = span.enter();
+
+    let corner_position = selection
+        .and_then(|selection| {
+            for selector in selection {
+                match selector {
+                    CellSelector::PositionSelector(position_selector) => {
+                        return Some(position_selector.bounds().0)
+                    },
+                    // TODO: Output warnings for unused selectors.
+                    _ => ()
+                }
+            }
+            None
+        })
+        .unwrap_or(Position::ZERO);
+        
+
+    event!(Level::DEBUG, "corner_position: {}", corner_position);
+    event!(Level::DEBUG, "max_columns: {}", max_columns);
 
     if max_columns == 0 { return Ok(()); }
     let print_line_numbers = true;
@@ -162,15 +180,16 @@ fn list_grid<'a>(
             min_right_gutter_width)
     };
 
-    tracing::trace!("left_gutter_width: {}", left_gutter_width);
-    tracing::trace!("max_center_width: {}", max_center_width);
-    tracing::trace!("columns: {}", columns);
-    tracing::trace!("right_gutter_width: {}", right_gutter_width);
+    
+    event!(Level::DEBUG, "left_gutter_width: {}", left_gutter_width);
+    event!(Level::DEBUG, "max_center_width: {}", max_center_width);
+    event!(Level::DEBUG, "columns: {}", columns);
+    event!(Level::DEBUG, "right_gutter_width: {}", right_gutter_width);
 
-    let max_col = corner_position.column.saturating_add(columns - 1);
+    let max_column = corner_position.column.saturating_add(columns - 1);
     let mut max_line = corner_position.line.saturating_add(size.1 - 2);
     const MAX_SKIP: u16 = 20;
-    tracing::trace!("max_col: {}, max_line: {}", max_col, max_line);
+    event!(Level::DEBUG, "max_column: {}, max_line: {}", max_column, max_line);
 
     let mut line_buf = Vec::with_capacity(columns.into());
     let mut skipped: u16 = 0;
@@ -179,6 +198,7 @@ fn list_grid<'a>(
     let page_color = colored::Color::TrueColor { r: 0x11, g: 0xDD, b: 0x22 };
     let rule_color = colored::Color::TrueColor { r: 0x77, g: 0x77, b: 0x77 };
 
+    // Print header line.
     if print_column_rule {
         let page_selector = PositionSelector {
             page: Some(corner_position.page),
@@ -192,7 +212,7 @@ fn list_grid<'a>(
         }
         max_line -= 1;
         let w = color_display.width() as usize;
-        for column in 0..=max_col {
+        for column in 0..=max_column {
             if column % 5 == 0 || color_display.width() > 4 { 
                 print!("{:<width$}", column, width=w);
             } else {
@@ -212,9 +232,10 @@ fn list_grid<'a>(
         println!();
     }
 
+
     while line < max_line {
         let mut print_line = false;
-        for column in corner_position.column..=max_col {
+        for column in corner_position.column..=max_column {
             match palette.inner().color(&CellRef::Position(Position {
                     page: corner_position.page,
                     line,

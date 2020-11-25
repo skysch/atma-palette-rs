@@ -367,6 +367,7 @@ pub fn cell_selector<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
             }
         },
 
+        // TODO: Give a better error message.
         _ => fail
             (lexer)
             .map_value(|_| unreachable!())
