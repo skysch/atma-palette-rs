@@ -54,7 +54,6 @@ pub fn uint<'text, Cm, T>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     let span = span!(Level::DEBUG, "uint");
     let _enter = span.enter();
 
-    lexer.filter_next(); // Remove prefixed tokens.
     let (mut val, succ) = text(one(AtmaToken::Uint))
         (lexer)?
         .take_value();

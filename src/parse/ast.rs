@@ -431,7 +431,7 @@ pub fn call_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
 
     use AtmaToken::*;
 
-    // event!(Level::TRACE, "lexer before {}", lexer);
+    event!(Level::TRACE, "lexer before {}", lexer);
     let (Spanned { value, mut span }, mut succ) = spanned(primary_expr)
         (lexer)?
         .take_value();
@@ -504,7 +504,7 @@ pub fn primary_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
         Some(OpenParen) => bracket(
                 one(OpenParen),
                 intersperse_collect(0, None,
-                    section(ast_expr),
+                    ast_expr,
                     one(Comma)),
                 one(CloseParen))
             (lexer)
@@ -513,7 +513,7 @@ pub fn primary_expr<'text, Cm>(lexer: Lexer<'text, AtmaScanner, Cm>)
         Some(OpenBracket) => bracket(
                 one(OpenBracket),
                 intersperse_collect(0, None,
-                    section(ast_expr),
+                    ast_expr,
                     one(Comma)),
                 one(CloseBracket))
             (lexer)

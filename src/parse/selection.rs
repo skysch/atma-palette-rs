@@ -32,7 +32,7 @@ use tephra::combinator::bracket;
 use tephra::combinator::bracket_dynamic;
 use tephra::combinator::exact;
 use tephra::combinator::fail;
-use tephra::combinator::filter;
+use tephra::combinator::filter_with;
 use tephra::combinator::intersperse_collect;
 use tephra::combinator::left;
 use tephra::combinator::maybe;
@@ -97,7 +97,6 @@ pub fn position_or_index<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     let span = span!(Level::DEBUG, "position_or_index");
     let _enter = span.enter();
 
-    lexer.filter_next();
     let (idx, idx_succ) = exact(
         right(one(AtmaToken::Colon),
             uint::<_, u32>))
@@ -152,7 +151,6 @@ pub fn index<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     let span = span!(Level::DEBUG, "index");
     let _enter = span.enter();
 
-    lexer.filter_next();
     exact(
         right(one(AtmaToken::Colon),
             uint::<_, u32>))
@@ -166,7 +164,6 @@ pub fn position<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     let span = span!(Level::DEBUG, "position");
     let _enter = span.enter();
 
-    lexer.filter_next();
     exact(
         right(one(AtmaToken::Colon),
             both(
