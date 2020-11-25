@@ -203,7 +203,7 @@ pub fn cell_selection<'text, Cm>(mut lexer: Lexer<'text, AtmaScanner, Cm>)
     let _enter = span.enter();
 
     intersperse_collect(1, None,
-        section(cell_selector),
+        cell_selector,
         one(AtmaToken::Comma))
         (lexer)
         .map_value(CellSelection::from)

@@ -81,7 +81,6 @@ pub fn main_facade(worker_guard: &mut Option<WorkerGuard>)
     config.normalize_paths(&cur_dir);
 
     // Initialize the global tracing subscriber.
-    
     *worker_guard = config.trace_config.init_global_default(
         common.verbose,
         common.quiet,
@@ -174,7 +173,7 @@ pub fn main_facade(worker_guard: &mut Option<WorkerGuard>)
     } else {
         None
     };
-    event!(Level::TRACE, "Palette: {:#?}", palette);
+    // event!(Level::TRACE, "Palette: {:#?}", palette);
 
     // Dispatch to appropriate commands.
     atma::command::dispatch(
