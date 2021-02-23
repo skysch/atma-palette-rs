@@ -69,26 +69,19 @@ pub struct TraceConfig {
 impl TraceConfig {
     /// Initializes the global default tracing subscriber for the using this
     /// configuration.
-    pub fn init_global_default(
+
+    pub fn init_global_default<L>(
         &self,
-        verbose: bool,
-        quiet: bool,
-        trace: bool)
+        default_level_filter: L)
         -> Result<Option<WorkerGuard>, Error>
+        where L: Into<LevelFilter>
     {
         if self.output_path.is_none() && !self.output_stdout {
             return Ok(None);
         }
 
-        let mut env_filter = EnvFilter::from_env(DEFAULT_TRACE_ENV_VAR);
-
-        let atma_level_filter = match (verbose, quiet, trace) {
-            (_, _, true) => LevelFilter::TRACE,
-            (_, true, _) => LevelFilter::WARN,
-            (true, _, _) => LevelFilter::INFO,
-            _            => LevelFilter::WARN,
-        };
-        env_filter = env_filter.add_directive(atma_level_filter.into());
+        let mut env_filter = EnvFilter::from_env(DEFAULT_TRACE_ENV_VAR)
+            .add_directive(default_level_filter.into().into());
         
         for filter in &self.filters[..] {
             let directive = filter
@@ -177,7 +170,7 @@ impl TraceConfig {
     #[inline(always)]
     fn default_filters() -> Vec<Cow<'static, str>> {
         vec![
-            "atma=INFO".into(),
+            "atma=WARN".into(),
         ]
     }
 

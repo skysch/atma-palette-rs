@@ -23,8 +23,9 @@ use serde::Serialize;
 // Standard library imports.
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io::Read;
-use std::io::Write;
+use std::io::BufWriter;
+use std::io::Read as _;
+use std::io::Write as _;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -222,8 +223,11 @@ impl Settings {
             .with_extensions(ron::extensions::Extensions::IMPLICIT_SOME);
         let s = ron::ser::to_string_pretty(&self, pretty)
             .context("Failed to serialize RON file")?;
-        file.write_all(s.as_bytes())
-            .context("Failed to write RON file")
+        let mut writer = BufWriter::new(file);
+        writer.write_all(s.as_bytes())
+            .context("Failed to write RON file")?;
+        writer.flush()
+            .context("Failed to flush file buffer")
     }
 
     /// Normalizes paths in the settings by expanding them relative to the given

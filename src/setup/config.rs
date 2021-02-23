@@ -31,8 +31,9 @@ use serde::Serialize;
 // Standard library imports.
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io::Read;
-use std::io::Write;
+use std::io::BufWriter;
+use std::io::Read as _;
+use std::io::Write as _;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -362,14 +363,19 @@ impl Config {
             .with_extensions(ron::extensions::Extensions::IMPLICIT_SOME);
         let s = ron::ser::to_string_pretty(&self, pretty)
             .context("Failed to serialize RON file")?;
-        file.write_all(s.as_bytes())
-            .context("Failed to write RON file")
+        let mut writer = BufWriter::new(file);
+        writer.write_all(s.as_bytes())
+            .context("Failed to write RON file")?;
+        writer.flush()
+            .context("Failed to flush file buffer")
     }
 
     /// Normalizes paths in the config by expanding them relative to the given
     /// root path.
     pub fn normalize_paths(&mut self, _base: &PathBuf) {
         // NOTE: No paths currently in config, nothing to do.
+
+        // TODO: Normalize trace path?
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -483,12 +489,16 @@ impl Default for Config {
 
 impl std::fmt::Display for Config {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(fmt, "\n\ttrace_config.output_path: {:?}",
+        writeln!(fmt, "\ttrace_config.output_path: {:?}",
             self.trace_config.output_path)?;
-        writeln!(fmt, "\n\ttrace_config.ansi_colors: {:?}",
+        writeln!(fmt, "\ttrace_config.ansi_colors: {:?}",
             self.trace_config.ansi_colors)?;
-        writeln!(fmt, "\n\ttrace_config.filters: {:?}",
-            self.trace_config.filters)?;
+        writeln!(fmt, "\ttrace_config.output_stdout: {:?}",
+            self.trace_config.output_stdout)?;
+        writeln!(fmt, "\ttrace_config.filters:")?;
+        for filter in &self.trace_config.filters {
+            writeln!(fmt, "\t\t{:?}", filter)?;
+        }
         writeln!(fmt, "\tload_default_palette: {:?}",
             self.load_default_palette)?;
         writeln!(fmt, "\tnew_from_script_history: {:?}",

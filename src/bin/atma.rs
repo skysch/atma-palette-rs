@@ -19,13 +19,13 @@ use atma::utility::normalize_path;
 // Standard library imports.
 use anyhow::Context;
 use anyhow::Error;
-use tracing_appender::non_blocking::WorkerGuard;
 
 // External library imports.
 use structopt::StructOpt;
 use tracing::event;
-use tracing::span;
 use tracing::Level;
+use tracing::span;
+use tracing_appender::non_blocking::WorkerGuard;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,10 +81,13 @@ pub fn main_facade(worker_guard: &mut Option<WorkerGuard>)
     config.normalize_paths(&cur_dir);
 
     // Initialize the global tracing subscriber.
-    *worker_guard = config.trace_config.init_global_default(
-        common.verbose,
-        common.quiet,
-        common.trace)?;
+    let base_level = match (common.verbose, common.quiet, common.trace) {
+        (_, _, true) => Level::TRACE,
+        (_, true, _) => Level::WARN,
+        (true, _, _) => Level::INFO,
+        _            => Level::WARN,
+    };
+    *worker_guard = config.trace_config.init_global_default(base_level)?;
     let span = span!(Level::INFO, "main");
     let _enter = span.enter();
 
